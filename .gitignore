@@ -1,5 +1,6 @@
 /.env
 /backend/.env
+/frontend/.env
 /backend/vendor/
 /backend/storage/
 /backend/bootstrap/cache/

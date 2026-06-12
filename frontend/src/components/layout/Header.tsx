@@ -1,7 +1,14 @@
-import { useState } from 'react'
-import { useLocation } from 'react-router-dom'
-import { Bell, Menu, User, Search } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
+import { Bell, Menu, User, Search, LogOut } from 'lucide-react'
 import Button from '@/components/ui/Button'
+import { useAuth } from '@/contexts/AuthContext'
+import type { UserRole } from '@/types/enums'
+
+const roleLabels: Record<UserRole, string> = {
+  ADMIN: 'Administrador',
+  OPERADOR: 'Operador',
+}
 
 export interface HeaderProps {
   title?: string
@@ -15,7 +22,32 @@ export default function Header({
   showSearch = false,
 }: HeaderProps) {
   const location = useLocation()
+  const navigate = useNavigate()
+  const { user, logout } = useAuth()
   const [showNotifications, setShowNotifications] = useState(false)
+  const [showUserMenu, setShowUserMenu] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+    } finally {
+      setLoggingOut(false)
+      navigate('/login')
+    }
+  }
 
   const pageTitle = title || (() => {
     const path = location.pathname
@@ -90,14 +122,50 @@ export default function Header({
             )}
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:block text-right">
-              <p className="text-sm font-medium text-gray-900">Juan Pérez</p>
-              <p className="text-xs text-gray-500">Administrador</p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
-              <User className="h-5 w-5 text-blue-600" />
-            </div>
+          <div className="relative" ref={userMenuRef}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className="flex items-center gap-3 rounded-md p-1 hover:bg-gray-100"
+            >
+              <div className="hidden sm:block text-right">
+                <p className="text-sm font-medium text-gray-900">
+                  {user?.nombre ?? 'Usuario'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {user ? roleLabels[user.rol] : ''}
+                </p>
+              </div>
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+                {user?.nombre ? (
+                  <span className="text-sm font-semibold text-blue-600">
+                    {user.nombre.charAt(0).toUpperCase()}
+                  </span>
+                ) : (
+                  <User className="h-5 w-5 text-blue-600" />
+                )}
+              </div>
+            </button>
+
+            {showUserMenu && (
+              <div className="absolute right-0 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
+                <div className="border-b border-gray-200 px-4 py-3">
+                  <p className="text-sm font-medium text-gray-900">
+                    {user?.nombre ?? 'Usuario'}
+                  </p>
+                  <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                </div>
+                <div className="p-2">
+                  <button
+                    onClick={handleLogout}
+                    disabled={loggingOut}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Cerrar sesión
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
