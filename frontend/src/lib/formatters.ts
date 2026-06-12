@@ -1,12 +1,22 @@
-export function formatCurrency(amount: number): string {
+export function formatCurrency(amount: number | string | null | undefined): string {
+  const n = typeof amount === 'string' ? parseFloat(amount) : amount
+  if (n === null || n === undefined || !Number.isFinite(n)) {
+    return 'N/A'
+  }
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
     currency: 'MXN',
-  }).format(amount)
+  }).format(n)
 }
 
-export function formatDate(date: string): string {
+export function formatDate(date?: string | null): string {
+  if (!date) {
+    return '-'
+  }
   const d = new Date(date)
+  if (isNaN(d.getTime())) {
+    return '-'
+  }
   const day = d.getDate().toString().padStart(2, '0')
   const month = (d.getMonth() + 1).toString().padStart(2, '0')
   const year = d.getFullYear()

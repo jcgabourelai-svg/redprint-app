@@ -24,7 +24,7 @@ class ReadingResource extends JsonResource
             'excepcion' => $this->es_anomalia ? ($this->justificacion_anomalia ?? 'Anómala') : null,
             'justificacion_anomalia' => $this->justificacion_anomalia,
             'impresora_nombre' => $this->whenLoaded('printer', fn() => $this->printer?->modelo ?? $this->printer?->serial ?? '-'),
-            'socio_capturista' => $this->whenLoaded('socio', fn() => $this->socio?->name ?? '-'),
+            'socio_capturista' => $this->whenLoaded('socio', fn() => $this->socio?->nombre ?? '-'),
             'printer' => $this->whenLoaded('printer'),
             'socio' => $this->whenLoaded('socio'),
         ];

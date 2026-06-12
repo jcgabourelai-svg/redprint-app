@@ -71,6 +71,11 @@ class Printer extends Model
         return $this->hasMany(MaintenanceOrder::class, 'impresora_id');
     }
 
+    public function readings()
+    {
+        return $this->hasMany(Reading::class, 'impresora_id');
+    }
+
     public function expenses()
     {
         return $this->hasMany(PrinterExpense::class, 'impresora_id');

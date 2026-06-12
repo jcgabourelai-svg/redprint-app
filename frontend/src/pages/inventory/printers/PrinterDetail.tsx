@@ -76,11 +76,11 @@ export default function PrinterDetail() {
                       <CardTitle className="text-xl">
                         {printerData.marca} {printerData.modelo}
                       </CardTitle>
-                      <p className="text-sm text-gray-500">{printerData.id} • {printerData.numero_serie}</p>
+                      <p className="text-sm text-gray-500">{printerData.id} • {printerData.num_serie}</p>
                     </div>
                   </div>
                   <Badge variant="printer_status" color={printerData.estado}>
-                    {printerData.estado.replace(/_/g, ' ').toUpperCase()}
+                    {(printerData.estado || '').replace(/_/g, ' ').toUpperCase()}
                   </Badge>
                 </div>
               </CardHeader>
@@ -96,7 +96,7 @@ export default function PrinterDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Número de Serie</p>
-                    <p className="text-gray-900">{printerData.numero_serie}</p>
+                    <p className="text-gray-900">{printerData.num_serie}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Fecha de Adquisición</p>
@@ -108,15 +108,15 @@ export default function PrinterDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Vida Útil Estimada</p>
-                    <p className="text-gray-900">{printerData.vida_util_estimada} meses</p>
+                    <p className="text-gray-900">{printerData.vida_util_meses} meses</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Ubicación Actual</p>
-                    <p className="text-gray-900">{printerData.ubicacion}</p>
+                    <p className="text-gray-900">{printerData.warehouse?.direccion || printerData.codigo_negocio || '-'}</p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Almacén</p>
-                    <p className="text-gray-900">{printerData.almacen || '-'}</p>
+                    <p className="text-gray-900">{printerData.warehouse?.nombre || '-'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -175,11 +175,11 @@ export default function PrinterDetail() {
                                   <div className="flex items-center justify-between mb-2">
                                     <p className="text-sm font-medium">{order.id} - {formatDate(order.fecha)}</p>
                                     <Badge variant="document_status" color={order.estado}>
-                                      {order.estado.replace(/_/g, ' ').toUpperCase()}
+                                      {(order.estado || '').replace(/_/g, ' ').toUpperCase()}
                                     </Badge>
                                   </div>
-                                  <p className="text-xs text-gray-500">Tipo: {order.tipo === 'preventivo' ? 'Preventivo' : 'Correctivo'}</p>
-                                  <p className="text-xs text-gray-500">Responsable: {order.socio_responsable}</p>
+                                  <p className="text-xs text-gray-500">Tipo: {(order.tipo_mantto || '').toLowerCase() === 'preventivo' ? 'Preventivo' : 'Correctivo'}</p>
+                                  <p className="text-xs text-gray-500">Responsable: {order.socio?.nombre ?? '-'}</p>
                                   <p className="text-xs text-gray-500">Costo: {formatCurrency(order.costo_mano_obra)}</p>
                                 </div>
                               ))
@@ -210,11 +210,11 @@ export default function PrinterDetail() {
                                     {readings.map((reading: any) => (
                                       <tr key={reading.id} className="border-b border-gray-100">
                                         <td className="py-2 text-gray-700">{formatDate(reading.fecha)}</td>
-                                        <td className="py-2 text-right tabular-nums">{reading.contador.toLocaleString('es-MX')}</td>
-                                        <td className="py-2 text-right tabular-nums text-green-600">+{reading.consumo.toLocaleString('es-MX')}</td>
-                                        <td className="py-2 text-gray-700">{reading.visitante}</td>
+                                        <td className="py-2 text-right tabular-nums">{Number(reading.valor_contador ?? 0).toLocaleString('es-MX')}</td>
+                                        <td className="py-2 text-right tabular-nums text-green-600">+{Number(reading.paginas_periodo ?? 0).toLocaleString('es-MX')}</td>
+                                        <td className="py-2 text-gray-700">{reading.socio_capturista || '-'}</td>
                                         <td className="py-2 text-center">
-                                          {reading.estado === 'normal' ? '✅' : '⚠️'}
+                                          {reading.es_anomalia ? '⚠️' : '✅'}
                                         </td>
                                       </tr>
                                     ))}
@@ -243,7 +243,7 @@ export default function PrinterDetail() {
               <CardContent>
                 <div className="text-center">
                   <p className="text-3xl font-bold text-gray-900 tabular-nums">
-                    {printerData.contador_total_actual.toLocaleString('es-MX')}
+                    {(printerData.contador_actual ?? 0).toLocaleString('es-MX')}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">páginas totales</p>
                 </div>

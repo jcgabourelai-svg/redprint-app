@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StorePrinterRequest;
 use App\Http\Requests\UpdatePrinterRequest;
+use App\Http\Resources\PrinterDetailResource;
 use App\Http\Resources\PrinterResource;
 use App\Models\Printer;
 use App\Services\PrinterService;
@@ -35,10 +36,16 @@ class PrinterController extends Controller
         return PrinterResource::collection($printers);
     }
 
-    public function show(Printer $printer): PrinterResource
+    public function show(Printer $printer): PrinterDetailResource
     {
-        $printer->load(['warehouse', 'history.socio', 'creator']);
-        return new PrinterResource($printer);
+        $printer->load([
+            'warehouse',
+            'history' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(100),
+            'readings' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),
+            'maintenanceOrders' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),
+            'creator',
+        ]);
+        return new PrinterDetailResource($printer);
     }
 
     public function store(StorePrinterRequest $request): JsonResponse
