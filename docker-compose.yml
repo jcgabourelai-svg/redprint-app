@@ -46,7 +46,7 @@ services:
     container_name: redprint-nginx
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${APP_PORT:-8080}:80"
+      - "0.0.0.0:${APP_PORT:-78080}:80"
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./backend:/var/www/html:ro
