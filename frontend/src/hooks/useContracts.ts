@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Contract, PaginatedResponse } from '@/types/models'
+import type { Contract } from '@/types/contract'
+import type { PaginatedResponse } from '@/types/api'
 
 export function useContracts(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Contract>>({
@@ -33,6 +34,19 @@ export function useAssignPrinter() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['contracts'] })
       qc.invalidateQueries({ queryKey: ['contracts', id] })
+    },
+  })
+}
+
+export function useReleasePrinter() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api.post(`/contracts/${id}/release-printer`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      qc.invalidateQueries({ queryKey: ['contracts', id] })
+      qc.invalidateQueries({ queryKey: ['printers'] })
     },
   })
 }

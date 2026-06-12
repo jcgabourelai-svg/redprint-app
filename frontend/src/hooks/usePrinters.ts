@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Printer, PaginatedResponse } from '@/types/models'
+import type { Printer } from '@/types/printer'
+import type { PaginatedResponse } from '@/types/api'
 
 export function usePrinters(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Printer>>({

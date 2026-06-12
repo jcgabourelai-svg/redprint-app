@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Article, PaginatedResponse } from '@/types/models'
+import type { Article } from '@/types/article'
+import type { InventoryMovement } from '@/types/inventory-movement'
+import type { PaginatedResponse } from '@/types/api'
 
 export function useArticles(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Article>>({
@@ -38,9 +40,17 @@ export function useUpdateArticle() {
 }
 
 export function useArticleMovements(articleId: number) {
-  return useQuery({
+  return useQuery<PaginatedResponse<InventoryMovement>>({
     queryKey: ['articles', articleId, 'movements'],
     queryFn: () => api.get(`/articles/${articleId}/movements`).then(r => r.data),
+    enabled: !!articleId,
+  })
+}
+
+export function useArticleCompatiblePrinters(articleId: number) {
+  return useQuery({
+    queryKey: ['articles', articleId, 'compatible-printers'],
+    queryFn: () => api.get(`/articles/${articleId}/compatible-printers`).then(r => r.data),
     enabled: !!articleId,
   })
 }

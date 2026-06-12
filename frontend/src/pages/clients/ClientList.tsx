@@ -1,135 +1,30 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Search } from 'lucide-react'
+import { Users, Plus, MoreVertical, Eye, FileText } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
-import { Button } from '@/components/ui/Button'
-import { Input } from '@/components/ui/Input'
-import { Modal } from '@/components/ui/Modal'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
-import { TablePagination } from '@/components/ui/TablePagination'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { ErrorMessage } from '@/components/ui/ErrorMessage'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { Textarea } from '@/components/ui/Textarea'
+import Table from '@/components/ui/Table'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import Modal from '@/components/ui/Modal'
+import Input from '@/components/ui/Input'
+import type { Client } from '@/types/client'
 import { useClients, useCreateClient } from '@/hooks/useClients'
-import { formatDate } from '@/lib/utils'
+import { formatCurrency } from '@/lib/formatters'
+import { parseApiError } from '@/lib/api-errors'
+
+const estadoLabels: Record<string, string> = {
+  al_corriente: 'Al corriente',
+  pendiente: 'Pendiente',
+  vencido: 'Vencido',
+}
 
 export default function ClientList() {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
-  const [search, setSearch] = useState('')
-  const [showCreate, setShowCreate] = useState(false)
-
-  const { data, isLoading, error, refetch } = useClients({
-    page,
-    per_page: 15,
-    search: search || undefined,
-  })
-
-  const createMutation = useCreateClient()
-
-  const clients = data?.data ?? []
-  const totalPages = data?.last_page ?? 1
-
-  return (
-    <PageLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold">Clientes</h1>
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nuevo Cliente
-          </Button>
-        </div>
-
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar por nombre o RFC..."
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value)
-              setPage(1)
-            }}
-            className="flex h-10 w-full rounded-md border border-input bg-background pl-10 pr-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          />
-        </div>
-
-        {isLoading && <LoadingSpinner text="Cargando clientes..." />}
-        {error && <ErrorMessage message="Error al cargar clientes" onRetry={() => refetch()} />}
-
-        {!isLoading && !error && clients.length === 0 && (
-          <EmptyState
-            title="No hay clientes"
-            description="Crea un nuevo cliente para comenzar"
-            actionLabel="Nuevo Cliente"
-            onAction={() => setShowCreate(true)}
-          />
-        )}
-
-        {!isLoading && !error && clients.length > 0 && (
-          <>
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Razon Social</TableHead>
-                    <TableHead>RFC</TableHead>
-                    <TableHead>Contacto</TableHead>
-                    <TableHead>Telefono</TableHead>
-                    <TableHead>Correo</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clients.map((client) => (
-                    <TableRow
-                      key={client.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/clientes/${client.id}`)}
-                    >
-                      <TableCell className="font-medium">{client.razon_social}</TableCell>
-                      <TableCell>{client.rfc ?? '—'}</TableCell>
-                      <TableCell>{client.nombre_contacto}</TableCell>
-                      <TableCell>{client.telefono}</TableCell>
-                      <TableCell>{client.correo ?? '—'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <TablePagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
-          </>
-        )}
-      </div>
-
-      <CreateClientModal
-        isOpen={showCreate}
-        onClose={() => setShowCreate(false)}
-        onSubmit={(data) => {
-          createMutation.mutate(data, {
-            onSuccess: () => setShowCreate(false),
-          })
-        }}
-        loading={createMutation.isPending}
-      />
-    </PageLayout>
-  )
-}
-
-interface CreateClientModalProps {
-  isOpen: boolean
-  onClose: () => void
-  onSubmit: (data: Record<string, unknown>) => void
-  loading: boolean
-}
-
-function CreateClientModal({ isOpen, onClose, onSubmit, loading }: CreateClientModalProps) {
-  const [form, setForm] = useState({
+  const { data: clientsData, isLoading, error } = useClients()
+  const createClient = useCreateClient()
+  
+  const [showNewClientModal, setShowNewClientModal] = useState(false)
+  const [newClient, setNewClient] = useState({
     razon_social: '',
     rfc: '',
     nombre_contacto: '',
@@ -138,77 +33,256 @@ function CreateClientModal({ isOpen, onClose, onSubmit, loading }: CreateClientM
     direccion_instalacion: '',
     notas: '',
   })
+  const [createError, setCreateError] = useState('')
 
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }))
+  const clients = clientsData?.data || []
+
+  const columns = [
+    {
+      key: 'razon_social',
+      label: 'Cliente',
+      sortable: true,
+      render: (_value: string, row: Client) => (
+        <div>
+          <p className="font-medium text-gray-900">{row.razon_social}</p>
+          <p className="text-xs text-gray-500">{row.nombre_contacto}</p>
+          <p className="text-xs text-gray-400">Tel: {row.telefono}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'contratos_activos_count',
+      label: 'Contratos',
+      sortable: true,
+      render: (value: number) => (
+        <span className="font-medium">{value ?? 0}</span>
+      ),
+    },
+    {
+      key: 'saldo_pendiente',
+      label: 'Saldo Pendiente',
+      sortable: true,
+      render: (value: number) => (
+        <span className={`font-medium ${(value ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+          {formatCurrency(value ?? 0)}
+        </span>
+      ),
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      sortable: true,
+      render: (value: string) => (
+        <Badge variant="client_status" color={value}>
+          {estadoLabels[value] || value}
+        </Badge>
+      ),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_value: unknown, row: Client) => (
+        <div className="flex items-center gap-1">
+          <button
+            className="p-1 hover:bg-gray-100 rounded"
+            title="Ver detalle"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/clientes/${row.id}`)
+            }}
+          >
+            <Eye className="h-4 w-4 text-gray-500" />
+          </button>
+          <button
+            className="p-1 hover:bg-gray-100 rounded"
+            title="Contratos"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/contratos?cliente=${row.id}`)
+            }}
+          >
+            <FileText className="h-4 w-4 text-gray-500" />
+          </button>
+          <button className="p-1 hover:bg-gray-100 rounded" title="Más opciones">
+            <MoreVertical className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+      ),
+    },
+  ]
+
+  const handleCreateClient = () => {
+    setCreateError('')
+    createClient.mutate(newClient, {
+      onSuccess: () => {
+        setShowNewClientModal(false)
+        setNewClient({
+          razon_social: '',
+          rfc: '',
+          nombre_contacto: '',
+          telefono: '',
+          correo: '',
+          direccion_instalacion: '',
+          notas: '',
+        })
+      },
+      onError: (err) => {
+        setCreateError(parseApiError(err))
+      },
+    })
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit(form)
+  if (isLoading) {
+    return (
+      <PageLayout title="Clientes" showSearch>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Cargando clientes...</p>
+        </div>
+      </PageLayout>
+    )
+  }
+
+  if (error) {
+    return (
+      <PageLayout title="Clientes" showSearch>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-red-500">{parseApiError(error)}</p>
+        </div>
+      </PageLayout>
+    )
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Nuevo Cliente">
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          id="razon_social"
-          label="Razon Social"
-          value={form.razon_social}
-          onChange={(e) => handleChange('razon_social', e.target.value)}
-          required
-        />
-        <Input
-          id="rfc"
-          label="RFC"
-          value={form.rfc}
-          onChange={(e) => handleChange('rfc', e.target.value)}
-        />
-        <Input
-          id="nombre_contacto"
-          label="Nombre Contacto"
-          value={form.nombre_contacto}
-          onChange={(e) => handleChange('nombre_contacto', e.target.value)}
-          required
-        />
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Input
-            id="telefono"
-            label="Telefono"
-            value={form.telefono}
-            onChange={(e) => handleChange('telefono', e.target.value)}
-            required
-          />
-          <Input
-            id="correo"
-            label="Correo"
-            type="email"
-            value={form.correo}
-            onChange={(e) => handleChange('correo', e.target.value)}
-          />
-        </div>
-        <Input
-          id="direccion_instalacion"
-          label="Direccion de Instalacion"
-          value={form.direccion_instalacion}
-          onChange={(e) => handleChange('direccion_instalacion', e.target.value)}
-          required
-        />
-        <Textarea
-          id="notas"
-          label="Notas"
-          value={form.notas}
-          onChange={(e) => handleChange('notas', e.target.value)}
-        />
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" type="button" onClick={onClose}>
-            Cancelar
-          </Button>
-          <Button type="submit" loading={loading}>
-            Crear Cliente
+    <PageLayout title="Clientes" showSearch>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Clientes</h2>
+            <p className="text-sm text-gray-500">
+              Gestión de clientes y contratos de renta
+            </p>
+          </div>
+          <Button onClick={() => setShowNewClientModal(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo Cliente
           </Button>
         </div>
-      </form>
-    </Modal>
+
+        <Table
+          data={clients}
+          columns={columns}
+          searchable={true}
+          sortable={true}
+          paginatable={true}
+          pageSize={25}
+          emptyMessage="No hay clientes registrados"
+          onRowClick={(client) => navigate(`/clientes/${client.id}`)}
+        />
+      </div>
+
+      <Modal
+        isOpen={showNewClientModal}
+        onClose={() => {
+          setShowNewClientModal(false)
+          setCreateError('')
+        }}
+        title="Nuevo Cliente"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Razón social / Nombre *
+            </label>
+            <Input
+              value={newClient.razon_social}
+              onChange={(e) => setNewClient({ ...newClient, razon_social: e.target.value })}
+              placeholder="Nombre de la empresa"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              RFC / Identificación fiscal
+            </label>
+            <Input
+              value={newClient.rfc}
+              onChange={(e) => setNewClient({ ...newClient, rfc: e.target.value })}
+              placeholder="AAAA010101ABC"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nombre del contacto *
+            </label>
+            <Input
+              value={newClient.nombre_contacto}
+              onChange={(e) => setNewClient({ ...newClient, nombre_contacto: e.target.value })}
+              placeholder="Juan Pérez"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Teléfono *
+            </label>
+            <Input
+              value={newClient.telefono}
+              onChange={(e) => setNewClient({ ...newClient, telefono: e.target.value })}
+              placeholder="55-1234-5678"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Correo electrónico
+            </label>
+            <Input
+              type="email"
+              value={newClient.correo}
+              onChange={(e) => setNewClient({ ...newClient, correo: e.target.value })}
+              placeholder="correo@empresa.com"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Dirección de instalación *
+            </label>
+            <textarea
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={2}
+              value={newClient.direccion_instalacion}
+              onChange={(e) => setNewClient({ ...newClient, direccion_instalacion: e.target.value })}
+              placeholder="Av. Reforma 123, Col. Centro, CDMX, 06000"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Notas
+            </label>
+            <textarea
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              rows={2}
+              value={newClient.notas}
+              onChange={(e) => setNewClient({ ...newClient, notas: e.target.value })}
+              placeholder="Observaciones del cliente"
+            />
+          </div>
+          {createError && (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+              {createError}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="secondary" onClick={() => {
+              setShowNewClientModal(false)
+              setCreateError('')
+            }}>
+              Cancelar
+            </Button>
+            <Button onClick={handleCreateClient} disabled={createClient.isPending}>
+              {createClient.isPending ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </PageLayout>
   )
 }

@@ -14,29 +14,7 @@ export interface ApiError {
 }
 
 export interface DashboardData {
-  kpis: {
-    ingresos_mes: number
-    ingresos_mes_anterior: number
-    facturas_pendientes: number
-    facturas_vencidas: number
-    visitas_pendientes: number
-    mis_visitas_proximas: number
-    saldo_pendiente_total: number
-  }
+  kpis: Record<string, number | string>
   impresoras_por_estado: Record<string, number>
-  alertas: {
-    facturas_vencidas: Array<{
-      id: number
-      numero_factura: string
-      monto_total: number
-      saldo_pendiente: number
-      client: { id: number; razon_social: string }
-    }>
-    visitas_proximas: Array<{
-      type: string
-      visit_id: number
-      client: string
-      date: string
-    }>
-  }
+  alertas: Record<string, unknown[]>
 }

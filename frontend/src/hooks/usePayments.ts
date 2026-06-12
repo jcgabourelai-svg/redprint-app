@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Payment, PaginatedResponse } from '@/types/models'
+import type { Payment } from '@/types/payment'
+import type { PaginatedResponse } from '@/types/api'
 
 export function usePayments(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Payment>>({

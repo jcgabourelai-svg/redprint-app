@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { PeriodClose } from '@/types/models'
+import type { PeriodClose } from '@/types/period-close'
 import type { PaginatedResponse } from '@/types/api'
 
 export function useCurrentPeriod() {

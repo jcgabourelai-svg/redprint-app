@@ -1,365 +1,370 @@
-import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import api from '@/lib/api'
-import PageLayout from '@/components/layout/PageLayout'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { Badge } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
-import { Modal } from '@/components/ui/Modal'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { ErrorMessage } from '@/components/ui/ErrorMessage'
-import { EmptyState } from '@/components/ui/EmptyState'
-import { useContract, useAssignPrinter } from '@/hooks/useContracts'
-import { usePrinters } from '@/hooks/usePrinters'
-import { useInvoices } from '@/hooks/useInvoices'
-import { useVisits } from '@/hooks/useVisits'
-import { formatCurrency, formatDate } from '@/lib/utils'
 import {
-  ContractStatus,
-  CONTRACT_STATUS_LABELS,
-  VisitStatus,
-  VISIT_STATUS_LABELS,
-  VisitType,
-  VISIT_TYPE_LABELS,
-  InvoiceStatus,
-  INVOICE_STATUS_LABELS,
-  PrinterStatus,
-  PRINTER_STATUS_LABELS,
-} from '@/types/enums'
+  ArrowLeft,
+  Edit,
+  Printer,
+  DollarSign,
+  Calendar,
+  Eye,
+  Activity,
+  Plus,
+  FileText,
+} from 'lucide-react'
+import PageLayout from '@/components/layout/PageLayout'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
+import Tabs from '@/components/ui/Tabs'
+import { useContract, useAssignPrinter, useReleasePrinter } from '@/hooks/useContracts'
+import type { Contract, ContractStatus } from '@/types/contract'
+import { formatCurrency, formatDate } from '@/lib/formatters'
+import { parseApiError } from '@/lib/api-errors'
 
-const contractStatusVariant: Record<ContractStatus, 'success' | 'warning' | 'secondary' | 'error'> = {
-  [ContractStatus.ACTIVO]: 'success',
-  [ContractStatus.SUSPENDIDO]: 'warning',
-  [ContractStatus.FINALIZADO]: 'secondary',
-  [ContractStatus.CANCELADO]: 'error',
+const estadoLabels: Record<ContractStatus, string> = {
+  ACTIVO: 'Activo',
+  SUSPENDIDO: 'Suspendido',
+  FINALIZADO: 'Finalizado',
+  CANCELADO: 'Cancelado',
 }
 
-const visitStatusVariant: Record<VisitStatus, 'warning' | 'success' | 'info' | 'error'> = {
-  [VisitStatus.PENDIENTE]: 'warning',
-  [VisitStatus.COMPLETADA]: 'success',
-  [VisitStatus.REPROGRAMADA]: 'info',
-  [VisitStatus.CANCELADA]: 'error',
+function getEsquemaLabel(contract: Contract): string {
+  if (contract.tarifa_base === 0 && contract.paginas_incluidas === 0) return 'Puro consumo'
+  if (contract.costo_por_pagina_excedente === 0) return 'Renta fija'
+  return 'Tarifa base + páginas excedentes'
 }
 
-const visitTypeVariant: Record<VisitType, 'info' | 'warning' | 'default' | 'error'> = {
-  [VisitType.LECTURA]: 'info',
-  [VisitType.MANTENIMIENTO]: 'warning',
-  [VisitType.INSTALACION]: 'default',
-  [VisitType.RETIRO]: 'error',
-}
-
-const invoiceStatusVariant: Record<InvoiceStatus, 'warning' | 'info' | 'success' | 'error' | 'secondary'> = {
-  [InvoiceStatus.PENDIENTE]: 'warning',
-  [InvoiceStatus.PARCIALMENTE_PAGADA]: 'info',
-  [InvoiceStatus.PAGADA]: 'success',
-  [InvoiceStatus.VENCIDA]: 'error',
-  [InvoiceStatus.INCOBRABLE]: 'secondary',
-}
-
-const FREQUENCY_LABELS: Record<string, string> = {
-  MENSUAL: 'Mensual',
-  QUINCENAL: 'Quincenal',
-  SEMANAL: 'Semanal',
-  CUSTOM: 'Personalizada',
+function getEsquemaFormula(contract: Contract): string {
+  return `monto = ${formatCurrency(contract.tarifa_base)} + max(0, páginas - ${contract.paginas_incluidas}) × ${formatCurrency(contract.costo_por_pagina_excedente)}`
 }
 
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const queryClient = useQueryClient()
-  const [activeTab, setActiveTab] = useState('impresoras')
-  const [showAssign, setShowAssign] = useState(false)
+  const idNum = parseInt(id || '0')
+  
+  const { data: contract, isLoading, error } = useContract(idNum)
+  const assignPrinter = useAssignPrinter()
+  const releasePrinter = useReleasePrinter()
 
-  const contractId = Number(id)
-  const { data: contract, isLoading, error, refetch } = useContract(contractId)
-  const assignMutation = useAssignPrinter()
-  const { data: availablePrinters } = usePrinters(
-    showAssign ? { estado: PrinterStatus.EN_ALMACEN, per_page: 100 } : undefined
-  )
-  const { data: visitsData } = useVisits(
-    contract ? { contrato_id: contract.id, per_page: 100 } : undefined
-  )
-  const { data: invoicesData } = useInvoices(
-    contract ? { contrato_id: contract.id, per_page: 100 } : undefined
-  )
+  if (!idNum) {
+    return (
+      <PageLayout title="Contrato no encontrado">
+        <div className="text-center py-12">
+          <p className="text-gray-500">ID de contrato inválido</p>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/contratos')}>
+            Volver a contratos
+          </Button>
+        </div>
+      </PageLayout>
+    )
+  }
 
-  const releaseMutation = useMutation({
-    mutationFn: ({ contractId, printerId }: { contractId: number; printerId: number }) =>
-      api.post(`/contracts/${contractId}/release-printer`, { impresora_id: printerId }).then((r) => r.data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['contracts'] })
-      queryClient.invalidateQueries({ queryKey: ['printers'] })
-    },
-  })
+  if (isLoading) {
+    return (
+      <PageLayout title="Cargando contrato...">
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Cargando información del contrato...</p>
+        </div>
+      </PageLayout>
+    )
+  }
 
-  if (isLoading) return <PageLayout><LoadingSpinner text="Cargando contrato..." /></PageLayout>
-  if (error) return <PageLayout><ErrorMessage message="Error al cargar contrato" onRetry={() => refetch()} /></PageLayout>
-  if (!contract) return <PageLayout><EmptyState title="Contrato no encontrado" /></PageLayout>
+  if (error || !contract) {
+    return (
+      <PageLayout title="Contrato no encontrado">
+        <div className="text-center py-12">
+          <p className="text-red-500">{parseApiError(error)}</p>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/contratos')}>
+            Volver a contratos
+          </Button>
+        </div>
+      </PageLayout>
+    )
+  }
 
-  const printers = contract.printers ?? []
-  const visits = visitsData?.data ?? contract.visits ?? []
-  const invoices = invoicesData?.data ?? []
+  const totalEstimado = contract.impresoras.reduce((sum, p) => sum + p.estimado_del_periodo, 0)
+  const totalRentAcum = contract.impresoras.reduce((sum, p) => sum + p.rentabilidad_acumulada, 0)
 
   return (
-    <PageLayout>
+    <PageLayout title={`Contratos › ${contract.id}`}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Contrato {contract.codigo_negocio}</h1>
-          <Button variant="outline" onClick={() => navigate('/contratos')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/contratos')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Edit className="mr-2 h-4 w-4" />
+              Editar
+            </Button>
+          </div>
         </div>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-lg">Informacion del Contrato</CardTitle>
-              <Badge variant={contractStatusVariant[contract.estado]}>
-                {CONTRACT_STATUS_LABELS[contract.estado]}
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded bg-green-100">
+                  <FileText className="h-6 w-6 text-green-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl">{contract.id}</CardTitle>
+                  <p className="text-sm text-gray-500">
+                    {contract.cliente_nombre} - {contract.cliente_contacto}
+                  </p>
+                  <p className="text-xs text-gray-400">{getEsquemaLabel(contract)}</p>
+                </div>
+              </div>
+              <Badge variant="contract_status" color={contract.estado}>
+                {estadoLabels[contract.estado]}
               </Badge>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Cliente</p>
-                <p className="font-medium cursor-pointer text-primary hover:underline" onClick={() => navigate(`/clientes/${contract.cliente_id}`)}>
-                  {contract.client?.razon_social ?? `Cliente #${contract.cliente_id}`}
-                </p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Fecha Inicio</p>
-                <p className="font-medium">{formatDate(contract.fecha_inicio)}</p>
-              </div>
-              {contract.fecha_fin && (
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground">Fecha Fin</p>
-                  <p className="font-medium">{formatDate(contract.fecha_fin)}</p>
-                </div>
-              )}
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Frecuencia Visitas</p>
-                <p className="font-medium">{FREQUENCY_LABELS[contract.frecuencia_visitas] ?? contract.frecuencia_visitas}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Dias Gracia</p>
-                <p className="font-medium">{contract.dias_gracia}</p>
-              </div>
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Dias Adelanto</p>
-                <p className="font-medium">{contract.dias_adelanto}</p>
-              </div>
-            </div>
+        </Card>
 
-            <div className="mt-6 pt-4 border-t">
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">Formula de Facturacion</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-sm text-muted-foreground">Tarifa Base</p>
-                  <p className="text-lg font-bold">{formatCurrency(contract.tarifa_base)}</p>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase text-gray-500">Datos del Contrato</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-gray-500">Cliente</p>
+                  <p className="text-sm font-medium">{contract.cliente_nombre}</p>
                 </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-sm text-muted-foreground">Paginas Incluidas</p>
-                  <p className="text-lg font-bold">{contract.paginas_incluidas}</p>
+                <div>
+                  <p className="text-xs text-gray-500">RFC</p>
+                  <p className="text-sm font-medium">{contract.cliente_rfc || '-'}</p>
                 </div>
-                <div className="rounded-lg border p-3 text-center">
-                  <p className="text-sm text-muted-foreground">Costo Pag. Excedente</p>
-                  <p className="text-lg font-bold">{formatCurrency(contract.costo_pag_excedente)}</p>
+                <div>
+                  <p className="text-xs text-gray-500">Contacto</p>
+                  <p className="text-sm font-medium">{contract.cliente_contacto}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Teléfono</p>
+                  <p className="text-sm font-medium">-</p>
                 </div>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {formatCurrency(contract.tarifa_base)} + (paginas consumidas - {contract.paginas_incluidas}) x {formatCurrency(contract.costo_pag_excedente)} si excede
-              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm uppercase text-gray-500">Estado y Fechas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs text-gray-500">Estado</p>
+                  <Badge variant="contract_status" color={contract.estado}>
+                    {estadoLabels[contract.estado]}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Desde</p>
+                  <p className="text-sm font-medium">{formatDate(contract.fecha_inicio)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Duración</p>
+                  <p className="text-sm font-medium">
+                    {contract.fecha_fin ? formatDate(contract.fecha_fin) : 'Indefinido'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500">Próxima visita</p>
+                  <p className="text-sm font-medium">
+                    {contract.proxima_visita ? formatDate(contract.proxima_visita) : '-'}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-blue-600" />
+              <CardTitle>Esquema de Cobro (Fórmula Unificada)</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="bg-gray-50 rounded-lg p-3 mb-4">
+              <code className="text-sm text-gray-700">{getEsquemaFormula(contract)}</code>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <p className="text-xs text-gray-500">Tarifa base mensual</p>
+                <p className="text-sm font-bold">{formatCurrency(contract.tarifa_base)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Páginas incluidas</p>
+                <p className="text-sm font-bold">{contract.paginas_incluidas.toLocaleString('es-MX')}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Costo por página excedente</p>
+                <p className="text-sm font-bold">{formatCurrency(contract.costo_por_pagina_excedente)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Días de gracia</p>
+                <p className="text-sm font-bold">{contract.dias_gracia} días</p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="impresoras">Impresoras Asignadas</TabsTrigger>
-            <TabsTrigger value="visitas">Visitas</TabsTrigger>
-            <TabsTrigger value="facturas">Facturas</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="impresoras">
-            <div className="flex items-center justify-between mt-4 mb-2">
-              <p className="text-sm text-muted-foreground">{printers.length} impresora(s) asignada(s)</p>
-              {contract.estado === ContractStatus.ACTIVO && (
-                <Button size="sm" onClick={() => setShowAssign(true)}>
-                  Asignar Impresora
-                </Button>
-              )}
-            </div>
-            {printers.length === 0 ? (
-              <EmptyState title="Sin impresoras" description="No hay impresoras asignadas a este contrato" />
-            ) : (
-              <div className="rounded-lg border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Codigo</TableHead>
-                      <TableHead>Marca / Modelo</TableHead>
-                      <TableHead>Num. Serie</TableHead>
-                      <TableHead>Contador</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {printers.map((printer) => (
-                      <TableRow key={printer.id}>
-                        <TableCell className="font-medium">{printer.codigo_negocio}</TableCell>
-                        <TableCell>{printer.marca} {printer.modelo}</TableCell>
-                        <TableCell>{printer.num_serie}</TableCell>
-                        <TableCell>{printer.contador_actual}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            loading={releaseMutation.isPending}
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              releaseMutation.mutate({ contractId: contract.id, printerId: printer.id })
-                            }}
-                          >
-                            Liberar
+        <Card>
+          <CardContent className="p-0">
+            <div className="p-6 pb-0">
+              <Tabs
+                tabs={[
+                  {
+                    id: 'impresoras',
+                    label: `Impresoras Asignadas (${contract.impresoras.length})`,
+                    content: (
+                      <div className="space-y-4 pb-4">
+                        <div className="flex justify-end">
+                          <Button size="sm">
+                            <Plus className="mr-2 h-4 w-4" />
+                            Asignar
                           </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="visitas">
-            {visits.length === 0 ? (
-              <EmptyState title="Sin visitas" description="No hay visitas registradas para este contrato" />
-            ) : (
-              <div className="rounded-lg border mt-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Fecha</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Socio</TableHead>
-                      <TableHead>Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {visits.map((visit) => (
-                      <TableRow
-                        key={visit.id}
-                        className="cursor-pointer"
-                        onClick={() => navigate(`/visitas/${visit.id}`)}
-                      >
-                        <TableCell>{formatDate(visit.fecha_programada)}</TableCell>
-                        <TableCell>
-                          <Badge variant={visitTypeVariant[visit.tipo_visita]}>
-                            {VISIT_TYPE_LABELS[visit.tipo_visita]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{visit.socio?.nombre ?? '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant={visitStatusVariant[visit.estado]}>
-                            {VISIT_STATUS_LABELS[visit.estado]}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-
-          <TabsContent value="facturas">
-            {invoices.length === 0 ? (
-              <EmptyState title="Sin facturas" description="No hay facturas registradas para este contrato" />
-            ) : (
-              <div className="rounded-lg border mt-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Numero</TableHead>
-                      <TableHead>Emision</TableHead>
-                      <TableHead>Vencimiento</TableHead>
-                      <TableHead>Monto</TableHead>
-                      <TableHead>Saldo</TableHead>
-                      <TableHead>Estado</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {invoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="font-medium">{invoice.numero_factura}</TableCell>
-                        <TableCell>{formatDate(invoice.fecha_emision)}</TableCell>
-                        <TableCell>{formatDate(invoice.fecha_vencimiento)}</TableCell>
-                        <TableCell>{formatCurrency(invoice.monto_total)}</TableCell>
-                        <TableCell>{formatCurrency(invoice.saldo_pendiente)}</TableCell>
-                        <TableCell>
-                          <Badge variant={invoiceStatusVariant[invoice.estado]}>
-                            {INVOICE_STATUS_LABELS[invoice.estado]}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      <AssignPrinterModal
-        isOpen={showAssign}
-        onClose={() => setShowAssign(false)}
-        printers={availablePrinters?.data ?? []}
-        onAssign={(printerId) => {
-          assignMutation.mutate(
-            { id: contract.id, impresora_id: printerId },
-            { onSuccess: () => setShowAssign(false) }
-          )
-        }}
-        loading={assignMutation.isPending}
-      />
-    </PageLayout>
-  )
-}
-
-interface AssignPrinterModalProps {
-  isOpen: boolean
-  onClose: () => void
-  printers: Array<{ id: number; codigo_negocio: string; marca: string; modelo: string; num_serie: string }>
-  onAssign: (printerId: number) => void
-  loading: boolean
-}
-
-function AssignPrinterModal({ isOpen, onClose, printers, onAssign, loading }: AssignPrinterModalProps) {
-  return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Asignar Impresora">
-      {printers.length === 0 ? (
-        <EmptyState title="Sin impresoras disponibles" description="No hay impresoras en almacen para asignar" />
-      ) : (
-        <div className="space-y-3 max-h-96 overflow-auto">
-          {printers.map((printer) => (
-            <div key={printer.id} className="flex items-center justify-between rounded-lg border p-3">
-              <div>
-                <p className="font-medium">{printer.codigo_negocio}</p>
-                <p className="text-sm text-muted-foreground">
-                  {printer.marca} {printer.modelo} — {printer.num_serie}
-                </p>
-              </div>
-              <Button size="sm" loading={loading} onClick={() => onAssign(printer.id)}>
-                Asignar
-              </Button>
+                        </div>
+                        {contract.impresoras.map((pa) => (
+                          <div key={pa.id} className="border border-gray-200 rounded-lg p-4">
+                            <div className="flex items-start justify-between mb-3">
+                              <div>
+                                <p className="font-medium text-gray-900">
+                                  {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
+                                </p>
+                                <p className="text-xs text-gray-500">SERIE: {pa.impresora_serie}</p>
+                                <p className="text-xs text-gray-400">
+                                  Asignada: {formatDate(pa.fecha_asignacion)} • Lectura inicial: {pa.lectura_inicial.toLocaleString('es-MX')}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                              <div>
+                                <p className="text-xs text-gray-500">Contador actual</p>
+                                <p className="font-medium tabular-nums">{pa.contador_actual.toLocaleString('es-MX')} hojas</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Páginas del periodo</p>
+                                <p className="font-medium tabular-nums">{pa.paginas_del_periodo.toLocaleString('es-MX')}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Estimado periodo</p>
+                                <p className="font-medium text-green-600">{formatCurrency(pa.estimado_del_periodo)}</p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-gray-500">Rentabilidad acumulada</p>
+                                <p className={`font-medium ${pa.rentabilidad_acumulada >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(pa.rentabilidad_acumulada)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
+                              <Button variant="ghost" size="sm" onClick={() => navigate(`/inventario/impresoras/${pa.impresora_id}`)}>
+                                <Eye className="mr-1 h-3 w-3" />
+                                Ver detalle
+                              </Button>
+                              <Button variant="ghost" size="sm">
+                                Liberar
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                        <div className="text-right pt-2 border-t">
+                          <span className="text-sm text-gray-500">Total estimado este periodo: </span>
+                          <span className="font-bold">{formatCurrency(totalEstimado)}</span>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'visitas',
+                    label: 'Visitas Programadas',
+                    content: (
+                      <div className="pb-4">
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No hay visitas programadas</p>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'facturas',
+                    label: 'Facturas Asociadas',
+                    content: (
+                      <div className="pb-4">
+                        <div className="text-center py-8">
+                          <p className="text-gray-500">No hay facturas asociadas</p>
+                        </div>
+                      </div>
+                    ),
+                  },
+                  {
+                    id: 'rentabilidad',
+                    label: 'Rentabilidad',
+                    content: (
+                      <div className="space-y-4 pb-4">
+                        <div className="grid grid-cols-3 gap-4">
+                          <div className="text-center p-4 bg-blue-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Ingresos</p>
+                            <p className="text-xl font-bold text-blue-600">
+                              {formatCurrency(contract.ingresos ?? 0)}
+                            </p>
+                          </div>
+                          <div className="text-center p-4 bg-red-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Costos</p>
+                            <p className="text-xl font-bold text-red-600">
+                              {formatCurrency(contract.costos ?? 0)}
+                            </p>
+                          </div>
+                          <div className="text-center p-4 bg-green-50 rounded-lg">
+                            <p className="text-xs text-gray-500 mb-1">Rentabilidad</p>
+                            <p className={`text-xl font-bold ${(contract.rentabilidad ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                              {formatCurrency(contract.rentabilidad ?? 0)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500">Margen</p>
+                            <p className="text-lg font-bold">{contract.margen ?? 0}%</p>
+                          </div>
+                          <div className="p-3 bg-gray-50 rounded-lg">
+                            <p className="text-xs text-gray-500">ROI</p>
+                            <p className="text-lg font-bold">
+                              {(contract.costos ?? 0) > 0
+                                ? Math.round(((contract.rentabilidad ?? 0) / (contract.costos ?? 1)) * 100)
+                                : 0}%
+                            </p>
+                          </div>
+                        </div>
+                        {contract.impresoras.length > 0 && (
+                          <div>
+                            <p className="text-sm font-medium text-gray-700 mb-2">Desglose por impresora:</p>
+                            {contract.impresoras.map((pa) => (
+                              <div key={pa.id} className="flex justify-between py-1 text-sm">
+                                <span className="text-gray-600">{pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}</span>
+                                <span className={`font-medium ${pa.rentabilidad_acumulada >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                                  {formatCurrency(pa.rentabilidad_acumulada)}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ),
+                  },
+                ]}
+              />
             </div>
-          ))}
-        </div>
-      )}
-    </Modal>
+          </CardContent>
+        </Card>
+      </div>
+    </PageLayout>
   )
 }

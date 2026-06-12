@@ -1,9 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { BankMovement } from '@/types/models'
+import type { BankMovement } from '@/types/bank-movement'
 import type { PaginatedResponse } from '@/types/api'
 
-export function useReconciliationMovements(accountId: number, periodo: string) {
+export function useReconciliationMovements(accountId: string, periodo: string) {
   return useQuery<PaginatedResponse<BankMovement>>({
     queryKey: ['reconciliation', accountId, periodo],
     queryFn: () => api.get('/reconciliation/movements', { params: { account_id: accountId, periodo } }).then(r => r.data),
@@ -19,7 +19,7 @@ export function useLinkMovement() {
   })
 }
 
-export function useReconciliationSummary(accountId: number, periodo: string) {
+export function useReconciliationSummary(accountId: string, periodo: string) {
   return useQuery({
     queryKey: ['reconciliation', 'summary', accountId, periodo],
     queryFn: () => api.get('/reconciliation/summary', { params: { account_id: accountId, periodo } }).then(r => r.data),

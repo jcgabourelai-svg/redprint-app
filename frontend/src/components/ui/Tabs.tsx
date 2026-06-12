@@ -1,91 +1,70 @@
+import { useState, ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
-interface TabsContextValue {
-  value: string
-  onValueChange: (value: string) => void
+export interface Tab {
+  id: string
+  label: string
+  content: ReactNode
+  disabled?: boolean
 }
 
-import { createContext, useContext } from 'react'
-
-const TabsContext = createContext<TabsContextValue | null>(null)
-
-function useTabsContext() {
-  const context = useContext(TabsContext)
-  if (!context) throw new Error('Tabs compound components must be used within Tabs')
-  return context
+export interface TabsProps {
+  tabs: Tab[]
+  defaultTab?: string
+  variant?: 'underline' | 'boxed'
+  className?: string
 }
 
-interface TabsProps extends React.HTMLAttributes<HTMLDivElement> {
-  value: string
-  onValueChange: (value: string) => void
-}
+export default function Tabs({
+  tabs,
+  defaultTab,
+  variant = 'underline',
+  className,
+}: TabsProps) {
+  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id)
 
-function Tabs({ value, onValueChange, className, children, ...props }: TabsProps) {
+  const activeTabContent = tabs.find((tab) => tab.id === activeTab)?.content
+
   return (
-    <TabsContext.Provider value={{ value, onValueChange }}>
-      <div className={cn('w-full', className)} {...props}>
-        {children}
+    <div className={className}>
+      <div
+        className={cn(
+          'flex',
+          variant === 'underline' && 'border-b border-gray-200',
+          variant === 'boxed' && 'space-x-2'
+        )}
+        role="tablist"
+      >
+        {tabs.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => !tab.disabled && setActiveTab(tab.id)}
+            disabled={tab.disabled}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            className={cn(
+              'pb-3 text-sm font-medium transition-colors focus:outline-none',
+              variant === 'underline' && [
+                'border-b-2 -mb-px px-1',
+                activeTab === tab.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700',
+              ],
+              variant === 'boxed' && [
+                'rounded-md px-4 py-2',
+                activeTab === tab.id
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+              ],
+              tab.disabled && 'cursor-not-allowed opacity-50'
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
-    </TabsContext.Provider>
+
+      <div className="mt-4" role="tabpanel">{activeTabContent}</div>
+    </div>
   )
 }
-
-function TabsList({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return (
-    <div
-      className={cn(
-        'inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground',
-        className,
-      )}
-      role="tablist"
-      {...props}
-    />
-  )
-}
-
-interface TabsTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  value: string
-}
-
-function TabsTrigger({ className, value, ...props }: TabsTriggerProps) {
-  const { value: selectedValue, onValueChange } = useTabsContext()
-  const isSelected = selectedValue === value
-
-  return (
-    <button
-      role="tab"
-      aria-selected={isSelected}
-      className={cn(
-        'inline-flex items-center justify-center whitespace-nowrap rounded-sm px-3 py-1.5 text-sm font-medium',
-        'ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        'disabled:pointer-events-none disabled:opacity-50',
-        isSelected && 'bg-background text-foreground shadow-sm',
-        className,
-      )}
-      onClick={() => onValueChange(value)}
-      {...props}
-    />
-  )
-}
-
-interface TabsContentProps extends React.HTMLAttributes<HTMLDivElement> {
-  value: string
-}
-
-function TabsContent({ className, value, ...props }: TabsContentProps) {
-  const { value: selectedValue } = useTabsContext()
-  if (selectedValue !== value) return null
-
-  return (
-    <div
-      role="tabpanel"
-      className={cn(
-        'mt-2 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        className,
-      )}
-      {...props}
-    />
-  )
-}
-
-export { Tabs, TabsList, TabsTrigger, TabsContent }

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Notification, PaginatedResponse } from '@/types/models'
+import type { Notification } from '@/types/admin'
+import type { PaginatedResponse } from '@/types/api'
 
 export function useNotifications(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Notification>>({
@@ -12,7 +13,7 @@ export function useNotifications(params?: Record<string, string | number>) {
 export function useMarkAsRead() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => api.post(`/notifications/${id}/read`).then(r => r.data),
+    mutationFn: (id: string) => api.post(`/notifications/${id}/read`).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['notifications'] }) },
   })
 }

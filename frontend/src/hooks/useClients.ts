@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Client, PaginatedResponse } from '@/types/models'
+import type { Client } from '@/types/client'
+import type { PaginatedResponse } from '@/types/api'
 
 export function useClients(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Client>>({
@@ -22,5 +23,17 @@ export function useCreateClient() {
   return useMutation({
     mutationFn: (data: Record<string, unknown>) => api.post('/clients', data).then(r => r.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['clients'] }) },
+  })
+}
+
+export function useUpdateClient() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api.put(`/clients/${id}`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['clients'] })
+      qc.invalidateQueries({ queryKey: ['clients', id] })
+    },
   })
 }

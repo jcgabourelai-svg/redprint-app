@@ -1,126 +1,188 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { FileText, Plus, MoreVertical, Eye } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
-import { Button } from '@/components/ui/Button'
-import { Badge } from '@/components/ui/Badge'
-import { Select } from '@/components/ui/Select'
-import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table'
-import { TablePagination } from '@/components/ui/TablePagination'
-import { LoadingSpinner } from '@/components/ui/LoadingSpinner'
-import { ErrorMessage } from '@/components/ui/ErrorMessage'
-import { EmptyState } from '@/components/ui/EmptyState'
+import Table from '@/components/ui/Table'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import type { Contract, ContractStatus } from '@/types/contract'
 import { useContracts } from '@/hooks/useContracts'
-import { formatCurrency, formatDate } from '@/lib/utils'
-import { ContractStatus, CONTRACT_STATUS_LABELS } from '@/types/enums'
+import { formatCurrency, formatDate } from '@/lib/formatters'
+import { parseApiError } from '@/lib/api-errors'
 
-const contractStatusVariant: Record<ContractStatus, 'success' | 'warning' | 'secondary' | 'error'> = {
-  [ContractStatus.ACTIVO]: 'success',
-  [ContractStatus.SUSPENDIDO]: 'warning',
-  [ContractStatus.FINALIZADO]: 'secondary',
-  [ContractStatus.CANCELADO]: 'error',
+const estadoLabels: Record<ContractStatus, string> = {
+  ACTIVO: 'Activo',
+  SUSPENDIDO: 'Suspendido',
+  FINALIZADO: 'Finalizado',
+  CANCELADO: 'Cancelado',
 }
 
-const statusOptions = [
-  { value: '', label: 'Todos' },
-  { value: ContractStatus.ACTIVO, label: 'Activo' },
-  { value: ContractStatus.SUSPENDIDO, label: 'Suspendido' },
-  { value: ContractStatus.FINALIZADO, label: 'Finalizado' },
-  { value: ContractStatus.CANCELADO, label: 'Cancelado' },
-]
+function getEsquemaLabel(contract: Contract): string {
+  if (contract.tarifa_base === 0 && contract.paginas_incluidas === 0) return 'Puro consumo'
+  if (contract.costo_por_pagina_excedente === 0) return 'Renta fija'
+  return 'Tarifa base + páginas excedentes'
+}
 
 export default function ContractList() {
   const navigate = useNavigate()
-  const [page, setPage] = useState(1)
-  const [statusFilter, setStatusFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('todos')
+  const { data: contractsData, isLoading, error } = useContracts()
+  
+  const contracts = contractsData?.data || []
+  
+  const filteredContracts = useMemo(() => {
+    return statusFilter === 'todos'
+      ? contracts
+      : contracts.filter((c) => c.estado === statusFilter)
+  }, [contracts, statusFilter])
 
-  const params: Record<string, string | number> = { page, per_page: 15 }
-  if (statusFilter) params.estado = statusFilter
+  if (isLoading) {
+    return (
+      <PageLayout title="Contratos" showSearch>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-gray-500">Cargando contratos...</p>
+        </div>
+      </PageLayout>
+    )
+  }
 
-  const { data, isLoading, error, refetch } = useContracts(params)
+  if (error) {
+    return (
+      <PageLayout title="Contratos" showSearch>
+        <div className="flex items-center justify-center py-12">
+          <p className="text-red-500">{parseApiError(error)}</p>
+        </div>
+      </PageLayout>
+    )
+  }
 
-  const contracts = data?.data ?? []
-  const totalPages = data?.last_page ?? 1
+  const columns = [
+    {
+      key: 'id',
+      label: 'Contrato',
+      sortable: true,
+      render: (_value: string, row: Contract) => (
+        <div>
+          <p className="font-medium text-gray-900">{row.id}</p>
+          <p className="text-xs text-gray-500">{formatDate(row.fecha_inicio)}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'cliente_nombre',
+      label: 'Cliente',
+      sortable: true,
+      render: (_value: string, row: Contract) => (
+        <div>
+          <p className="font-medium text-gray-900">{row.cliente_nombre}</p>
+          <p className="text-xs text-gray-500">{row.cliente_contacto}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'impresoras',
+      label: 'Impresoras',
+      render: (_value: unknown, row: Contract) => {
+        const impresoras = row.impresoras ?? []
+        return (
+          <div>
+            <p className="font-medium">{impresoras.length}</p>
+            <div className="text-xs text-gray-500">
+              {impresoras.slice(0, 2).map((p) => p.impresora_id).join(', ')}
+              {impresoras.length > 2 && '...'}
+            </div>
+          </div>
+        )
+      },
+    },
+    {
+      key: 'tarifa_base',
+      label: 'Esquema de Cobro',
+      render: (_value: unknown, row: Contract) => (
+        <span className="text-sm">{getEsquemaLabel(row)}</span>
+      ),
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      sortable: true,
+      render: (value: ContractStatus) => (
+        <Badge variant="contract_status" color={value}>
+          {estadoLabels[value]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_value: unknown, row: Contract) => (
+        <div className="flex items-center gap-1">
+          <button
+            className="p-1 hover:bg-gray-100 rounded"
+            title="Ver detalle"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/contratos/${row.id}`)
+            }}
+          >
+            <Eye className="h-4 w-4 text-gray-500" />
+          </button>
+          <button className="p-1 hover:bg-gray-100 rounded" title="Más opciones">
+            <MoreVertical className="h-4 w-4 text-gray-500" />
+          </button>
+        </div>
+      ),
+    },
+  ]
 
   return (
-    <PageLayout>
+    <PageLayout title="Contratos" showSearch>
       <div className="space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <h1 className="text-2xl font-bold">Contratos</h1>
-          <Button onClick={() => navigate('/contratos/nuevo')}>
-            <Plus className="h-4 w-4 mr-2" />
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Contratos</h2>
+            <p className="text-sm text-gray-500">
+              Gestión de contratos de renta de impresoras
+            </p>
+          </div>
+          <Button onClick={() => navigate('/contratos/crear')}>
+            <Plus className="mr-2 h-4 w-4" />
             Nuevo Contrato
           </Button>
         </div>
 
-        <div className="max-w-xs">
-          <Select
-            id="status-filter"
-            label="Filtrar por Estado"
-            options={statusOptions}
-            value={statusFilter}
-            onChange={(e) => {
-              setStatusFilter(e.target.value)
-              setPage(1)
-            }}
-          />
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-gray-600">Estado:</span>
+            <select
+              className="rounded-md border border-gray-300 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="todos">Todos</option>
+              <option value="ACTIVO">Activo</option>
+              <option value="SUSPENDIDO">Suspendido</option>
+              <option value="FINALIZADO">Finalizado</option>
+              <option value="CANCELADO">Cancelado</option>
+            </select>
+          </div>
+          {statusFilter !== 'todos' && (
+            <Button variant="ghost" size="sm" onClick={() => setStatusFilter('todos')}>
+              Limpiar filtros
+            </Button>
+          )}
         </div>
 
-        {isLoading && <LoadingSpinner text="Cargando contratos..." />}
-        {error && <ErrorMessage message="Error al cargar contratos" onRetry={() => refetch()} />}
-
-        {!isLoading && !error && contracts.length === 0 && (
-          <EmptyState
-            title="No hay contratos"
-            description="Crea un nuevo contrato para comenzar"
-            actionLabel="Nuevo Contrato"
-            onAction={() => navigate('/contratos/nuevo')}
-          />
-        )}
-
-        {!isLoading && !error && contracts.length > 0 && (
-          <>
-            <div className="rounded-lg border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Codigo</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Fecha Inicio</TableHead>
-                    <TableHead>Tarifa Base</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Impresoras</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {contracts.map((contract) => (
-                    <TableRow
-                      key={contract.id}
-                      className="cursor-pointer"
-                      onClick={() => navigate(`/contratos/${contract.id}`)}
-                    >
-                      <TableCell className="font-medium">{contract.codigo_negocio}</TableCell>
-                      <TableCell>{contract.client?.razon_social ?? '—'}</TableCell>
-                      <TableCell>{formatDate(contract.fecha_inicio)}</TableCell>
-                      <TableCell>{formatCurrency(contract.tarifa_base)}</TableCell>
-                      <TableCell>
-                        <Badge variant={contractStatusVariant[contract.estado]}>
-                          {CONTRACT_STATUS_LABELS[contract.estado]}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{contract.printers?.length ?? 0}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-            <TablePagination
-              currentPage={page}
-              totalPages={totalPages}
-              onPageChange={setPage}
-            />
-          </>
-        )}
+        <Table
+          data={filteredContracts}
+          columns={columns}
+          searchable={true}
+          sortable={true}
+          paginatable={true}
+          pageSize={25}
+          emptyMessage="No hay contratos registrados"
+          onRowClick={(contract) => navigate(`/contratos/${contract.id}`)}
+        />
       </div>
     </PageLayout>
   )

@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Visit, PaginatedResponse } from '@/types/models'
+import type { Visit } from '@/types/operations'
+import type { PaginatedResponse } from '@/types/api'
 
 export function useVisits(params?: Record<string, string | number>) {
   return useQuery<PaginatedResponse<Visit>>({
@@ -33,6 +34,7 @@ export function useCompleteVisit() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['visits'] })
       qc.invalidateQueries({ queryKey: ['visits', id] })
+      qc.invalidateQueries({ queryKey: ['readings'] })
     },
   })
 }

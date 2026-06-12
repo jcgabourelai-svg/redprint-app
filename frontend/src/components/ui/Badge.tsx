@@ -1,29 +1,54 @@
+import { HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
+import { printerStatusColors, documentStatusColors, contractStatusColors, clientStatusColors } from '@/types/colors'
+import type { ColorVariant } from '@/types/colors'
 
-const badgeVariants = {
-  default: 'bg-primary text-primary-foreground',
-  secondary: 'bg-secondary text-secondary-foreground',
-  success: 'bg-success text-success-foreground',
-  warning: 'bg-warning text-warning-foreground',
-  error: 'bg-error text-error-foreground',
-  info: 'bg-info text-info-foreground',
+export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
+  variant?: ColorVariant | 'printer_status' | 'document_status' | 'contract_status' | 'client_status'
+  color?: string
 }
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: keyof typeof badgeVariants
+const statusColorMap: Record<string, Record<string, { foreground: string; background: string }>> = {
+  printer_status: printerStatusColors,
+  document_status: documentStatusColors,
+  contract_status: contractStatusColors,
+  client_status: clientStatusColors,
 }
 
-function Badge({ className, variant = 'default', ...props }: BadgeProps) {
+const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) => {
+  const baseStyles = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'
+
+  const variantClasses: Record<string, string> = {
+    primary: 'bg-blue-500 text-white',
+    success: 'bg-green-500 text-white',
+    warning: 'bg-amber-500 text-white',
+    error: 'bg-red-500 text-white',
+    info: 'bg-blue-500 text-white',
+    neutral: 'bg-gray-500 text-white',
+  }
+
+  let inlineStyle: React.CSSProperties | undefined
+  if ((variant === 'printer_status' || variant === 'document_status' || variant === 'contract_status' || variant === 'client_status') && color) {
+    const statusColors = statusColorMap[variant]?.[color]
+    if (statusColors) {
+      inlineStyle = {
+        backgroundColor: statusColors.background,
+        color: statusColors.foreground,
+      }
+    }
+  }
+
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors',
-        badgeVariants[variant],
-        className,
+        baseStyles,
+        variant !== 'printer_status' && variant !== 'document_status' && variant !== 'contract_status' && variant !== 'client_status' && variantClasses[variant],
+        className
       )}
+      style={inlineStyle}
       {...props}
     />
   )
 }
 
-export { Badge }
+export default Badge
