@@ -1,0 +1,66 @@
+services:
+  app:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: redprint-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - ./backend:/var/www/html
+      - app_storage:/var/www/html/storage
+    environment:
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DB_DATABASE=${DB_DATABASE:-redprint}
+      - DB_USERNAME=${DB_USERNAME:-redprint}
+      - DB_PASSWORD=${DB_PASSWORD:-secret}
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - redprint
+
+  database:
+    image: postgres:16-alpine
+    container_name: redprint-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-redprint}
+      POSTGRES_USER: ${DB_USERNAME:-redprint}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-redprint} -d ${DB_DATABASE:-redprint}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - redprint
+
+  nginx:
+    image: nginx:alpine
+    container_name: redprint-nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-80}:80"
+    volumes:
+      - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./backend:/var/www/html:ro
+      - frontend_build:/usr/share/nginx/html
+    depends_on:
+      - app
+    networks:
+      - redprint
+
+volumes:
+  pg_data:
+  app_storage:
+  frontend_build:
+
+networks:
+  redprint:
+    driver: bridge

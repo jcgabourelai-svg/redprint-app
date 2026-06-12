@@ -1,0 +1,9 @@
+/backend/.env
+/backend/vendor/
+/backend/storage/
+/backend/bootstrap/cache/
+/frontend/node_modules/
+/frontend/dist/
+/frontend-new/node_modules/
+/frontend-new/dist/
+/nginx/ssl/
