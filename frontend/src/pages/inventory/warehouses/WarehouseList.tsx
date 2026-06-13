@@ -7,7 +7,7 @@ import Modal from '@/components/ui/Modal'
 import WarehouseTable from '@/components/warehouse/WarehouseTable'
 import WarehouseCard from '@/components/warehouse/WarehouseCard'
 import WarehouseForm from '@/components/warehouse/WarehouseForm'
-import { useWarehouses, useCreateWarehouse } from '@/hooks/useWarehouses'
+import { useWarehouses, useCreateWarehouse, useDeleteWarehouse } from '@/hooks/useWarehouses'
 import { useIsAdmin } from '@/contexts/AuthContext'
 
 
@@ -31,11 +31,13 @@ export default function WarehouseList() {
   const [showFilters, setShowFilters] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
+  const [deleteError, setDeleteError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 25
 
   const { data, isLoading, error } = useWarehouses({ page: currentPage, per_page: pageSize })
   const createMutation = useCreateWarehouse()
+  const deleteMutation = useDeleteWarehouse()
 
   const warehouses = data?.data || []
 
@@ -87,8 +89,16 @@ export default function WarehouseList() {
 
   const confirmDelete = useCallback(() => {
     if (!showDeleteModal) return
-    setShowDeleteModal(null)
-  }, [showDeleteModal])
+    setDeleteError('')
+    deleteMutation.mutate(showDeleteModal, {
+      onSuccess: () => setShowDeleteModal(null),
+      onError: (err: any) => {
+        setDeleteError(
+          err?.response?.data?.message || 'No se pudo eliminar el almacén'
+        )
+      },
+    })
+  }, [showDeleteModal, deleteMutation])
 
   const handleCreate = useCallback(
     (data: WarehouseFormData) => {
@@ -349,12 +359,15 @@ export default function WarehouseList() {
           <p className="text-sm text-gray-600">
             ¿Estás seguro de que deseas eliminar este almacén? Esta acción no se puede deshacer.
           </p>
+          {deleteError && (
+            <p className="text-sm text-red-600">{deleteError}</p>
+          )}
           <div className="flex justify-end gap-3">
-            <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(null)}>
+            <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(null)} disabled={deleteMutation.isPending}>
               Cancelar
             </Button>
-            <Button variant="danger" size="sm" onClick={confirmDelete}>
-              Eliminar
+            <Button variant="danger" size="sm" onClick={confirmDelete} disabled={deleteMutation.isPending}>
+              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
             </Button>
           </div>
         </div>

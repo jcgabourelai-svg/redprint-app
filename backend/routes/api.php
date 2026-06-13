@@ -54,6 +54,7 @@ Route::prefix('v1')->group(function () {
         Route::get('warehouses', [WarehouseController::class, 'index']);
         Route::get('warehouses/{warehouse}', [WarehouseController::class, 'show']);
         Route::put('warehouses/{warehouse}', [WarehouseController::class, 'update']);
+        Route::delete('warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
         Route::post('warehouses/{warehouse}/deactivate', [WarehouseController::class, 'deactivate']);
         Route::get('warehouses/{warehouse}/printers', [WarehouseController::class, 'printers']);
 

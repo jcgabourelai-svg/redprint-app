@@ -26,6 +26,14 @@ export function useCreateWarehouse() {
   })
 }
 
+export function useDeleteWarehouse() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/warehouses/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['warehouses'] }) },
+  })
+}
+
 export function useWarehousePrinters(warehouseId: number) {
   return useQuery({
     queryKey: ['warehouses', warehouseId, 'printers'],

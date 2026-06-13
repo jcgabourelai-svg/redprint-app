@@ -61,6 +61,16 @@ class WarehouseController extends Controller
         return response()->json(['message' => 'Almacen desactivado']);
     }
 
+    public function destroy(Warehouse $warehouse): JsonResponse
+    {
+        if ($warehouse->printers()->count() > 0) {
+            return response()->json(['message' => 'No se puede eliminar un almacén con impresoras asignadas'], 422);
+        }
+
+        $warehouse->delete();
+        return response()->json(['message' => 'Almacén eliminado']);
+    }
+
     public function printers(Warehouse $warehouse, Request $request)
     {
         $printers = $warehouse->printers()
