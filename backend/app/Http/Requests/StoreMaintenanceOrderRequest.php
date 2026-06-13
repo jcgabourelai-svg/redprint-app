@@ -19,7 +19,6 @@ class StoreMaintenanceOrderRequest extends FormRequest
             'tipo_mantto' => 'required|in:PREVENTIVO,CORRECTIVO',
             'desc_problema' => 'nullable|string',
             'trabajo_realizado' => 'nullable|string',
-            'proveedor_id' => 'nullable|exists:suppliers,id',
             'costo_mano_obra' => 'nullable|numeric|min:0',
             'visita_id' => 'nullable|exists:visits,id',
         ];

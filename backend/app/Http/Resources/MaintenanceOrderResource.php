@@ -17,8 +17,6 @@ class MaintenanceOrderResource extends JsonResource
             'tipo_mantto' => $this->tipo_mantto?->value ?? $this->tipo_mantto,
             'desc_problema' => $this->desc_problema,
             'trabajo_realizado' => $this->trabajo_realizado,
-            'proveedor_id' => $this->proveedor_id,
-            'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'costo_mano_obra' => $this->costo_mano_obra,
             'costo_total' => $this->costo_total,
             'socio_id' => $this->socio_id,

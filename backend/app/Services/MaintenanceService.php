@@ -46,7 +46,7 @@ class MaintenanceService
                 ]);
             }
 
-            return $order->fresh(['printer', 'supplier', 'visit']);
+            return $order->fresh(['printer', 'visit']);
         });
     }
 
@@ -143,7 +143,7 @@ class MaintenanceService
                 ]);
             }
 
-            return $order->fresh(['printer', 'supplier', 'articlesUsed.article']);
+            return $order->fresh(['printer', 'articlesUsed.article']);
         });
     }
 
@@ -193,7 +193,7 @@ class MaintenanceService
     public function getPrinterMaintenanceHistory(int $printerId, int $perPage = 20)
     {
         return MaintenanceOrder::where('impresora_id', $printerId)
-            ->with(['supplier', 'socio', 'articlesUsed.article'])
+            ->with(['socio', 'articlesUsed.article'])
             ->orderBy('fecha', 'desc')
             ->paginate($perPage);
     }

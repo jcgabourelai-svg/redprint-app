@@ -104,7 +104,6 @@ Route::prefix('v1')->group(function () {
         Route::get('supplier-payments', [SupplierPaymentController::class, 'index']);
         Route::post('supplier-payments', [SupplierPaymentController::class, 'store']);
 
-        Route::get('reports/maintenance/providers', [MaintenanceReportController::class, 'providerMetrics']);
         Route::get('reports/maintenance/problematic-printers', [MaintenanceReportController::class, 'problematicPrinters']);
         Route::get('reports/maintenance/printer/{printerId}/cost', [MaintenanceReportController::class, 'printerMaintenanceCost']);
 

@@ -11,31 +11,6 @@ use Illuminate\Support\Facades\DB;
 
 class ReportService
 {
-    public function getMaintenanceProviderMetrics(): array
-    {
-        return MaintenanceOrder::where('estado', MaintenanceStatus::COMPLETADA)
-            ->whereNotNull('proveedor_id')
-            ->with('supplier')
-            ->select('proveedor_id')
-            ->selectRaw('COUNT(*) as total_ordenes')
-            ->selectRaw('AVG(costo_total) as costo_promedio')
-            ->selectRaw('SUM(costo_total) as costo_total')
-            ->selectRaw('AVG(EXTRACT(EPOCH FROM (updated_at - fecha)) / 86400) as dias_promedio_resolucion')
-            ->groupBy('proveedor_id')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'proveedor_id' => $item->proveedor_id,
-                    'proveedor' => $item->supplier?->razon_social,
-                    'total_ordenes' => $item->total_ordenes,
-                    'costo_promedio' => round((float) $item->costo_promedio, 2),
-                    'costo_total' => round((float) $item->costo_total, 2),
-                    'dias_promedio_resolucion' => round((float) $item->dias_promedio_resolucion, 1),
-                ];
-            })
-            ->toArray();
-    }
-
     public function getProblematicPrinters(int $limit = 10): array
     {
         return MaintenanceOrder::where('estado', MaintenanceStatus::COMPLETADA)

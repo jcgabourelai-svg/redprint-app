@@ -9,7 +9,6 @@ import { Card, CardContent } from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import { useCreateMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
 import { usePrinters } from '@/hooks/usePrinters'
-import { useSuppliers } from '@/hooks/useSuppliers'
 import { parseApiError } from '@/lib/api-errors'
 
 export default function CreateMaintenanceOrder() {
@@ -19,19 +18,12 @@ export default function CreateMaintenanceOrder() {
   const [error, setError] = useState('')
 
   const { data: printersData } = usePrinters({ per_page: 100 })
-  const { data: suppliersData } = useSuppliers({ per_page: 100 })
   const createMutation = useCreateMaintenanceOrder()
 
   const printers = printersData?.data || []
   const printerOptions = printers.map((p: any) => ({
     value: p.id,
     label: `${p.marca} ${p.modelo} (${p.id})`,
-  }))
-
-  const suppliers = suppliersData?.data || []
-  const supplierOptions = suppliers.map((s: any) => ({
-    value: s.id,
-    label: s.razon_social || s.contacto || `Proveedor ${s.id}`,
   }))
 
   const tipoOptions = [
@@ -43,7 +35,6 @@ export default function CreateMaintenanceOrder() {
   const [tipo, setTipo] = useState<'preventivo' | 'correctivo'>('preventivo')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [descripcion, setDescripcion] = useState('')
-  const [proveedorId, setProveedorId] = useState('')
   const [costoManoObra, setCostoManoObra] = useState('')
 
   const selectedPrinter = printerOptions.find((p) => p.value === impresoraId)
@@ -60,7 +51,6 @@ export default function CreateMaintenanceOrder() {
         tipo_mantto: tipo.toUpperCase(),
         fecha,
         desc_problema: descripcion,
-        proveedor_id: proveedorId ? parseInt(proveedorId) : undefined,
         costo_mano_obra: costoManoObra ? parseFloat(costoManoObra) : 0,
       })
       setShowSuccess(true)
@@ -145,19 +135,6 @@ export default function CreateMaintenanceOrder() {
                   rows={3}
                   className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Describe el servicio de mantenimiento..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Proveedor / Taller
-                </label>
-                <Select
-                  options={supplierOptions}
-                  value={proveedorId}
-                  onChange={setProveedorId}
-                  placeholder="Seleccionar proveedor..."
-                  searchable
                 />
               </div>
 

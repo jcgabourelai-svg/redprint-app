@@ -1,13 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import api from '@/lib/api'
 
-export function useProviderMetrics() {
-  return useQuery({
-    queryKey: ['reports', 'maintenance', 'providers'],
-    queryFn: () => api.get('/reports/maintenance/providers').then(r => r.data),
-  })
-}
-
 export function useProblematicPrinters(limit = 10) {
   return useQuery({
     queryKey: ['reports', 'maintenance', 'problematic-printers', limit],

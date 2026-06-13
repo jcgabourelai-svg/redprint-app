@@ -18,7 +18,6 @@ class MaintenanceOrder extends Model
         'tipo_mantto',
         'desc_problema',
         'trabajo_realizado',
-        'proveedor_id',
         'costo_mano_obra',
         'costo_total',
         'socio_id',
@@ -43,11 +42,6 @@ class MaintenanceOrder extends Model
     public function printer(): BelongsTo
     {
         return $this->belongsTo(Printer::class, 'impresora_id');
-    }
-
-    public function supplier(): BelongsTo
-    {
-        return $this->belongsTo(Supplier::class, 'proveedor_id');
     }
 
     public function visit(): BelongsTo

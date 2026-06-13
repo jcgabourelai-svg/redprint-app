@@ -12,11 +12,6 @@ class MaintenanceReportController extends Controller
         private ReportService $reportService
     ) {}
 
-    public function providerMetrics(): JsonResponse
-    {
-        return response()->json($this->reportService->getMaintenanceProviderMetrics());
-    }
-
     public function problematicPrinters(Request $request): JsonResponse
     {
         $limit = $request->integer('limit', 10);

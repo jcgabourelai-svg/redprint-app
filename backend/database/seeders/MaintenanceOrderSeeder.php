@@ -8,7 +8,6 @@ use App\Models\Article;
 use App\Models\ArticleUsed;
 use App\Models\MaintenanceOrder;
 use App\Models\Printer;
-use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 
@@ -17,7 +16,6 @@ class MaintenanceOrderSeeder extends Seeder
     public function run(): void
     {
         $printers = Printer::all();
-        $suppliers = Supplier::all();
         $users = User::where('activo', true)->get();
         $articles = Article::all();
 
@@ -56,7 +54,6 @@ class MaintenanceOrderSeeder extends Seeder
                 'tipo_mantto' => $type,
                 'desc_problema' => $descProblema,
                 'trabajo_realizado' => $isCompleted ? $descProblema . ' - Completado' : null,
-                'proveedor_id' => $suppliers->random()->id,
                 'costo_mano_obra' => $costoManoObra,
                 'costo_total' => $costoManoObra,
                 'socio_id' => $socio->id,

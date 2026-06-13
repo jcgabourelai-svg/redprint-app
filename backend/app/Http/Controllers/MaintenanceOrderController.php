@@ -18,7 +18,7 @@ class MaintenanceOrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = MaintenanceOrder::with(['printer', 'supplier', 'socio', 'visit']);
+        $query = MaintenanceOrder::with(['printer', 'socio', 'visit']);
 
         if ($request->has('estado')) {
             $query->where('estado', $request->estado);
@@ -44,7 +44,7 @@ class MaintenanceOrderController extends Controller
     public function show(MaintenanceOrder $maintenanceOrder): JsonResponse
     {
         return response()->json(new MaintenanceOrderResource(
-            $maintenanceOrder->load(['printer', 'supplier', 'socio', 'visit', 'articlesUsed.article', 'expenses'])
+            $maintenanceOrder->load(['printer', 'socio', 'visit', 'articlesUsed.article', 'expenses'])
         ));
     }
 
@@ -62,7 +62,7 @@ class MaintenanceOrderController extends Controller
     {
         $maintenanceOrder->update($request->validated());
 
-        return response()->json(new MaintenanceOrderResource($maintenanceOrder->fresh(['printer', 'supplier'])));
+        return response()->json(new MaintenanceOrderResource($maintenanceOrder->fresh(['printer'])));
     }
 
     public function complete(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse

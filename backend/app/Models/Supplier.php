@@ -31,11 +31,6 @@ class Supplier extends Model
         return $this->hasMany(Article::class, 'proveedor_id');
     }
 
-    public function maintenanceOrders(): HasMany
-    {
-        return $this->hasMany(MaintenanceOrder::class, 'proveedor_id');
-    }
-
     public function purchases(): HasMany
     {
         return $this->hasMany(Purchase::class, 'proveedor_id');

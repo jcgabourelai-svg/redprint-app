@@ -141,10 +141,6 @@ export default function MaintenanceDetail() {
                     <p className="text-gray-900">{formatDate(orderData.fecha)}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Proveedor</p>
-                    <p className="text-gray-900">{orderData.proveedor || '-'}</p>
-                  </div>
-                  <div>
                     <p className="text-sm font-medium text-gray-600">Socio Responsable</p>
                     <p className="text-gray-900">{orderData.socio_responsable}</p>
                   </div>

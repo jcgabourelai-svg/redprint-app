@@ -8,7 +8,6 @@ export interface MaintenanceOrder {
   fecha: string
   tipo: MaintenanceType
   descripcion: string
-  proveedor?: string
   costo_mano_obra: number
   estado: MaintenanceStatus
   socio_responsable: string

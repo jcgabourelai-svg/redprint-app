@@ -16,7 +16,6 @@ class UpdateMaintenanceOrderRequest extends FormRequest
         return [
             'desc_problema' => 'nullable|string',
             'trabajo_realizado' => 'nullable|string',
-            'proveedor_id' => 'nullable|exists:suppliers,id',
             'costo_mano_obra' => 'nullable|numeric|min:0',
             'fecha' => 'sometimes|date',
         ];

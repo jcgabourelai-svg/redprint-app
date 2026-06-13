@@ -127,7 +127,7 @@ class DashboardController extends Controller
                     ->limit(10)
                     ->get(),
                 'mantenimientos_pendientes' => MaintenanceOrder::where('estado', MaintenanceStatus::PROGRAMADA)
-                    ->with(['printer', 'supplier'])
+                    ->with(['printer'])
                     ->limit(5)
                     ->get(),
                 'compras_por_vencer' => Purchase::where('estado', PurchaseStatus::RECIBIDA)
