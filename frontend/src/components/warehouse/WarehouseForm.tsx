@@ -17,7 +17,6 @@ interface FormErrors {
   nombre?: string
   direccion?: string
   encargado?: string
-  capacidad?: string
 }
 
 export default function WarehouseForm({
@@ -31,7 +30,6 @@ export default function WarehouseForm({
   const [direccion, setDireccion] = useState(initialData?.direccion ?? '')
   const [encargado, setEncargado] = useState(initialData?.encargado ?? '')
   const [telefono, setTelefono] = useState(initialData?.telefono ?? '')
-  const [capacidad, setCapacidad] = useState(String(initialData?.capacidad ?? ''))
   const [estado, setEstado] = useState<string>(initialData?.estado ?? 'activo')
   const [notas, setNotas] = useState(initialData?.notas ?? '')
   const [errors, setErrors] = useState<FormErrors>({})
@@ -42,15 +40,6 @@ export default function WarehouseForm({
     if (!nombre.trim()) newErrors.nombre = 'El nombre es obligatorio'
     if (!direccion.trim()) newErrors.direccion = 'La dirección es obligatoria'
     if (!encargado.trim()) newErrors.encargado = 'El encargado es obligatorio'
-
-    const cap = Number(capacidad)
-    if (!capacidad || isNaN(cap) || cap < 1) {
-      newErrors.capacidad = 'La capacidad debe ser un número positivo'
-    } else if (cap > 100) {
-      newErrors.capacidad = 'La capacidad máxima es 100'
-    } else if (isEdit && initialData?.ocupacion_actual && cap < initialData.ocupacion_actual) {
-      newErrors.capacidad = `No puede ser menor a la ocupación actual (${initialData.ocupacion_actual})`
-    }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -65,7 +54,6 @@ export default function WarehouseForm({
       direccion: direccion.trim(),
       encargado: encargado.trim(),
       telefono: telefono.trim() || undefined,
-      capacidad: Number(capacidad),
       estado,
       notas: notas.trim() || undefined,
     })
@@ -122,28 +110,13 @@ export default function WarehouseForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Capacidad</label>
-          <Input
-            placeholder="Ej: 30"
-            type="number"
-            min={1}
-            max={100}
-            value={capacidad}
-            onChange={(e) => setCapacidad(e.target.value)}
-            error={!!errors.capacidad}
-            helperText={errors.capacidad}
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
-          <Select
-            options={estadoOptions}
-            value={estado}
-            onChange={(v) => setEstado(v as string)}
-          />
-        </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+        <Select
+          options={estadoOptions}
+          value={estado}
+          onChange={(v) => setEstado(v as string)}
+        />
       </div>
 
       <div>

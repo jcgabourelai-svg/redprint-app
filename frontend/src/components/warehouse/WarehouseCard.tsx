@@ -1,7 +1,6 @@
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
-import ProgressBar from '@/components/ui/ProgressBar'
 import type { Warehouse } from '@/types/warehouse'
 
 export interface WarehouseCardProps {
@@ -11,15 +10,7 @@ export interface WarehouseCardProps {
   onDelete?: (id: string) => void
 }
 
-function getOccupationColor(percentage: number): 'success' | 'warning' | 'error' {
-  if (percentage <= 30) return 'success'
-  if (percentage <= 70) return 'warning'
-  return 'error'
-}
-
 export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: WarehouseCardProps) {
-  const pct = Math.round((warehouse.ocupacion_actual / warehouse.capacidad) * 100)
-
   return (
     <Card>
       <CardContent className="p-4">
@@ -38,19 +29,7 @@ export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: W
           {warehouse.telefono && (
             <p><span className="font-medium text-gray-700">Tel:</span> {warehouse.telefono}</p>
           )}
-        </div>
-
-        <div className="mb-3">
-          <div className="flex items-center justify-between text-xs text-gray-600 mb-1">
-            <span>Ocupación: {warehouse.ocupacion_actual} / {warehouse.capacidad}</span>
-            <span className="font-medium">{pct}%</span>
-          </div>
-          <ProgressBar
-            value={pct}
-            max={100}
-            color={getOccupationColor(pct)}
-            size="sm"
-          />
+          <p><span className="font-medium text-gray-700">Impresoras:</span> {warehouse.ocupacion_actual}</p>
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t border-gray-100">

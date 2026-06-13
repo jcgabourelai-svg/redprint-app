@@ -6,7 +6,6 @@ export interface Warehouse {
   direccion: string
   encargado: string
   telefono?: string
-  capacidad: number
   ocupacion_actual: number
   estado: 'activo' | 'inactivo'
   notas?: string
@@ -16,8 +15,6 @@ export interface Warehouse {
 
 export interface WarehouseDetail extends Warehouse {
   impresoras: Printer[]
-  porcentaje_ocupacion: number
-  disponibilidad: number
 }
 
 export interface WarehouseFormData {
@@ -25,7 +22,6 @@ export interface WarehouseFormData {
   direccion: string
   encargado: string
   telefono?: string
-  capacidad: number
   estado: 'activo' | 'inactivo'
   notas?: string
 }

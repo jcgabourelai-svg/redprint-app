@@ -1,7 +1,6 @@
 import { Eye, Pencil, Trash2 } from 'lucide-react'
 import Table from '@/components/ui/Table'
 import Badge from '@/components/ui/Badge'
-import ProgressBar from '@/components/ui/ProgressBar'
 import type { Warehouse } from '@/types/warehouse'
 
 export interface WarehouseTableProps {
@@ -11,12 +10,6 @@ export interface WarehouseTableProps {
   onDelete?: (id: string) => void
   loading?: boolean
   emptyMessage?: string
-}
-
-function getOccupationColor(percentage: number): 'success' | 'warning' | 'error' {
-  if (percentage <= 30) return 'success'
-  if (percentage <= 70) return 'warning'
-  return 'error'
 }
 
 export default function WarehouseTable({
@@ -52,32 +45,12 @@ export default function WarehouseTable({
       sortable: true,
     },
     {
-      key: 'capacidad',
-      label: 'Capacidad',
-      sortable: true,
-      render: (_value: number, row: Warehouse) => (
-        <span>{row.ocupacion_actual} / {row.capacidad}</span>
-      ),
-    },
-    {
       key: 'ocupacion_actual',
       label: 'Ocupación',
       sortable: true,
-      render: (_value: number, row: Warehouse) => {
-        const pct = Math.round((row.ocupacion_actual / row.capacidad) * 100)
-        return (
-          <div className="flex items-center gap-2 min-w-[120px]">
-            <ProgressBar
-              value={pct}
-              max={100}
-              color={getOccupationColor(pct)}
-              size="sm"
-              className="flex-1"
-            />
-            <span className="text-xs font-medium text-gray-600 tabular-nums w-10 text-right">{pct}%</span>
-          </div>
-        )
-      },
+      render: (_value: number, row: Warehouse) => (
+        <span className="text-sm text-gray-600">{row.ocupacion_actual} impresoras</span>
+      ),
     },
     {
       key: 'estado',

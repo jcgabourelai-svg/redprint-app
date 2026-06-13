@@ -11,23 +11,12 @@ import { useWarehouses, useCreateWarehouse, useDeleteWarehouse } from '@/hooks/u
 import { useIsAdmin } from '@/contexts/AuthContext'
 
 
-type OccupationFilter = 'all' | 'baja' | 'media' | 'alta' | 'llena'
-
-function getOccupationLevel(warehouse: Warehouse): OccupationFilter {
-  const pct = Math.round((warehouse.ocupacion_actual / warehouse.capacidad) * 100)
-  if (pct <= 30) return 'baja'
-  if (pct <= 70) return 'media'
-  if (pct <= 90) return 'alta'
-  return 'llena'
-}
-
 export default function WarehouseList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string | 'all'>('all')
   const [encargadoFilter, setEncargadoFilter] = useState<string>('all')
-  const [occupationFilter, setOccupationFilter] = useState<OccupationFilter>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
@@ -58,12 +47,10 @@ export default function WarehouseList() {
 
       const matchesStatus = statusFilter === 'all' || w.estado === statusFilter
       const matchesEncargado = encargadoFilter === 'all' || w.encargado === encargadoFilter
-      const matchesOccupation =
-        occupationFilter === 'all' || getOccupationLevel(w) === occupationFilter
 
-      return matchesSearch && matchesStatus && matchesEncargado && matchesOccupation
+      return matchesSearch && matchesStatus && matchesEncargado
     })
-  }, [warehouses, searchTerm, statusFilter, encargadoFilter, occupationFilter])
+  }, [warehouses, searchTerm, statusFilter, encargadoFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -112,11 +99,10 @@ export default function WarehouseList() {
     setSearchTerm('')
     setStatusFilter('all')
     setEncargadoFilter('all')
-    setOccupationFilter('all')
   }, [])
 
   const hasActiveFilters =
-    statusFilter !== 'all' || encargadoFilter !== 'all' || occupationFilter !== 'all'
+    statusFilter !== 'all' || encargadoFilter !== 'all'
 
   if (isLoading) {
     return (
@@ -197,7 +183,7 @@ export default function WarehouseList() {
 
           {showFilters && (
             <div className="rounded-lg border border-gray-200 bg-white p-4">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Estado</label>
                   <select
@@ -229,23 +215,6 @@ export default function WarehouseList() {
                         {e}
                       </option>
                     ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Ocupación</label>
-                  <select
-                    value={occupationFilter}
-                    onChange={(e) => {
-                      setOccupationFilter(e.target.value as OccupationFilter)
-                      setCurrentPage(1)
-                    }}
-                    className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="all">Todos</option>
-                    <option value="baja">Baja (&lt; 30%)</option>
-                    <option value="media">Media (30% - 70%)</option>
-                    <option value="alta">Alta (71% - 90%)</option>
-                    <option value="llena">Llena (&gt; 90%)</option>
                   </select>
                 </div>
                 <div className="flex items-end">
