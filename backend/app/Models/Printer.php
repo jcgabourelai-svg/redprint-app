@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\PrinterStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Printer extends Model
@@ -79,6 +80,26 @@ class Printer extends Model
     public function expenses()
     {
         return $this->hasMany(PrinterExpense::class, 'impresora_id');
+    }
+
+    public function contracts(): BelongsToMany
+    {
+        return $this->belongsToMany(Contract::class, 'contract_printer', 'impresora_id', 'contrato_id');
+    }
+
+    public function invoiceDetails(): HasMany
+    {
+        return $this->hasMany(InvoiceDetail::class, 'impresora_id');
+    }
+
+    public function esEliminable(): bool
+    {
+        return $this->estado !== PrinterStatus::RENTADA
+            && !$this->readings()->exists()
+            && !$this->maintenanceOrders()->exists()
+            && !$this->expenses()->exists()
+            && !$this->contracts()->exists()
+            && !$this->invoiceDetails()->exists();
     }
 
     public function scopeActive($query)

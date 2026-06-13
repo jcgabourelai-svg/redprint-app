@@ -1,13 +1,10 @@
 export interface Supplier {
   id: string
-  nombre: string
+  razon_social: string
   rfc?: string
-  contacto: string
-  telefono: string
-  email?: string
-  direccion: string
+  contacto?: string
+  telefono?: string
+  correo?: string
   notas?: string
   activo: boolean
-  fecha_creacion: string
-  ultimo_pedido?: string
 }

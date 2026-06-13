@@ -113,10 +113,10 @@ export default function ArticleDetail() {
                         label: 'Compatibilidad',
                         content: (
                           <div className="space-y-3 pb-4">
-                            {article.compatible_con.length === 0 ? (
+                            {(article.compatible_con ?? []).length === 0 ? (
                               <p className="text-sm text-gray-500 py-4">No hay impresoras compatibles registradas.</p>
                             ) : (
-                              article.compatible_con.map((printer, idx) => (
+                              (article.compatible_con ?? []).map((printer, idx) => (
                                 <div key={idx} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
                                   <Link2 className="h-4 w-4 text-blue-500" />
                                   <span className="text-sm text-gray-900">{printer}</span>

@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import { useCreateMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
 import { usePrinters } from '@/hooks/usePrinters'
+import { useSuppliers } from '@/hooks/useSuppliers'
 import { parseApiError } from '@/lib/api-errors'
 
 export default function CreateMaintenanceOrder() {
@@ -18,6 +19,7 @@ export default function CreateMaintenanceOrder() {
   const [error, setError] = useState('')
 
   const { data: printersData } = usePrinters({ per_page: 100 })
+  const { data: suppliersData } = useSuppliers({ per_page: 100 })
   const createMutation = useCreateMaintenanceOrder()
 
   const printers = printersData?.data || []
@@ -26,30 +28,28 @@ export default function CreateMaintenanceOrder() {
     label: `${p.marca} ${p.modelo} (${p.id})`,
   }))
 
+  const suppliers = suppliersData?.data || []
+  const supplierOptions = suppliers.map((s: any) => ({
+    value: s.id,
+    label: s.razon_social || s.contacto || `Proveedor ${s.id}`,
+  }))
+
   const tipoOptions = [
     { value: 'preventivo', label: 'Preventivo' },
     { value: 'correctivo', label: 'Correctivo' },
-  ]
-
-  const socioOptions = [
-    { value: 'María López', label: 'María López' },
-    { value: 'Juan Pérez', label: 'Juan Pérez' },
-    { value: 'Carlos Gómez', label: 'Carlos Gómez' },
-    { value: 'Ana Ruiz', label: 'Ana Ruiz' },
   ]
 
   const [impresoraId, setImpresoraId] = useState('')
   const [tipo, setTipo] = useState<'preventivo' | 'correctivo'>('preventivo')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [descripcion, setDescripcion] = useState('')
-  const [proveedor, setProveedor] = useState('')
+  const [proveedorId, setProveedorId] = useState('')
   const [costoManoObra, setCostoManoObra] = useState('')
-  const [socioResponsable, setSocioResponsable] = useState('')
 
   const selectedPrinter = printerOptions.find((p) => p.value === impresoraId)
 
   const canSubmit =
-    !!impresoraId && !!fecha && !!descripcion && !!socioResponsable
+    !!impresoraId && !!fecha && !!descripcion
 
   const handleSubmit = async () => {
     setShowConfirm(false)
@@ -57,12 +57,11 @@ export default function CreateMaintenanceOrder() {
     try {
       const result = await createMutation.mutateAsync({
         impresora_id: parseInt(impresoraId),
-        tipo,
+        tipo_mantto: tipo.toUpperCase(),
         fecha,
-        descripcion,
-        proveedor: proveedor || undefined,
+        desc_problema: descripcion,
+        proveedor_id: proveedorId ? parseInt(proveedorId) : undefined,
         costo_mano_obra: costoManoObra ? parseFloat(costoManoObra) : 0,
-        socio_responsable: socioResponsable,
       })
       setShowSuccess(true)
     } catch (err) {
@@ -153,10 +152,12 @@ export default function CreateMaintenanceOrder() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Proveedor / Taller
                 </label>
-                <Input
-                  value={proveedor}
-                  onChange={(e) => setProveedor(e.target.value)}
-                  placeholder="Nombre del proveedor..."
+                <Select
+                  options={supplierOptions}
+                  value={proveedorId}
+                  onChange={setProveedorId}
+                  placeholder="Seleccionar proveedor..."
+                  searchable
                 />
               </div>
 
@@ -170,18 +171,6 @@ export default function CreateMaintenanceOrder() {
                   value={costoManoObra}
                   onChange={(e) => setCostoManoObra(e.target.value)}
                   placeholder="0.00"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Socio Responsable *
-                </label>
-                <Select
-                  options={socioOptions}
-                  value={socioResponsable}
-                  onChange={setSocioResponsable}
-                  placeholder="Seleccionar socio..."
                 />
               </div>
             </div>
@@ -221,10 +210,6 @@ export default function CreateMaintenanceOrder() {
             <p>
               <span className="text-gray-500">Tipo:</span>{' '}
               {tipo === 'preventivo' ? 'Preventivo' : 'Correctivo'}
-            </p>
-            <p>
-              <span className="text-gray-500">Responsable:</span>{' '}
-              {socioResponsable}
             </p>
           </div>
           <div className="bg-amber-50 rounded p-3 text-xs text-amber-700 space-y-1">

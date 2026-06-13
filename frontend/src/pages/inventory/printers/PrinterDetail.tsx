@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Printer as PrinterIcon, Calendar, Activity, Settings, Edit, Plus } from 'lucide-react'
+import { ArrowLeft, Printer as PrinterIcon, Calendar, Activity, Settings, Edit, Plus, Trash2 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import PrinterForm from '@/components/printer/PrinterForm'
 import type { PrinterFormData } from '@/components/printer/PrinterForm'
-import { usePrinter, useUpdatePrinter, useDeactivatePrinter } from '@/hooks/usePrinters'
+import { usePrinter, useUpdatePrinter, useDeactivatePrinter, useDeletePrinter } from '@/hooks/usePrinters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 
@@ -21,10 +21,13 @@ export default function PrinterDetail() {
   const [showDeactivateModal, setShowDeactivateModal] = useState(false)
   const [deactivateReason, setDeactivateReason] = useState('')
   const [deactivateError, setDeactivateError] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   const printerId = id ? parseInt(id) : 0
   const { data: printer, isLoading, error } = usePrinter(printerId)
   const updatePrinter = useUpdatePrinter()
   const deactivatePrinter = useDeactivatePrinter()
+  const deletePrinter = useDeletePrinter()
 
   if (isLoading) {
     return (
@@ -73,6 +76,18 @@ export default function PrinterDetail() {
     )
   }
 
+  const handleDelete = () => {
+    setDeleteError('')
+    deletePrinter.mutate(printerId, {
+      onSuccess: () => navigate('/inventario/impresoras'),
+      onError: (err: any) => {
+        setDeleteError(
+          err?.response?.data?.message || 'No se pudo eliminar la impresora'
+        )
+      },
+    })
+  }
+
   return (
     <PageLayout title={`Inventario › Impresoras › ${printerData.marca} ${printerData.modelo}`}>
       <div className="space-y-6">
@@ -87,7 +102,19 @@ export default function PrinterDetail() {
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
-              {printerData.estado !== 'DADA_DE_BAJA' && (
+              {printerData.es_eliminable ? (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setDeleteError('')
+                    setShowDeleteModal(true)
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
+                </Button>
+              ) : printerData.estado !== 'DADA_DE_BAJA' && (
                 <Button
                   variant="danger"
                   size="sm"
@@ -402,6 +429,48 @@ export default function PrinterDetail() {
               loading={deactivatePrinter.isPending}
             >
               Confirmar Baja
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Eliminar Impresora"
+      >
+        <div className="space-y-4">
+          <div className="rounded-md bg-red-50 border border-red-200 p-3">
+            <p className="text-sm text-red-700">
+              Estás por <span className="font-semibold">borrar definitivamente</span> el registro de la impresora{' '}
+              <span className="font-semibold">
+                {printerData.marca} {printerData.modelo}
+              </span>{' '}
+              ({printerData.num_serie}). Esta acción <span className="font-semibold">no se puede deshacer</span> y eliminará también su historial.
+            </p>
+          </div>
+          <p className="text-sm text-gray-600">
+            Esto se recomienda solo para correcciones por error de captura. Si la impresora realmente existió y salió de circulación, usa <span className="font-medium">Dar de baja</span> en su lugar para conservar el historial.
+          </p>
+          {deleteError && (
+            <p className="text-sm text-red-600">{deleteError}</p>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deletePrinter.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDelete}
+              loading={deletePrinter.isPending}
+            >
+              Sí, Eliminar Definitivamente
             </Button>
           </div>
         </div>

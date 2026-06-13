@@ -9,5 +9,5 @@ export interface Article {
   cantidad_en_stock: number
   umbral_reposicion: number
   costo_unitario: number
-  compatible_con: string[]
+  compatible_con?: string[]
 }

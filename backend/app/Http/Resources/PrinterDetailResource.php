@@ -16,6 +16,7 @@ class PrinterDetailResource extends PrinterResource
             'historial' => PrinterHistoryResource::collection($this->whenLoaded('history')),
             'mantenimientos' => MaintenanceOrderResource::collection($this->whenLoaded('maintenanceOrders')),
             'lecturas' => ReadingResource::collection($this->whenLoaded('readings')),
+            'es_eliminable' => $this->esEliminable(),
         ]);
     }
 }

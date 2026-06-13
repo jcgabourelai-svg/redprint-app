@@ -68,6 +68,12 @@ class PrinterController extends Controller
         return response()->json(['message' => 'Impresora dada de baja']);
     }
 
+    public function forceDelete(Printer $printer): JsonResponse
+    {
+        $this->printerService->forceDelete($printer);
+        return response()->json(['message' => 'Impresora eliminada']);
+    }
+
     public function history(Printer $printer, Request $request)
     {
         $history = $this->printerService->getHistory($printer, $request->tipo_evento);

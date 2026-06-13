@@ -48,6 +48,7 @@ Route::prefix('v1')->group(function () {
 
         Route::apiResource('printers', PrinterController::class)->except(['store', 'destroy']);
         Route::delete('printers/{printer}', [PrinterController::class, 'destroy'])->middleware('role:ADMIN');
+        Route::delete('printers/{printer}/force', [PrinterController::class, 'forceDelete'])->middleware('role:ADMIN');
         Route::get('printers/{printer}/history', [PrinterController::class, 'history']);
 
         Route::get('warehouses', [WarehouseController::class, 'index']);

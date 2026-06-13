@@ -49,3 +49,14 @@ export function useDeactivatePrinter() {
     },
   })
 }
+
+export function useDeletePrinter() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/printers/${id}/force`).then(r => r.data),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['printers'], refetchType: 'none' })
+      qc.removeQueries({ queryKey: ['printers', id] })
+    },
+  })
+}

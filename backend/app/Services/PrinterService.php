@@ -78,6 +78,22 @@ class PrinterService
         return $this->changeStatus($printer, PrinterStatus::DADA_DE_BAJA, $user, $reason);
     }
 
+    public function forceDelete(Printer $printer): void
+    {
+        if ($printer->estado === PrinterStatus::RENTADA) {
+            throw new BusinessRuleException('No se puede eliminar una impresora rentada');
+        }
+
+        if (!$printer->esEliminable()) {
+            throw new BusinessRuleException('No se puede eliminar la impresora porque tiene lecturas, gastos, contratos, mantenimientos o facturas asociadas. Dale de baja en su lugar.');
+        }
+
+        DB::transaction(function () use ($printer) {
+            $printer->history()->delete();
+            $printer->delete();
+        });
+    }
+
     public function getHistory(Printer $printer, ?string $eventType = null)
     {
         $query = $printer->history()->with('socio');
