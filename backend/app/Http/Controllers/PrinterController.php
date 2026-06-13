@@ -62,7 +62,9 @@ class PrinterController extends Controller
 
     public function destroy(Printer $printer, Request $request): JsonResponse
     {
-        $this->printerService->deactivate($printer, $request->user(), 'Dada de baja por usuario');
+        $rawReason = $request->input('reason');
+        $reason = ($rawReason !== null && trim((string) $rawReason) !== '') ? $rawReason : 'Dada de baja por usuario';
+        $this->printerService->deactivate($printer, $request->user(), $reason);
         return response()->json(['message' => 'Impresora dada de baja']);
     }
 

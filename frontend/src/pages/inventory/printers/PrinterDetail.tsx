@@ -9,7 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import PrinterForm from '@/components/printer/PrinterForm'
 import type { PrinterFormData } from '@/components/printer/PrinterForm'
-import { usePrinter, useUpdatePrinter } from '@/hooks/usePrinters'
+import { usePrinter, useUpdatePrinter, useDeactivatePrinter } from '@/hooks/usePrinters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 
@@ -18,9 +18,13 @@ export default function PrinterDetail() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
+  const [deactivateReason, setDeactivateReason] = useState('')
+  const [deactivateError, setDeactivateError] = useState('')
   const printerId = id ? parseInt(id) : 0
   const { data: printer, isLoading, error } = usePrinter(printerId)
   const updatePrinter = useUpdatePrinter()
+  const deactivatePrinter = useDeactivatePrinter()
 
   if (isLoading) {
     return (
@@ -54,6 +58,21 @@ export default function PrinterDetail() {
     )
   }
 
+  const handleDeactivate = () => {
+    setDeactivateError('')
+    deactivatePrinter.mutate(
+      { id: printerId, reason: deactivateReason.trim() || undefined },
+      {
+        onSuccess: () => navigate('/inventario/impresoras'),
+        onError: (err: any) => {
+          setDeactivateError(
+            err?.response?.data?.message || 'No se pudo dar de baja la impresora'
+          )
+        },
+      }
+    )
+  }
+
   return (
     <PageLayout title={`Inventario › Impresoras › ${printerData.marca} ${printerData.modelo}`}>
       <div className="space-y-6">
@@ -68,9 +87,18 @@ export default function PrinterDetail() {
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
-              <Button variant="danger" size="sm">
-                Dar de Baja
-              </Button>
+              {printerData.estado !== 'DADA_DE_BAJA' && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setDeactivateError('')
+                    setShowDeactivateModal(true)
+                  }}
+                >
+                  Dar de Baja
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -328,6 +356,55 @@ export default function PrinterDetail() {
           isEdit
           loading={updatePrinter.isPending}
         />
+      </Modal>
+
+      <Modal
+        isOpen={showDeactivateModal}
+        onClose={() => setShowDeactivateModal(false)}
+        title="Dar de Baja Impresora"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            ¿Seguro que deseas dar de baja la impresora{' '}
+            <span className="font-medium text-gray-900">
+              {printerData.marca} {printerData.modelo}
+            </span>
+            ? Esta acción no se puede deshacer.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo de baja <span className="text-gray-400">(opcional)</span>
+            </label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              placeholder="Ej: Fin de vida útil, daño irreparable..."
+              value={deactivateReason}
+              onChange={(e) => setDeactivateReason(e.target.value)}
+              disabled={deactivatePrinter.isPending}
+            />
+          </div>
+          {deactivateError && (
+            <p className="text-sm text-red-600">{deactivateError}</p>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDeactivateModal(false)}
+              disabled={deactivatePrinter.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDeactivate}
+              loading={deactivatePrinter.isPending}
+            >
+              Confirmar Baja
+            </Button>
+          </div>
+        </div>
       </Modal>
     </PageLayout>
   )
