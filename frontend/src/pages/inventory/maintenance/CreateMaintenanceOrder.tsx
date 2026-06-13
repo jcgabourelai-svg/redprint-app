@@ -16,6 +16,7 @@ export default function CreateMaintenanceOrder() {
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [createdOrderId, setCreatedOrderId] = useState<number | null>(null)
 
   const { data: printersData } = usePrinters({ per_page: 100 })
   const createMutation = useCreateMaintenanceOrder()
@@ -53,6 +54,7 @@ export default function CreateMaintenanceOrder() {
         desc_problema: descripcion,
         costo_mano_obra: costoManoObra ? parseFloat(costoManoObra) : 0,
       })
+      setCreatedOrderId(result.id)
       setShowSuccess(true)
     } catch (err) {
       setError(parseApiError(err))
@@ -216,7 +218,7 @@ export default function CreateMaintenanceOrder() {
             </div>
           </div>
           <div>
-            <p className="font-medium">OM-006 creada</p>
+            <p className="font-medium">Orden #{createdOrderId} creada</p>
             <p className="text-sm text-gray-500">
               {selectedPrinter?.label} —{' '}
               {tipo === 'preventivo' ? 'Mantenimiento preventivo' : 'Mantenimiento correctivo'}
@@ -229,7 +231,7 @@ export default function CreateMaintenanceOrder() {
             <Button
               onClick={() => {
                 setShowSuccess(false)
-                navigate('/inventario/mantenimiento/OM-006')
+                if (createdOrderId) navigate(`/inventario/mantenimiento/${createdOrderId}`)
               }}
             >
               Ver orden
