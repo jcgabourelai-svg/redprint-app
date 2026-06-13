@@ -29,6 +29,19 @@ export function useCreateMaintenanceOrder() {
   })
 }
 
+export function useUpdateMaintenanceOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api.put(`/maintenance-orders/${id}`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['maintenance-orders'] })
+      qc.invalidateQueries({ queryKey: ['maintenance-orders', id] })
+      qc.invalidateQueries({ queryKey: ['printers'] })
+    },
+  })
+}
+
 export function useCompleteMaintenanceOrder() {
   const qc = useQueryClient()
   return useMutation({

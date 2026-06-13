@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -14,11 +15,13 @@ import {
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Modal from '@/components/ui/Modal'
+import Input from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
-import { useCompleteMaintenanceOrder, useCancelMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
+import { useMaintenanceOrder, useUpdateMaintenanceOrder, useCompleteMaintenanceOrder, useCancelMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
 import { formatCurrency, formatDate, getMaintenanceStatusColor } from '@/lib/formatters'
+import { parseApiError } from '@/lib/api-errors'
 import { useIsAdmin } from '@/contexts/AuthContext'
 
 function getEstadoIcon(estado: string) {
@@ -42,6 +45,39 @@ export default function MaintenanceDetail() {
   const { data: order, isLoading, error } = useMaintenanceOrder(orderId)
   const completeMutation = useCompleteMaintenanceOrder()
   const cancelMutation = useCancelMaintenanceOrder()
+  const updateMutation = useUpdateMaintenanceOrder()
+
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [editFecha, setEditFecha] = useState('')
+  const [editDescripcion, setEditDescripcion] = useState('')
+  const [editTrabajo, setEditTrabajo] = useState('')
+  const [editCosto, setEditCosto] = useState('')
+
+  const openEditModal = () => {
+    setEditError('')
+    setEditFecha(orderData.fecha || '')
+    setEditDescripcion(orderData.desc_problema || '')
+    setEditTrabajo(orderData.trabajo_realizado || '')
+    setEditCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
+    setShowEditModal(true)
+  }
+
+  const handleEditSubmit = async () => {
+    setEditError('')
+    try {
+      await updateMutation.mutateAsync({
+        id: orderId,
+        fecha: editFecha || undefined,
+        desc_problema: editDescripcion || undefined,
+        trabajo_realizado: editTrabajo || undefined,
+        costo_mano_obra: editCosto === '' ? undefined : parseFloat(editCosto),
+      })
+      setShowEditModal(false)
+    } catch (err) {
+      setEditError(parseApiError(err))
+    }
+  }
 
   if (isLoading) {
     return (
@@ -64,7 +100,7 @@ export default function MaintenanceDetail() {
   }
 
   const orderData = order as any
-  const refacciones = orderData.articulos_usados || []
+  const refacciones = orderData.articles_used || []
   const notas = orderData.notas || []
 
   const costoRefacciones = refacciones.reduce(
@@ -83,21 +119,16 @@ export default function MaintenanceDetail() {
           </Button>
           {isAdmin && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={openEditModal}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
-              {orderData.estado === 'PENDIENTE' && (
-                <Button size="sm" onClick={() => completeMutation.mutate(orderId)}>
-                  Iniciar Servicio
-                </Button>
-              )}
-              {orderData.estado === 'en_progreso' && (
-                <Button size="sm" onClick={() => completeMutation.mutate(orderId)}>
+              {orderData.estado === 'PROGRAMADA' && (
+                <Button size="sm" onClick={() => completeMutation.mutate({ id: orderId })}>
                   Completar
                 </Button>
               )}
-              {orderData.estado !== 'completada' && (
+              {orderData.estado === 'PROGRAMADA' && (
                 <Button variant="danger" size="sm" onClick={() => cancelMutation.mutate(orderId)}>
                   Cancelar
                 </Button>
@@ -117,7 +148,7 @@ export default function MaintenanceDetail() {
                     </div>
                     <div>
                       <CardTitle className="text-xl">{orderData.id}</CardTitle>
-                      <p className="text-sm text-gray-500">{orderData.impresora_marca} {orderData.impresora_modelo}</p>
+                      <p className="text-sm text-gray-500">{orderData.printer?.marca} {orderData.printer?.modelo}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -132,8 +163,8 @@ export default function MaintenanceDetail() {
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="text-sm font-medium text-gray-600">Tipo de Servicio</p>
-                    <Badge variant={orderData.tipo === 'preventivo' ? 'primary' : 'warning'}>
-                      {orderData.tipo === 'preventivo' ? 'PREVENTIVO' : 'CORRECTIVO'}
+                    <Badge variant={orderData.tipo_mantto === 'PREVENTIVO' ? 'primary' : 'warning'}>
+                      {orderData.tipo_mantto === 'PREVENTIVO' ? 'PREVENTIVO' : 'CORRECTIVO'}
                     </Badge>
                   </div>
                   <div>
@@ -142,11 +173,11 @@ export default function MaintenanceDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Socio Responsable</p>
-                    <p className="text-gray-900">{orderData.socio_responsable}</p>
+                    <p className="text-gray-900">{orderData.socio?.nombre ?? '-'}</p>
                   </div>
                   <div className="sm:col-span-2">
                     <p className="text-sm font-medium text-gray-600">Descripción</p>
-                    <p className="text-gray-900">{orderData.descripcion}</p>
+                    <p className="text-gray-900">{orderData.desc_problema || '-'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -191,7 +222,7 @@ export default function MaintenanceDetail() {
                                     {refacciones.map((ref: any) => (
                                       <tr key={ref.id} className="border-b border-gray-100">
                                         <td className="py-2 font-medium text-gray-900">
-                                          {ref.articulo_nombre}
+                                          {ref.article?.nombre}
                                         </td>
                                         <td className="py-2 text-center">{ref.cantidad}</td>
                                         <td className="py-2 text-right">
@@ -297,7 +328,7 @@ export default function MaintenanceDetail() {
               </CardHeader>
               <CardContent>
                 <div className="text-center">
-                  <p className="text-lg font-bold text-gray-900">{orderData.socio_responsable}</p>
+                  <p className="text-lg font-bold text-gray-900">{orderData.socio?.nombre ?? '-'}</p>
                   <p className="text-sm text-gray-500 mt-1">socio asignado</p>
                 </div>
               </CardContent>
@@ -305,6 +336,82 @@ export default function MaintenanceDetail() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Orden de Mantenimiento"
+        size="lg"
+      >
+        <div className="space-y-4">
+          {editError && (
+            <div className="p-3 text-sm text-red-700 bg-red-50 rounded-md">
+              {editError}
+            </div>
+          )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Fecha Programada
+            </label>
+            <Input
+              type="date"
+              value={editFecha}
+              onChange={(e) => setEditFecha(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Descripción del Problema
+            </label>
+            <textarea
+              value={editDescripcion}
+              onChange={(e) => setEditDescripcion(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Describe el problema o servicio..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Trabajo Realizado
+            </label>
+            <textarea
+              value={editTrabajo}
+              onChange={(e) => setEditTrabajo(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              placeholder="Describe el trabajo realizado..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Costo de Mano de Obra ($)
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              value={editCosto}
+              onChange={(e) => setEditCosto(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="secondary"
+              onClick={() => setShowEditModal(false)}
+              disabled={updateMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              loading={updateMutation.isPending}
+            >
+              Guardar Cambios
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }

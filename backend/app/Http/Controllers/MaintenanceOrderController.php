@@ -60,9 +60,9 @@ class MaintenanceOrderController extends Controller
 
     public function update(UpdateMaintenanceOrderRequest $request, MaintenanceOrder $maintenanceOrder): JsonResponse
     {
-        $maintenanceOrder->update($request->validated());
+        $order = $this->maintenanceService->update($maintenanceOrder, $request->validated());
 
-        return response()->json(new MaintenanceOrderResource($maintenanceOrder->fresh(['printer'])));
+        return response()->json(new MaintenanceOrderResource($order));
     }
 
     public function complete(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse

@@ -182,6 +182,16 @@ class MaintenanceService
         return (float) $order->costo_mano_obra + $articlesCost;
     }
 
+    public function update(MaintenanceOrder $order, array $data): MaintenanceOrder
+    {
+        $order->update($data);
+
+        $order->costo_total = $this->calculateTotalCost($order);
+        $order->save();
+
+        return $order->fresh(['printer', 'articlesUsed.article']);
+    }
+
     public function registerPrinterExpense(array $data, User $creator): \App\Models\PrinterExpense
     {
         $data['socio_id'] = $creator->id;

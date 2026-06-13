@@ -24,13 +24,13 @@ export default function MaintenanceList() {
       sortable: true,
     },
     {
-      key: 'impresora_marca',
+      key: 'impresora_id',
       label: 'Impresora',
       sortable: true,
       render: (_value: string, row: any) => (
         <div>
-          <p className="font-medium">{row.impresora_marca} {row.impresora_modelo}</p>
-          <p className="text-xs text-gray-500">{row.socio_responsable}</p>
+          <p className="font-medium">{row.printer?.marca} {row.printer?.modelo}</p>
+          <p className="text-xs text-gray-500">{row.socio?.nombre}</p>
         </div>
       ),
     },
@@ -41,20 +41,20 @@ export default function MaintenanceList() {
       render: (value: string) => formatDate(value),
     },
     {
-      key: 'tipo',
+      key: 'tipo_mantto',
       label: 'Tipo',
       sortable: true,
       render: (value: string) => (
-        <Badge variant={value === 'preventivo' ? 'primary' : 'warning'}>
-          {value === 'preventivo' ? 'PREVENTIVO' : 'CORRECTIVO'}
+        <Badge variant={value === 'PREVENTIVO' ? 'primary' : 'warning'}>
+          {value === 'PREVENTIVO' ? 'PREVENTIVO' : 'CORRECTIVO'}
         </Badge>
       ),
     },
     {
-      key: 'descripcion',
+      key: 'desc_problema',
       label: 'Descripción',
       render: (value: string) => (
-        <p className="text-sm text-gray-700 max-w-xs truncate">{value}</p>
+        <p className="text-sm text-gray-700 max-w-xs truncate">{value || '-'}</p>
       ),
     },
     {
