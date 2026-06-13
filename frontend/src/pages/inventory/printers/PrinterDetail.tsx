@@ -4,9 +4,12 @@ import { ArrowLeft, Printer as PrinterIcon, Calendar, Activity, Settings, Edit, 
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { usePrinter } from '@/hooks/usePrinters'
+import PrinterForm from '@/components/printer/PrinterForm'
+import type { PrinterFormData } from '@/components/printer/PrinterForm'
+import { usePrinter, useUpdatePrinter } from '@/hooks/usePrinters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 
@@ -14,8 +17,10 @@ export default function PrinterDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
+  const [showEditModal, setShowEditModal] = useState(false)
   const printerId = id ? parseInt(id) : 0
   const { data: printer, isLoading, error } = usePrinter(printerId)
+  const updatePrinter = useUpdatePrinter()
 
   if (isLoading) {
     return (
@@ -42,6 +47,13 @@ export default function PrinterDetail() {
   const readings = printerData.lecturas || []
   const maintenance = printerData.mantenimientos || []
 
+  const handleEdit = (data: PrinterFormData) => {
+    updatePrinter.mutate(
+      { id: printerId, ...data },
+      { onSuccess: () => setShowEditModal(false) }
+    )
+  }
+
   return (
     <PageLayout title={`Inventario › Impresoras › ${printerData.marca} ${printerData.modelo}`}>
       <div className="space-y-6">
@@ -52,7 +64,7 @@ export default function PrinterDetail() {
           </Button>
           {isAdmin && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setShowEditModal(true)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
@@ -302,6 +314,21 @@ export default function PrinterDetail() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Impresora"
+        size="lg"
+      >
+        <PrinterForm
+          initialData={printerData}
+          onSubmit={handleEdit}
+          onCancel={() => setShowEditModal(false)}
+          isEdit
+          loading={updatePrinter.isPending}
+        />
+      </Modal>
     </PageLayout>
   )
 }

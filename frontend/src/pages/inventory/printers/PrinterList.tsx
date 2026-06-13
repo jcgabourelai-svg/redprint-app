@@ -1,21 +1,67 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Printer as PrinterIcon, Plus, MoreVertical } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
-import Table from '@/components/ui/Table'
+import Table, { type FilterConfig } from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
-import { usePrinters } from '@/hooks/usePrinters'
+import Modal from '@/components/ui/Modal'
+import PrinterForm, { type PrinterFormData } from '@/components/printer/PrinterForm'
+import { usePrinters, useCreatePrinter } from '@/hooks/usePrinters'
 import { formatCurrency, formatDate, getPrinterStatusColor } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
+
+const PRINTER_FILTERS: FilterConfig[] = [
+  {
+    key: 'estado',
+    label: 'Estado',
+    options: [
+      { label: 'En almacén', value: 'EN_ALMACEN' },
+      { label: 'Rentada', value: 'RENTADA' },
+      { label: 'En mantenimiento', value: 'EN_MANTENIMIENTO' },
+      { label: 'Dada de baja', value: 'DADA_DE_BAJA' },
+    ],
+  },
+  {
+    key: 'marca',
+    label: 'Marca',
+    type: 'text',
+    placeholder: 'Ej: HP',
+  },
+]
 
 export default function PrinterList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [page, setPage] = useState(1)
-  const { data, isLoading, error } = usePrinters({ page, per_page: 25 })
+  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [createError, setCreateError] = useState<string | null>(null)
+
+  const params: Record<string, string | number> = { page, per_page: 25 }
+  if (activeFilters.estado) params.estado = activeFilters.estado
+  if (activeFilters.marca) params.marca = activeFilters.marca
+  const { data, isLoading, error } = usePrinters(params)
+  const createMutation = useCreatePrinter()
 
   const printers = data?.data || []
+
+  const handleFilterChange = useCallback((next: Record<string, string>) => {
+    setActiveFilters(next)
+    setPage(1)
+  }, [])
+
+  const handleCreate = useCallback(
+    async (data: PrinterFormData) => {
+      try {
+        await createMutation.mutateAsync(data)
+        setShowCreateModal(false)
+      } catch {
+        setCreateError('No se pudo crear la impresora. Verifica los datos e intenta nuevamente.')
+      }
+    },
+    [createMutation]
+  )
 
   const columns = [
     {
@@ -106,7 +152,7 @@ export default function PrinterList() {
             <p className="text-sm text-gray-500">Gestión de impresoras del negocio</p>
           </div>
           {isAdmin && (
-            <Button>
+            <Button onClick={() => { setShowCreateModal(true); setCreateError(null) }}>
               <Plus className="mr-2 h-4 w-4" />
               Nueva Impresora
             </Button>
@@ -118,6 +164,9 @@ export default function PrinterList() {
           columns={columns}
           searchable={true}
           sortable={true}
+          filters={PRINTER_FILTERS}
+          filterState={activeFilters}
+          onFilterChange={handleFilterChange}
           paginatable={true}
           pageSize={25}
           currentPage={page}
@@ -127,6 +176,24 @@ export default function PrinterList() {
           onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
         />
       </div>
+
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => { setShowCreateModal(false); setCreateError(null) }}
+        title="Nueva Impresora"
+        size="lg"
+      >
+        {createError && (
+          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {createError}
+          </div>
+        )}
+        <PrinterForm
+          onSubmit={handleCreate}
+          onCancel={() => { setShowCreateModal(false); setCreateError(null) }}
+          loading={createMutation.isPending}
+        />
+      </Modal>
     </PageLayout>
   )
 }
