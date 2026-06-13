@@ -66,6 +66,17 @@ export function useCancelMaintenanceOrder() {
   })
 }
 
+export function useDeleteMaintenanceOrder() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/maintenance-orders/${id}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['maintenance-orders'] })
+      qc.invalidateQueries({ queryKey: ['printers'] })
+    },
+  })
+}
+
 export function useAddArticleToMaintenance() {
   const qc = useQueryClient()
   return useMutation({

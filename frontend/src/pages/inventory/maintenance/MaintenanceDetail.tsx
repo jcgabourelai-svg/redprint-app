@@ -11,6 +11,7 @@ import {
   XCircle,
   AlertCircle,
   Edit,
+  Trash2,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -19,7 +20,7 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useMaintenanceOrder, useUpdateMaintenanceOrder, useCompleteMaintenanceOrder, useCancelMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
+import { useMaintenanceOrder, useUpdateMaintenanceOrder, useCompleteMaintenanceOrder, useCancelMaintenanceOrder, useDeleteMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
 import { formatCurrency, formatDate, getMaintenanceStatusColor } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 import { useIsAdmin } from '@/contexts/AuthContext'
@@ -46,6 +47,7 @@ export default function MaintenanceDetail() {
   const completeMutation = useCompleteMaintenanceOrder()
   const cancelMutation = useCancelMaintenanceOrder()
   const updateMutation = useUpdateMaintenanceOrder()
+  const deleteMutation = useDeleteMaintenanceOrder()
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [editError, setEditError] = useState('')
@@ -53,6 +55,9 @@ export default function MaintenanceDetail() {
   const [editDescripcion, setEditDescripcion] = useState('')
   const [editTrabajo, setEditTrabajo] = useState('')
   const [editCosto, setEditCosto] = useState('')
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
 
   const openEditModal = () => {
     setEditError('')
@@ -76,6 +81,22 @@ export default function MaintenanceDetail() {
       setShowEditModal(false)
     } catch (err) {
       setEditError(parseApiError(err))
+    }
+  }
+
+  const openDeleteModal = () => {
+    setDeleteError('')
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteSubmit = async () => {
+    setDeleteError('')
+    try {
+      await deleteMutation.mutateAsync(orderId)
+      setShowDeleteModal(false)
+      navigate('/inventario/mantenimiento')
+    } catch (err) {
+      setDeleteError(parseApiError(err))
     }
   }
 
@@ -131,6 +152,12 @@ export default function MaintenanceDetail() {
               {orderData.estado === 'PROGRAMADA' && (
                 <Button variant="danger" size="sm" onClick={() => cancelMutation.mutate(orderId)}>
                   Cancelar
+                </Button>
+              )}
+              {(orderData.estado === 'PROGRAMADA' || orderData.estado === 'CANCELADA') && (
+                <Button variant="danger" size="sm" onClick={openDeleteModal}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Eliminar
                 </Button>
               )}
             </div>
@@ -408,6 +435,52 @@ export default function MaintenanceDetail() {
               loading={updateMutation.isPending}
             >
               Guardar Cambios
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Eliminar Orden de Mantenimiento"
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            ¿Estás seguro de que deseas eliminar la orden #{orderId}? Esta acción oculta la orden
+            del listado pero se conserva para auditoría.
+          </p>
+          <div className="bg-red-50 rounded p-3 text-xs text-red-700 space-y-1">
+            {orderData.estado === 'PROGRAMADA' ? (
+              <>
+                <p>• Se eliminarán los artículos usados de la orden.</p>
+                {orderData.tipo_mantto === 'CORRECTIVO' && (
+                  <p>• La impresora volverá a su estado anterior.</p>
+                )}
+              </>
+            ) : (
+              <p>• La orden ya fue cancelada, no hay datos adicionales por revertir.</p>
+            )}
+          </div>
+          {deleteError && (
+            <div className="p-3 text-sm text-red-700 bg-red-50 rounded-md">
+              {deleteError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="secondary"
+              onClick={() => setShowDeleteModal(false)}
+              disabled={deleteMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteSubmit}
+              loading={deleteMutation.isPending}
+            >
+              Eliminar
             </Button>
           </div>
         </div>

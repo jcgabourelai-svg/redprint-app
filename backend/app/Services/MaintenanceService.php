@@ -111,24 +111,13 @@ class MaintenanceService
             }
 
             if ($order->tipo_mantto === MaintenanceType::CORRECTIVO) {
-                $previousStatus = $order->estado_anterior_impresora
-                    ? PrinterStatus::from($order->estado_anterior_impresora)
-                    : PrinterStatus::EN_ALMACEN;
-
-                $order->printer->update(['estado' => $previousStatus]);
-
-                PrinterHistory::create([
-                    'impresora_id' => $order->printer->id,
-                    'tipo_evento' => 'MANTENIMIENTO_FIN',
-                    'descripcion' => "Mantenimiento correctivo completado - Orden #{$order->id}",
-                    'datos_adicionales' => [
-                        'orden_mantto_id' => $order->id,
-                        'costo_total' => $costoTotal,
-                        'estado_restaurado' => $previousStatus->value,
-                    ],
-                    'socio_id' => $user->id,
-                    'fecha' => now(),
-                ]);
+                $this->restorePrinterState(
+                    $order,
+                    $user,
+                    'MANTENIMIENTO_FIN',
+                    "Mantenimiento correctivo completado - Orden #{$order->id}",
+                    ['costo_total' => $costoTotal],
+                );
             } else {
                 PrinterHistory::create([
                     'impresora_id' => $order->printer->id,
@@ -158,22 +147,71 @@ class MaintenanceService
 
             $order->articlesUsed()->delete();
 
-            if ($order->tipo_mantto === MaintenanceType::CORRECTIVO && $order->estado_anterior_impresora) {
-                $previousStatus = PrinterStatus::from($order->estado_anterior_impresora);
-                $order->printer->update(['estado' => $previousStatus]);
-
-                PrinterHistory::create([
-                    'impresora_id' => $order->printer->id,
-                    'tipo_evento' => 'MANTENIMIENTO_CANCELADO',
-                    'descripcion' => "Mantenimiento cancelado - Orden #{$order->id}",
-                    'datos_adicionales' => ['orden_mantto_id' => $order->id],
-                    'socio_id' => $user->id,
-                    'fecha' => now(),
-                ]);
-            }
+            $this->restorePrinterState(
+                $order,
+                $user,
+                'MANTENIMIENTO_CANCELADO',
+                "Mantenimiento cancelado - Orden #{$order->id}",
+            );
 
             return $order->fresh();
         });
+    }
+
+    public function delete(MaintenanceOrder $order, User $user): MaintenanceOrder
+    {
+        if (!in_array($order->estado, [MaintenanceStatus::PROGRAMADA, MaintenanceStatus::CANCELADA], true)) {
+            throw new BusinessRuleException('Solo se pueden eliminar ordenes programadas o canceladas');
+        }
+
+        return DB::transaction(function () use ($order, $user) {
+            if ($order->estado === MaintenanceStatus::PROGRAMADA) {
+                $order->articlesUsed()->delete();
+
+                $this->restorePrinterState(
+                    $order,
+                    $user,
+                    'MANTENIMIENTO_ELIMINADO',
+                    "Orden de mantenimiento eliminada - Orden #{$order->id}",
+                );
+            }
+
+            $order->expenses()->update(['orden_mantto_id' => null]);
+
+            $order->delete();
+
+            return $order;
+        });
+    }
+
+    private function restorePrinterState(
+        MaintenanceOrder $order,
+        User $user,
+        string $evento,
+        string $descripcion,
+        array $extraDatos = [],
+    ): void {
+        if ($order->tipo_mantto !== MaintenanceType::CORRECTIVO) {
+            return;
+        }
+
+        $previousStatus = $order->estado_anterior_impresora
+            ? PrinterStatus::from($order->estado_anterior_impresora)
+            : PrinterStatus::EN_ALMACEN;
+
+        $order->printer->update(['estado' => $previousStatus]);
+
+        PrinterHistory::create([
+            'impresora_id' => $order->printer->id,
+            'tipo_evento' => $evento,
+            'descripcion' => $descripcion,
+            'datos_adicionales' => array_merge(
+                ['orden_mantto_id' => $order->id, 'estado_restaurado' => $previousStatus->value],
+                $extraDatos,
+            ),
+            'socio_id' => $user->id,
+            'fecha' => now(),
+        ]);
     }
 
     public function calculateTotalCost(MaintenanceOrder $order): float

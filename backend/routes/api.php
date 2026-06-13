@@ -85,7 +85,8 @@ Route::prefix('v1')->group(function () {
         Route::get('inventory-movements', [InventoryMovementController::class, 'index']);
         Route::get('inventory-movements/{inventoryMovement}', [InventoryMovementController::class, 'show']);
 
-        Route::apiResource('maintenance-orders', MaintenanceOrderController::class);
+        Route::apiResource('maintenance-orders', MaintenanceOrderController::class)->except(['destroy']);
+        Route::delete('maintenance-orders/{maintenanceOrder}', [MaintenanceOrderController::class, 'destroy'])->middleware('role:ADMIN');
         Route::post('maintenance-orders/{maintenanceOrder}/complete', [MaintenanceOrderController::class, 'complete']);
         Route::post('maintenance-orders/{maintenanceOrder}/cancel', [MaintenanceOrderController::class, 'cancel']);
         Route::post('maintenance-orders/{maintenanceOrder}/articles', [MaintenanceOrderController::class, 'addArticle']);

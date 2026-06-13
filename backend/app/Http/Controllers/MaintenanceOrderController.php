@@ -86,6 +86,13 @@ class MaintenanceOrderController extends Controller
         return response()->json(new MaintenanceOrderResource($order));
     }
 
+    public function destroy(MaintenanceOrder $maintenanceOrder): JsonResponse
+    {
+        $this->maintenanceService->delete($maintenanceOrder, request()->user());
+
+        return response()->json(null, 204);
+    }
+
     public function addArticle(Request $request, MaintenanceOrder $maintenanceOrder): JsonResponse
     {
         $validated = $request->validate([
