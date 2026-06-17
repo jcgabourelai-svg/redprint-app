@@ -90,42 +90,42 @@ redprint-app/
 
 ### 1. Entorno completo con Docker (recomendado)
 
-El proyecto incluye scripts de bootstrap multiplataforma. Eligen `.env`, construyen el frontend si falta y levantan el stack; el **entrypoint del contenedor** se encarga automáticamente de `composer install`, `key:generate`, `migrate`, `db:seed` (solo la primera vez) y `storage:link`.
+El stack es **totalmente autónomo**: con un solo comando se construye el frontend dentro de Docker, se crea el `.env`, se generan `APP_KEY`, dependencias, migraciones y seeders. **No necesitas Node, npm, PHP ni Composer instalados en tu máquina**, solo Docker.
 
-**Windows (PowerShell):**
-```powershell
-.\setup.ps1
-```
-
-**Linux / macOS / Git Bash:**
 ```bash
-./setup.sh
+docker compose up -d --build
 ```
 
-El primer arranque tarda ~30–60s (composer install + migrate + seed). Una vez completo:
+El primer arranque tarda ~1–3 min (build del frontend + composer install + migrate + seed). Una vez completo:
 
 | Servicio | URL |
 |----------|-----|
 | Frontend | `http://localhost:${APP_PORT}` (por defecto `8080`) |
 | API      | `http://localhost:${APP_PORT}/api/v1` |
 
+Credenciales sembradas (todas con contraseña `password`): `admin@redprint.com`, `operador1@redprint.com`, etc.
+
 > El `db:seed` es idempotente: solo se ejecuta si la base está vacía, por lo que reiniciar el stack con `docker compose down && docker compose up -d --build` no duplica datos.
 
-#### ¿Qué hace el entrypoint automáticamente?
+#### ¿Qué pasa automáticamente en el arranque?
 
-El contenedor `app` ejecuta `backend/entrypoint.sh` en cada arranque:
+- **Servicio `frontend`** (node:20): compila la SPA (`npm install && npm run build`) y deja `frontend/dist` para Nginx. Se omite si el `dist` ya existe.
+- **Contenedor `app`** ejecuta `backend/entrypoint.sh` en cada arranque:
+  1. Crea `bootstrap/cache` y `storage/framework/*` con permisos (faltan en un clone fresco por `.gitignore`).
+  2. Crea `backend/.env` desde `.env.example` si no existe.
+  3. Ajusta `APP_URL`, `FRONTEND_URL` y `SANCTUM_STATEFUL_DOMAINS` al `host:puerto` expuesto (esencial para que el login persista la sesión).
+  4. Genera `APP_KEY` si está vacía.
+  5. Ejecuta `composer install` si falta `vendor/`.
+  6. `php artisan migrate --force`.
+  7. `php artisan db:seed --force` **solo si la tabla `users` está vacía**.
+  8. `php artisan storage:link` y arranca `php-fpm`.
 
-1. Crea `bootstrap/cache` y `storage/framework/*` con permisos (faltan en un clone fresco por `.gitignore`).
-2. Genera `APP_KEY` si está vacía.
-3. Ejecuta `composer install` si falta `vendor/`.
-4. `php artisan migrate --force`.
-5. `php artisan db:seed --force` **solo si la tabla `users` está vacía**.
-6. `php artisan storage:link`.
-7. Arranca `php-fpm`.
+> ⚠️ **Nota sobre Sanctum y el puerto:** la autenticación SPA por cookies requiere que `SANCTUM_STATEFUL_DOMAINS` incluya el **host con el puerto** del frontend (p. ej. `localhost:8080`). El entrypoint lo garantiza automáticamente; si trabajas el backend fuera de Docker, edítalo a mano en `backend/.env`.
 
-### 2. Construir el frontend
+### 2. Construir el frontend manualmente (opcional)
 
-Antes del primer despliegue (o tras cambios en la UI):
+Docker ya compila el frontend por ti. Solo necesitas compilarlo a mano si quieres
+usar tu Node local (más rápido en iteraciones) o si cambiaste la UI:
 
 ```bash
 cd frontend

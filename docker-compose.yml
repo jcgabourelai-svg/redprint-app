@@ -1,4 +1,15 @@
 services:
+  # --- Builder del frontend (se ejecuta una sola vez y termina) -----------------
+  # Compila la SPA React/Vite dentro de Docker. Asi NO hace falta tener Node/npm
+  # instalado en el host: con "docker compose up" el dist queda listo para nginx.
+  # Si frontend/dist ya existe (build previo / hecho a mano), se omite.
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "if [ ! -f dist/index.html ]; then echo '[frontend] npm install + build'; npm install --no-audit --no-fund && npm run build; else echo '[frontend] dist ya existe, omito build'; fi"
+    volumes:
+      - ./frontend:/app
+
   app:
     build:
       context: ./backend
@@ -12,6 +23,10 @@ services:
     environment:
       - APP_ENV=${APP_ENV:-local}
       - RUN_MIGRATIONS=${RUN_MIGRATIONS:-1}
+      # Se pasan al entrypoint para que ajuste APP_URL y SANCTUM_STATEFUL_DOMAINS
+      # con el host:puerto correcto (el bug del puerto de Sanctum en SPA auth).
+      - APP_PORT=${APP_PORT:-8080}
+      - APP_DOMAIN=${APP_DOMAIN:-localhost}
       - DB_HOST=database
       - DB_PORT=5432
       - DB_DATABASE=${DB_DATABASE:-redprint}
@@ -57,7 +72,7 @@ services:
     container_name: redprint-nginx
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${APP_PORT:-78080}:80"
+      - "0.0.0.0:${APP_PORT:-8080}:80"
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./backend:/var/www/html:ro
@@ -65,6 +80,9 @@ services:
     depends_on:
       app:
         condition: service_healthy
+      frontend:
+        # nginx no arranca hasta que el frontend este compilado (evita el 403).
+        condition: service_completed_successfully
     networks:
       - redprint
 

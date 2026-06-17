@@ -1,7 +1,7 @@
 #!/bin/sh
 # Entrypoint del contenedor "app" (Laravel / PHP-FPM).
 # Se ejecuta en runtime, DESPUES de que los volumenes estan montados, por lo
-# que puede crear los directorios que faltan en un clone fresco
+# que puede crear los directorios y archivos que faltan en un clone fresco
 # (backend/storage y backend/bootstrap/cache estan en .gitignore y el volumen
 # ./backend:/var/www/html los oculta aunque el Dockerfile los cree).
 # Es idempotente: seguro para reinicios.
@@ -9,6 +9,8 @@
 # Variables de entorno (definir en .env del compose):
 #   APP_ENV         local (dev, con deps de desarrollo) | production (--no-dev).
 #   RUN_MIGRATIONS  1 (default, dev) corre migrate+seed; 0 omite (produccion).
+#   APP_PORT        Puerto externo de nginx (para APP_URL / Sanctum stateful).
+#   APP_DOMAIN      Dominio/host publico (para APP_URL / Sanctum stateful).
 
 set -e
 
@@ -25,8 +27,57 @@ mkdir -p \
 chown -R www-data:www-data bootstrap/cache storage
 chmod -R 775 bootstrap/cache storage
 
+# ----------------------------------------------------------------------------
+# .env del backend: crear desde .env.example si no existe.
+# Permite levantar el stack SOLO con "docker compose up" (sin setup script).
+# ----------------------------------------------------------------------------
+if [ ! -f .env ]; then
+    if [ -f .env.example ]; then
+        cp .env.example .env
+        echo "[entrypoint] Creado .env desde .env.example"
+    else
+        echo "[entrypoint] ERROR: no existe .env ni .env.example" >&2
+        exit 1
+    fi
+fi
+
+# Normaliza finales de linea a LF (el .env.example puede venir con CRLF desde
+# Windows, lo que rompe los greps y deja APP_KEY vacio -> error 500).
+sed -i 's/\r$//' .env
+
+# ----------------------------------------------------------------------------
+# APP_URL y SANCTUM_STATEFUL_DOMAINS ajustados al host:puerto expuesto.
+# Sanctum solo considera "stateful" (con sesion) las peticiones cuyo
+# Referer/Origin coincide con SANCTUM_STATEFUL_DOMAINS. Si el dominio no incluye
+# el PUERTO (p.ej. "localhost" pero se sirve en :8080), el login NO persiste la
+# sesion y /auth/user devuelve 401. Aqui lo garantizamos automaticamente.
+# ----------------------------------------------------------------------------
+APP_PORT="${APP_PORT:-8080}"
+APP_DOMAIN="${APP_DOMAIN:-localhost}"
+APP_HOST_PORT="${APP_DOMAIN}:${APP_PORT}"
+
+# Conjunto canonico de dominios stateful (host con y sin puerto).
+SANCTUM_DOMAINS="${APP_DOMAIN},${APP_HOST_PORT},127.0.0.1,127.0.0.1:${APP_PORT}"
+
+# Helper: reescribe una clave de .env borrando todas sus lineas y anadiendo una
+# sola al final. Evita los problemas de sed con variables que contienen / : y ,
+# (que en una iteracion anterior provoco una linea huerfana y rompio el parser).
+set_env() {
+    key="$1"
+    val="$2"
+    if grep -q "^${key}=" .env; then
+        sed -i "/^${key}=/d" .env
+    fi
+    printf '%s=%s\n' "${key}" "${val}" >> .env
+}
+
+set_env APP_URL          "http://${APP_HOST_PORT}"
+set_env FRONTEND_URL     "http://${APP_HOST_PORT}"
+set_env SANCTUM_STATEFUL_DOMAINS "${SANCTUM_DOMAINS}"
+
 # APP_KEY: generar solo si esta vacia en .env (idempotente).
-if grep -q "^APP_KEY=$" .env 2>/dev/null; then
+# El patron tolera espacios/CR residuales por si el .env se edito a mano.
+if grep -Eq "^APP_KEY=[[:space:]]*$" .env 2>/dev/null; then
     echo "[entrypoint] Generando APP_KEY..."
     php artisan key:generate --force
 fi
