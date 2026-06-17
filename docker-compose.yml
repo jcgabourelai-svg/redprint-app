@@ -10,6 +10,8 @@ services:
       - ./backend:/var/www/html
       - app_storage:/var/www/html/storage
     environment:
+      - APP_ENV=${APP_ENV:-local}
+      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-1}
       - DB_HOST=database
       - DB_PORT=5432
       - DB_DATABASE=${DB_DATABASE:-redprint}
@@ -18,6 +20,15 @@ services:
     depends_on:
       database:
         condition: service_healthy
+    healthcheck:
+      # Confirma que php-fpm ya esta escuchando (arranca despues del entrypoint:
+      # composer install + migrate + seed). Evita 502 en nginx en el primer up.
+      # Los '$$' se escapan para que compose no los interprete como variables.
+      test: ["CMD-SHELL", "php -r '$$s=@fsockopen(\"127.0.0.1\",9000,$$e,$$m,2);exit($$s?0:1);'"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 60s
     networks:
       - redprint
 
@@ -52,7 +63,8 @@ services:
       - ./backend:/var/www/html:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
     networks:
       - redprint
 

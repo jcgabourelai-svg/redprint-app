@@ -62,7 +62,9 @@ redprint-app/
 │   ├── database/           # Migraciones, seeders y factories
 │   ├── routes/api.php      # Definición de rutas de la API
 │   ├── tests/              # Tests PHPUnit
-│   └── Dockerfile
+│   ├── Dockerfile
+│   ├── entrypoint.sh       # Bootstrap automático (dirs, migrate, seed...)
+│   └── .dockerignore
 ├── frontend/               # SPA React + Vite
 │   └── src/
 │       ├── components/     # Componentes reutilizables
@@ -73,7 +75,8 @@ redprint-app/
 │       └── App.tsx         # Definición de rutas
 ├── nginx/                  # Plantilla de configuración de Nginx
 ├── docker-compose.yml      # Orquestación de servicios
-├── setup.sh                # Bootstrap del entorno (env, build, migrate, seed)
+├── setup.sh                # Bootstrap (Linux/macOS/Git Bash)
+├── setup.ps1               # Bootstrap (Windows PowerShell)
 └── .env.example            # Variables del compose (APP_PORT, DB_*, ...)
 ```
 
@@ -87,26 +90,38 @@ redprint-app/
 
 ### 1. Entorno completo con Docker (recomendado)
 
-El script `setup.sh` automatiza toda la inicialización:
+El proyecto incluye scripts de bootstrap multiplataforma. Eligen `.env`, construyen el frontend si falta y levantan el stack; el **entrypoint del contenedor** se encarga automáticamente de `composer install`, `key:generate`, `migrate`, `db:seed` (solo la primera vez) y `storage:link`.
 
+**Windows (PowerShell):**
+```powershell
+.\setup.ps1
+```
+
+**Linux / macOS / Git Bash:**
 ```bash
-cp .env.example .env          # ajusta DB_PASSWORD y APP_DOMAIN para producción
 ./setup.sh
 ```
 
-Esto realiza:
-
-1. Copia los archivos `.env` (raíz y backend) si no existen.
-2. Verifica que `frontend/dist` esté construido.
-3. Levanta los contenedores (`app`, `database`, `nginx`).
-4. Instala dependencias de Laravel, genera la `APP_KEY`, ejecuta migraciones, seeders y el symlink de storage.
-
-Una vez completo:
+El primer arranque tarda ~30–60s (composer install + migrate + seed). Una vez completo:
 
 | Servicio | URL |
 |----------|-----|
 | Frontend | `http://localhost:${APP_PORT}` (por defecto `8080`) |
 | API      | `http://localhost:${APP_PORT}/api/v1` |
+
+> El `db:seed` es idempotente: solo se ejecuta si la base está vacía, por lo que reiniciar el stack con `docker compose down && docker compose up -d --build` no duplica datos.
+
+#### ¿Qué hace el entrypoint automáticamente?
+
+El contenedor `app` ejecuta `backend/entrypoint.sh` en cada arranque:
+
+1. Crea `bootstrap/cache` y `storage/framework/*` con permisos (faltan en un clone fresco por `.gitignore`).
+2. Genera `APP_KEY` si está vacía.
+3. Ejecuta `composer install` si falta `vendor/`.
+4. `php artisan migrate --force`.
+5. `php artisan db:seed --force` **solo si la tabla `users` está vacía**.
+6. `php artisan storage:link`.
+7. Arranca `php-fpm`.
 
 ### 2. Construir el frontend
 

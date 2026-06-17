@@ -23,11 +23,16 @@ RUN docker-php-ext-install \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+# Entrypoint en /usr/local/bin: queda FUERA del volumen ./backend:/var/www/html,
+# asi nunca lo oculta el mount y se normaliza a LF (evita problemas de CRLF
+# cuando el proyecto se clona/crea en Windows).
+COPY entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-entrypoint.sh \
+    && chmod +x /usr/local/bin/docker-entrypoint.sh
+
 WORKDIR /var/www/html
 
 COPY . .
-
-RUN if [ -f composer.json ]; then composer install --no-dev --optimize-autoloader --no-interaction; fi
 
 RUN mkdir -p storage/app/public storage/framework/cache storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chown -R www-data:www-data /var/www/html \
@@ -36,4 +41,5 @@ RUN mkdir -p storage/app/public storage/framework/cache storage/framework/sessio
 
 EXPOSE 9000
 
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["php-fpm"]

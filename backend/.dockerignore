@@ -1,0 +1,20 @@
+# Evita que archivos del host rompan el build o contaminen la imagen.
+# public/storage es un symlink (storage:link) que hace fallar "COPY . .".
+public/storage
+
+# Dependencias y artefactos (se instalan en build / runtime).
+vendor/
+node_modules/
+
+# El volumen ./backend ya monta el codigo; el entrypoint crea storage.
+storage/
+
+# Secretos: nunca al build.
+.env
+.env.*
+!.env.example
+
+# VCS y temporales.
+.git/
+.gitignore
+*.log
