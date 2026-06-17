@@ -75,15 +75,11 @@ set_env APP_URL          "http://${APP_HOST_PORT}"
 set_env FRONTEND_URL     "http://${APP_HOST_PORT}"
 set_env SANCTUM_STATEFUL_DOMAINS "${SANCTUM_DOMAINS}"
 
-# APP_KEY: generar solo si esta vacia en .env (idempotente).
-# El patron tolera espacios/CR residuales por si el .env se edito a mano.
-if grep -Eq "^APP_KEY=[[:space:]]*$" .env 2>/dev/null; then
-    echo "[entrypoint] Generando APP_KEY..."
-    php artisan key:generate --force
-fi
-
-# vendor/: el volumen ./backend oculta el vendor instalado durante el build.
-# En produccion excluimos las dependencias de desarrollo (--no-dev).
+# vendor/: el volumen ./backend oculta el vendor instalado durante el build,
+# asi que en un clone fresco NO existe vendor/autoload.php. Hay que instalar
+# ANTES de cualquier comando artisan (key:generate, migrate, storage:link...),
+# porque artisan requiere el autoloader. En produccion se excluyen las deps
+# de desarrollo (--no-dev).
 if [ ! -f vendor/autoload.php ]; then
     if [ "${APP_ENV:-local}" = "local" ]; then
         COMPOSER_DEV_OPT=""
@@ -92,6 +88,13 @@ if [ ! -f vendor/autoload.php ]; then
     fi
     echo "[entrypoint] Instalando dependencias de composer${COMPOSER_DEV_OPT:+ (sin dev)}..."
     composer install --no-interaction --optimize-autoloader $COMPOSER_DEV_OPT
+fi
+
+# APP_KEY: generar solo si esta vacia en .env (idempotente).
+# El patron tolera espacios/CR residuales por si el .env se edito a mano.
+if grep -Eq "^APP_KEY=[[:space:]]*$" .env 2>/dev/null; then
+    echo "[entrypoint] Generando APP_KEY..."
+    php artisan key:generate --force
 fi
 
 # Storage symlink (idempotente, ignora error si ya existe).
