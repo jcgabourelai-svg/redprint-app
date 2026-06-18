@@ -9,13 +9,15 @@ import Badge from '@/components/ui/Badge'
 import Tabs from '@/components/ui/Tabs'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatDate } from '@/lib/formatters'
-import { useUsers, useResetUserPassword } from '@/hooks/useUsers'
+import { useUsers, useCreateUser, useUpdateUser, useResetUserPassword } from '@/hooks/useUsers'
 import type { User } from '@/types/admin'
 import { parseApiError } from '@/lib/api-errors'
 
 export default function UserListPage() {
   const { data: usersData, isLoading, error } = useUsers()
   const resetUserPassword = useResetUserPassword()
+  const createUser = useCreateUser()
+  const updateUser = useUpdateUser()
   const [users, setUsers] = useState<User[]>([])
   const [showModal, setShowModal] = useState(false)
   const [showDetailModal, setShowDetailModal] = useState(false)
@@ -71,7 +73,32 @@ export default function UserListPage() {
       setFormError('Debe haber al menos un administrador en el sistema')
       return
     }
-    setShowModal(false)
+    try {
+      if (editingUser) {
+        await updateUser.mutateAsync({
+          id: editingUser.id,
+          nombre: formData.nombre,
+          email: formData.email,
+          rol: formData.rol,
+          activo: formData.activo,
+        })
+      } else {
+        if (formData.password.length < 6) {
+          setFormError('La contrasena debe tener al menos 6 caracteres')
+          return
+        }
+        await createUser.mutateAsync({
+          nombre: formData.nombre,
+          email: formData.email,
+          password: formData.password,
+          rol: formData.rol,
+          activo: formData.activo,
+        })
+      }
+      setShowModal(false)
+    } catch (err) {
+      setFormError(parseApiError(err))
+    }
   }
 
   const handleDelete = () => {
@@ -325,8 +352,8 @@ export default function UserListPage() {
             <Button variant="secondary" onClick={() => setShowModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleSave}>
-              Guardar
+            <Button onClick={handleSave} disabled={createUser.isPending || updateUser.isPending}>
+              {createUser.isPending || updateUser.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </div>

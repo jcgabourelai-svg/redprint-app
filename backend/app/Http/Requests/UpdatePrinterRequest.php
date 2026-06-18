@@ -16,10 +16,18 @@ class UpdatePrinterRequest extends FormRequest
         return [
             'marca' => 'sometimes|string|max:255',
             'modelo' => 'sometimes|string|max:255',
+            'num_serie' => 'sometimes|string|max:255|unique:printers,num_serie,' . $this->route('printer')?->id,
             'fecha_adquisicion' => 'sometimes|date',
             'costo_adquisicion' => 'nullable|numeric|min:0',
             'vida_util_meses' => 'nullable|integer|min:1',
             'almacen_id' => 'sometimes|exists:warehouses,id',
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'num_serie.unique' => 'El numero de serie ya existe',
         ];
     }
 }

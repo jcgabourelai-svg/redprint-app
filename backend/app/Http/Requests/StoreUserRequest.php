@@ -19,6 +19,7 @@ class StoreUserRequest extends FormRequest
             'contrasena' => 'required|string|min:6',
             'telefono' => 'nullable|string|max:30',
             'rol' => 'required|string|in:ADMIN,OPERADOR',
+            'activo' => 'sometimes|boolean',
         ];
     }
 
