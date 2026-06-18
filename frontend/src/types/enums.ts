@@ -83,7 +83,7 @@ export type PurchaseStatus = (typeof PurchaseStatus)[keyof typeof PurchaseStatus
 
 export const ArticleType = {
   CONSUMIBLE: 'CONSUMIBLE',
-  PIEZA_REPUESTO: 'PIEZA_REPUESTO',
+  REPARACION: 'REPARACION',
 } as const
 export type ArticleType = (typeof ArticleType)[keyof typeof ArticleType]
 

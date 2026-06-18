@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import Toast from '@/components/ui/Toast'
 import { useArticles, useCreateArticle } from '@/hooks/useArticles'
 import { formatCurrency } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
@@ -15,14 +16,14 @@ import type { Article } from '@/types/article'
 
 const tipoOptions = [
   { value: 'CONSUMIBLE', label: 'Consumible' },
-  { value: 'PIEZA_REPUESTO', label: 'Pieza de repuesto' },
+  { value: 'REPARACION', label: 'Pieza de repuesto' },
 ]
 
 interface FormErrors {
   nombre?: string
   marca?: string
-  modelo?: string
-  cantidad_en_stock?: string
+  modelo_sku?: string
+  stock_actual?: string
   umbral_reposicion?: string
   costo_unitario?: string
 }
@@ -30,18 +31,19 @@ interface FormErrors {
 function ArticleForm({
   onSubmit,
   onCancel,
+  submitting,
 }: {
   onSubmit: (data: Omit<Article, 'id'>) => void
   onCancel: () => void
+  submitting?: boolean
 }) {
   const [nombre, setNombre] = useState('')
-  const [tipo, setTipo] = useState<'CONSUMIBLE' | 'PIEZA_REPUESTO'>('CONSUMIBLE')
+  const [tipo, setTipo] = useState<'CONSUMIBLE' | 'REPARACION'>('CONSUMIBLE')
   const [marca, setMarca] = useState('')
   const [modelo, setModelo] = useState('')
-  const [cantidad_en_stock, setCantidadEnStock] = useState('')
+  const [stock_actual, setStockActual] = useState('')
   const [umbral_reposicion, setUmbralReposicion] = useState('')
   const [costo_unitario, setCostoUnitario] = useState('')
-  const [compatibleCon, setCompatibleCon] = useState('')
   const [errors, setErrors] = useState<FormErrors>({})
 
   const validate = (): boolean => {
@@ -49,11 +51,11 @@ function ArticleForm({
 
     if (!nombre.trim()) newErrors.nombre = 'El nombre es obligatorio'
     if (!marca.trim()) newErrors.marca = 'La marca es obligatoria'
-    if (!modelo.trim()) newErrors.modelo = 'El modelo es obligatorio'
+    if (!modelo.trim()) newErrors.modelo_sku = 'El modelo es obligatorio'
 
-    const stock = Number(cantidad_en_stock)
-    if (!cantidad_en_stock || isNaN(stock) || stock < 0) {
-      newErrors.cantidad_en_stock = 'Debe ser un número válido (≥ 0)'
+    const stock = Number(stock_actual)
+    if (!stock_actual || isNaN(stock) || stock < 0) {
+      newErrors.stock_actual = 'Debe ser un número válido (≥ 0)'
     }
 
     const umbral = Number(umbral_reposicion)
@@ -76,16 +78,12 @@ function ArticleForm({
 
     onSubmit({
       nombre: nombre.trim(),
-      tipo,
+      tipo_articulo: tipo,
       marca: marca.trim(),
-      modelo: modelo.trim(),
-      cantidad_en_stock: Number(cantidad_en_stock),
+      modelo_sku: modelo.trim(),
+      stock_actual: Number(stock_actual),
       umbral_reposicion: Number(umbral_reposicion),
       costo_unitario: Number(costo_unitario),
-      compatible_con: compatibleCon
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean),
     })
   }
 
@@ -107,7 +105,7 @@ function ArticleForm({
         <Select
           options={tipoOptions}
           value={tipo}
-          onChange={(v) => setTipo(v as 'CONSUMIBLE' | 'PIEZA_REPUESTO')}
+          onChange={(v) => setTipo(v as 'CONSUMIBLE' | 'REPARACION')}
         />
       </div>
 
@@ -128,8 +126,8 @@ function ArticleForm({
             placeholder="Ej: 85A"
             value={modelo}
             onChange={(e) => setModelo(e.target.value)}
-            error={!!errors.modelo}
-            helperText={errors.modelo}
+            error={!!errors.modelo_sku}
+            helperText={errors.modelo_sku}
           />
         </div>
       </div>
@@ -141,10 +139,10 @@ function ArticleForm({
             placeholder="0"
             type="number"
             min={0}
-            value={cantidad_en_stock}
-            onChange={(e) => setCantidadEnStock(e.target.value)}
-            error={!!errors.cantidad_en_stock}
-            helperText={errors.cantidad_en_stock}
+            value={stock_actual}
+            onChange={(e) => setStockActual(e.target.value)}
+            error={!!errors.stock_actual}
+            helperText={errors.stock_actual}
           />
         </div>
         <div>
@@ -174,23 +172,11 @@ function ArticleForm({
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Compatible con</label>
-        <textarea
-          placeholder="Impresoras compatibles separadas por coma"
-          value={compatibleCon}
-          onChange={(e) => setCompatibleCon(e.target.value)}
-          rows={2}
-          className="flex w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-        />
-        <p className="mt-1 text-xs text-gray-500">Separar múltiples modelos con coma</p>
-      </div>
-
       <div className="flex justify-end gap-3 pt-2">
         <Button type="button" variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
-        <Button type="submit">
+        <Button type="submit" loading={submitting}>
           Guardar
         </Button>
       </div>
@@ -203,14 +189,19 @@ export default function ArticleList() {
   const isAdmin = useIsAdmin()
   const [page, setPage] = useState(1)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
+    open: false,
+    variant: 'success',
+    message: '',
+  })
   const { data, isLoading, error } = useArticles({ page, per_page: 25 })
   const createMutation = useCreateArticle()
 
   const articles = data?.data || []
 
   const getStockStatus = (article: Article) => {
-    if (article.cantidad_en_stock === 0) return 'agotado'
-    if (article.cantidad_en_stock < article.umbral_reposicion) return 'bajo'
+    if (article.stock_actual === 0) return 'agotado'
+    if (article.stock_actual < article.umbral_reposicion) return 'bajo'
     return 'ok'
   }
 
@@ -218,8 +209,15 @@ export default function ArticleList() {
     try {
       await createMutation.mutateAsync(data)
       setShowCreateModal(false)
-    } catch (err) {
+      setToast({ open: true, variant: 'success', message: 'Artículo creado correctamente' })
+    } catch (err: any) {
       console.error('Error creating article:', err)
+      const backendMessage = err?.response?.data?.message
+      setToast({
+        open: true,
+        variant: 'error',
+        message: backendMessage || 'No se pudo crear el artículo. Verifica los datos.',
+      })
     }
   }
 
@@ -236,12 +234,12 @@ export default function ArticleList() {
       render: (value: string, row: Article) => (
         <div>
           <p className="font-medium">{value}</p>
-          <p className="text-xs text-gray-500">{row.marca} {row.modelo}</p>
+          <p className="text-xs text-gray-500">{row.marca} {row.modelo_sku}</p>
         </div>
       ),
     },
     {
-      key: 'tipo',
+      key: 'tipo_articulo',
       label: 'Tipo',
       sortable: true,
       render: (value: string) => (
@@ -251,7 +249,7 @@ export default function ArticleList() {
       ),
     },
     {
-      key: 'cantidad_en_stock',
+      key: 'stock_actual',
       label: 'Stock',
       sortable: true,
       render: (value: number, row: Article) => {
@@ -334,7 +332,8 @@ export default function ArticleList() {
           paginatable={true}
           pageSize={25}
           currentPage={page}
-          totalPages={data?.last_page || 1}
+          totalPages={data?.last_page ?? 1}
+          totalItems={data?.total ?? articles.length}
           onPageChange={setPage}
           emptyMessage="No hay artículos registrados"
           onRowClick={(article) => navigate(`/inventario/articulos/${article.id}`)}
@@ -350,8 +349,16 @@ export default function ArticleList() {
         <ArticleForm
           onSubmit={handleCreate}
           onCancel={() => setShowCreateModal(false)}
+          submitting={createMutation.isPending}
         />
       </Modal>
+
+      <Toast
+        isOpen={toast.open}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        variant={toast.variant}
+        message={toast.message}
+      />
     </PageLayout>
   )
 }

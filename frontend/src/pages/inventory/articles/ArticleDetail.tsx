@@ -5,7 +5,7 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useArticle } from '@/hooks/useArticles'
+import { useArticle, useArticleCompatiblePrinters } from '@/hooks/useArticles'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import type { Article } from '@/types/article'
@@ -16,6 +16,7 @@ export default function ArticleDetail() {
   const isAdmin = useIsAdmin()
   const articleId = id ? parseInt(id) : 0
   const { data: article, isLoading, error } = useArticle(articleId)
+  const { data: compatiblePrinters } = useArticleCompatiblePrinters(articleId)
 
   if (isLoading) {
     return (
@@ -38,14 +39,14 @@ export default function ArticleDetail() {
   }
 
   const getStockColor = () => {
-    if (article.cantidad_en_stock === 0) return 'text-red-600'
-    if (article.cantidad_en_stock < article.umbral_reposicion) return 'text-amber-600'
+    if (article.stock_actual === 0) return 'text-red-600'
+    if (article.stock_actual < article.umbral_reposicion) return 'text-amber-600'
     return 'text-green-600'
   }
 
   const getStockLabel = () => {
-    if (article.cantidad_en_stock === 0) return 'Agotado'
-    if (article.cantidad_en_stock < article.umbral_reposicion) return 'Bajo stock'
+    if (article.stock_actual === 0) return 'Agotado'
+    if (article.stock_actual < article.umbral_reposicion) return 'Bajo stock'
     return 'Stock suficiente'
   }
 
@@ -81,11 +82,11 @@ export default function ArticleDetail() {
                     </div>
                     <div>
                       <CardTitle className="text-xl">{article.nombre}</CardTitle>
-                      <p className="text-sm text-gray-500">{article.id} • {article.marca} {article.modelo}</p>
+                      <p className="text-sm text-gray-500">{article.id} • {article.marca} {article.modelo_sku}</p>
                     </div>
                   </div>
-                  <Badge variant={article.tipo === 'CONSUMIBLE' ? 'primary' : 'neutral'}>
-                    {article.tipo === 'CONSUMIBLE' ? 'CONSUMIBLE' : 'PIEZA REPUESTO'}
+                  <Badge variant={article.tipo_articulo === 'CONSUMIBLE' ? 'primary' : 'neutral'}>
+                    {article.tipo_articulo === 'CONSUMIBLE' ? 'CONSUMIBLE' : 'PIEZA REPUESTO'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -97,7 +98,7 @@ export default function ArticleDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-gray-600">Modelo</p>
-                    <p className="text-gray-900">{article.modelo}</p>
+                    <p className="text-gray-900">{article.modelo_sku}</p>
                   </div>
                 </div>
               </CardContent>
@@ -113,13 +114,13 @@ export default function ArticleDetail() {
                         label: 'Compatibilidad',
                         content: (
                           <div className="space-y-3 pb-4">
-                            {(article.compatible_con ?? []).length === 0 ? (
+                            {(compatiblePrinters ?? []).length === 0 ? (
                               <p className="text-sm text-gray-500 py-4">No hay impresoras compatibles registradas.</p>
                             ) : (
-                              (article.compatible_con ?? []).map((printer, idx) => (
-                                <div key={idx} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
+                              (compatiblePrinters as any[]).map((printer) => (
+                                <div key={printer.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
                                   <Link2 className="h-4 w-4 text-blue-500" />
-                                  <span className="text-sm text-gray-900">{printer}</span>
+                                  <span className="text-sm text-gray-900">{printer.id} • {printer.marca} {printer.modelo}</span>
                                 </div>
                               ))
                             )}
@@ -144,7 +145,7 @@ export default function ArticleDetail() {
               <CardContent>
                 <div className="text-center">
                   <p className={`text-3xl font-bold ${getStockColor()}`}>
-                    {article.cantidad_en_stock}
+                    {article.stock_actual}
                   </p>
                   <p className="text-sm text-gray-500 mt-1">unidades</p>
                   <p className={`text-xs mt-2 font-medium ${getStockColor()}`}>
@@ -171,7 +172,7 @@ export default function ArticleDetail() {
                 <div className="mt-4 pt-4 border-t border-gray-200">
                   <p className="text-xs text-gray-500">Valor total en stock</p>
                   <p className="text-sm font-medium text-gray-900">
-                    {formatCurrency(article.costo_unitario * article.cantidad_en_stock)}
+                    {formatCurrency(article.costo_unitario * article.stock_actual)}
                   </p>
                 </div>
               </CardContent>
@@ -191,11 +192,11 @@ export default function ArticleDetail() {
                   </p>
                   <p className="text-sm text-gray-500 mt-1">mínimo antes de reponer</p>
                 </div>
-                {article.cantidad_en_stock < article.umbral_reposicion && (
+                {article.stock_actual < article.umbral_reposicion && (
                   <div className="mt-4 pt-4 border-t border-gray-200">
                     <div className="rounded-md bg-amber-50 p-3">
                       <p className="text-xs text-amber-700">
-                        Stock por debajo del umbral. Se sugiere reponer {article.umbral_reposicion - article.cantidad_en_stock} unidades.
+                        Stock por debajo del umbral. Se sugiere reponer {article.umbral_reposicion - article.stock_actual} unidades.
                       </p>
                     </div>
                   </div>

@@ -37,6 +37,10 @@ export interface TableProps<T> {
   filterState?: Record<string, string>
   onFilterChange?: (filters: Record<string, string>) => void
   onRowClick?: (row: T) => void
+  currentPage?: number
+  totalPages?: number
+  onPageChange?: (page: number) => void
+  totalItems?: number
 }
 
 export default function Table<T extends Record<string, any>>({
@@ -52,11 +56,15 @@ export default function Table<T extends Record<string, any>>({
   filterState,
   onFilterChange,
   onRowClick,
+  currentPage,
+  totalPages,
+  onPageChange,
+  totalItems,
 }: TableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortColumn, setSortColumn] = useState<keyof T | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [currentPage, setCurrentPage] = useState(1)
+  const [localPage, setLocalPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const [internalFilters, setInternalFilters] = useState<Record<string, string>>({})
 
@@ -69,14 +77,14 @@ export default function Table<T extends Record<string, any>>({
     const next = { ...activeFilters, [key]: value }
     if (onFilterChange) onFilterChange(next)
     else setInternalFilters(next)
-    setCurrentPage(1)
+    setLocalPage(1)
   }
 
   const clearFilters = () => {
     if (onFilterChange) onFilterChange({})
     else setInternalFilters({})
     setSearchTerm('')
-    setCurrentPage(1)
+    setLocalPage(1)
   }
 
   const filteredData = data
@@ -104,11 +112,26 @@ export default function Table<T extends Record<string, any>>({
       })
     : filteredData
 
-  const paginatedData = paginatable
-    ? sortedData.slice((currentPage - 1) * pageSize, currentPage * pageSize)
-    : sortedData
+  // Server-side pagination: cuando el padre controla la página (data ya es una
+  // pagina del servidor), no seccionamos y usamos currentPage/totalPages del padre.
+  const serverPaginated =
+    paginatable && onPageChange !== undefined && totalPages !== undefined && currentPage !== undefined
 
-  const totalPages = Math.ceil(sortedData.length / pageSize)
+  const paginatedData = serverPaginated
+    ? sortedData
+    : paginatable
+      ? sortedData.slice((localPage - 1) * pageSize, localPage * pageSize)
+      : sortedData
+
+  const effectiveTotalPages = serverPaginated ? Math.max(1, totalPages ?? 1) : Math.ceil(sortedData.length / pageSize)
+  const effectiveCurrentPage = serverPaginated ? Math.min(Math.max(1, currentPage ?? 1), effectiveTotalPages) : localPage
+  const totalCount = serverPaginated ? (totalItems ?? sortedData.length) : sortedData.length
+
+  const goToPage = (page: number) => {
+    const next = Math.min(Math.max(1, page), effectiveTotalPages)
+    if (serverPaginated) onPageChange?.(next)
+    else setLocalPage(next)
+  }
 
   const handleSort = (column: Column<T>) => {
     if (!column.sortable || !sortable) return
@@ -121,6 +144,13 @@ export default function Table<T extends Record<string, any>>({
       setSortDirection('asc')
     }
   }
+
+  const firstItemIndex = paginatedData.length === 0 ? 0 : ((effectiveCurrentPage - 1) * pageSize) + 1
+  const lastItemIndex = paginatedData.length === 0
+    ? 0
+    : serverPaginated
+      ? Math.min(effectiveCurrentPage * pageSize, totalCount)
+      : Math.min(effectiveCurrentPage * pageSize, sortedData.length)
 
   return (
     <div className={cn('w-full', className)}>
@@ -135,7 +165,7 @@ export default function Table<T extends Record<string, any>>({
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
-                  setCurrentPage(1)
+                  setLocalPage(1)
                 }}
                 className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Buscar en tabla"
@@ -263,31 +293,30 @@ export default function Table<T extends Record<string, any>>({
         </table>
       </div>
 
-      {paginatable && totalPages > 1 && (
+      {paginatable && effectiveTotalPages > 1 && (
         <div className="mt-4 flex items-center justify-between">
           <div className="text-sm text-gray-600">
-            Mostrando {((currentPage - 1) * pageSize) + 1} a{' '}
-            {Math.min(currentPage * pageSize, sortedData.length)} de{' '}
-            {sortedData.length}
+            Mostrando {firstItemIndex} a {lastItemIndex} de{' '}
+            {totalCount}
           </div>
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
+              onClick={() => goToPage(effectiveCurrentPage - 1)}
+              disabled={effectiveCurrentPage === 1}
               aria-label="Página anterior"
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
             <span className="px-3 py-1 text-sm text-gray-600">
-              {currentPage} de {totalPages}
+              {effectiveCurrentPage} de {effectiveTotalPages}
             </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+              onClick={() => goToPage(effectiveCurrentPage + 1)}
+              disabled={effectiveCurrentPage === effectiveTotalPages}
               aria-label="Página siguiente"
             >
               <ChevronRight className="h-4 w-4" />
