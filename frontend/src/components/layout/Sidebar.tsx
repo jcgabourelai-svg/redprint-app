@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
@@ -107,10 +107,57 @@ interface SidebarProps {
   onToggle: () => void
 }
 
+const EXPANDED_STORAGE_KEY = 'sidebar:expanded'
+
+function getInitialExpanded(pathname: string): Set<string> {
+  const expanded = new Set<string>()
+  try {
+    const stored = sessionStorage.getItem(EXPANDED_STORAGE_KEY)
+    if (stored) {
+      JSON.parse(stored).forEach((id: string) => expanded.add(id))
+    }
+  } catch {
+    // ignore
+  }
+  // Auto-expand the parent section matching the current route
+  for (const item of navItems) {
+    if (!item.children || item.children.length === 0) continue
+    if (pathname === item.path || pathname.startsWith(item.path + '/')) {
+      expanded.add(item.id)
+    }
+  }
+  return expanded
+}
+
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
-  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set())
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(() =>
+    getInitialExpanded(location.pathname)
+  )
+
+  // Keep the active parent section expanded on route changes
+  useEffect(() => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev)
+      for (const item of navItems) {
+        if (!item.children || item.children.length === 0) continue
+        if (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) {
+          next.add(item.id)
+        }
+      }
+      return next
+    })
+  }, [location.pathname])
+
+  // Persist manual toggles across remounts
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(EXPANDED_STORAGE_KEY, JSON.stringify(Array.from(expandedItems)))
+    } catch {
+      // ignore
+    }
+  }, [expandedItems])
 
   const toggleExpand = (itemId: string) => {
     setExpandedItems((prev) => {
