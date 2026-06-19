@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Printer as PrinterIcon, Plus, MoreVertical } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
@@ -37,10 +37,21 @@ export default function PrinterList() {
   const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
+  const [searchInput, setSearchInput] = useState('')
+  const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setSearch(searchInput)
+      setPage(1)
+    }, 400)
+    return () => clearTimeout(t)
+  }, [searchInput])
 
   const params: Record<string, string | number> = { page, per_page: 25 }
   if (activeFilters.estado) params.estado = activeFilters.estado
   if (activeFilters.marca) params.marca = activeFilters.marca
+  if (search) params.search = search
   const { data, isLoading, error } = usePrinters(params)
   const createMutation = useCreatePrinter()
 
@@ -170,8 +181,11 @@ export default function PrinterList() {
           paginatable={true}
           pageSize={25}
           currentPage={page}
-          totalPages={data?.last_page || 1}
+          totalPages={data?.meta?.last_page ?? data?.last_page ?? 1}
+          totalItems={data?.meta?.total ?? data?.total}
           onPageChange={setPage}
+          searchValue={searchInput}
+          onSearchChange={setSearchInput}
           emptyMessage="No hay impresoras registradas"
           onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
         />

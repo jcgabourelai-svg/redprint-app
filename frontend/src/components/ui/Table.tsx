@@ -41,6 +41,8 @@ export interface TableProps<T> {
   totalPages?: number
   onPageChange?: (page: number) => void
   totalItems?: number
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }
 
 export default function Table<T extends Record<string, any>>({
@@ -60,6 +62,8 @@ export default function Table<T extends Record<string, any>>({
   totalPages,
   onPageChange,
   totalItems,
+  searchValue,
+  onSearchChange,
 }: TableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortColumn, setSortColumn] = useState<keyof T | null>(null)
@@ -69,6 +73,8 @@ export default function Table<T extends Record<string, any>>({
   const [internalFilters, setInternalFilters] = useState<Record<string, string>>({})
 
   const isControlled = onFilterChange !== undefined
+  const isSearchControlled = searchValue !== undefined && onSearchChange !== undefined
+  const activeSearchTerm = isSearchControlled ? (searchValue as string) : searchTerm
   const activeFilters = isControlled && filterState ? filterState : internalFilters
 
   const activeFilterCount = Object.values(activeFilters).filter(Boolean).length
@@ -83,7 +89,8 @@ export default function Table<T extends Record<string, any>>({
   const clearFilters = () => {
     if (onFilterChange) onFilterChange({})
     else setInternalFilters({})
-    setSearchTerm('')
+    if (onSearchChange) onSearchChange('')
+    else setSearchTerm('')
     setLocalPage(1)
   }
 
@@ -95,11 +102,12 @@ export default function Table<T extends Record<string, any>>({
         return String(row[key as keyof T]).toLowerCase() === value.toLowerCase()
       })
     })
-    .filter((row) =>
-      Object.values(row).some((value) =>
-        String(value).toLowerCase().includes(searchTerm.toLowerCase())
+    .filter((row) => {
+      if (isSearchControlled) return true
+      return Object.values(row).some((value) =>
+        String(value).toLowerCase().includes(activeSearchTerm.toLowerCase())
       )
-    )
+    })
 
   const sortedData = sortable && sortColumn
     ? [...filteredData].sort((a, b) => {
@@ -162,9 +170,11 @@ export default function Table<T extends Record<string, any>>({
               <input
                 type="text"
                 placeholder="Buscar..."
-                value={searchTerm}
+                value={activeSearchTerm}
                 onChange={(e) => {
-                  setSearchTerm(e.target.value)
+                  const v = e.target.value
+                  if (onSearchChange) onSearchChange(v)
+                  else setSearchTerm(v)
                   setLocalPage(1)
                 }}
                 className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
