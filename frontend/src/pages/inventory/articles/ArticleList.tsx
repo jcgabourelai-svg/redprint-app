@@ -9,7 +9,9 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Toast from '@/components/ui/Toast'
-import { useArticles, useCreateArticle } from '@/hooks/useArticles'
+import api from '@/lib/api'
+import { useCreateArticle } from '@/hooks/useArticles'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import type { Article } from '@/types/article'
@@ -187,30 +189,18 @@ function ArticleForm({
 export default function ArticleList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
-  const [page, setPage] = useState(1)
-  const [sortColumn, setSortColumn] = useState<string>('nombre')
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
     open: false,
     variant: 'success',
     message: '',
   })
-  const { data, isLoading, error } = useArticles({
-    page,
-    per_page: 25,
-    sort_by: sortColumn,
-    sort_dir: sortDirection,
+  const { data: articles, tableProps, isLoading, error } = useServerTable<Article>({
+    queryKey: ['articles'],
+    fetcher: (p) => api.get('/articles', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'nombre', dir: 'asc' },
   })
   const createMutation = useCreateArticle()
-
-  const articles = data?.data || []
-
-  const handleSortChange = (column: string, direction: 'asc' | 'desc') => {
-    setSortColumn(column)
-    setSortDirection(direction)
-    setPage(1)
-  }
 
   const getStockStatus = (article: Article) => {
     if (article.stock_actual === 0) return 'agotado'
@@ -343,14 +333,7 @@ export default function ArticleList() {
           searchable={true}
           sortable={true}
           paginatable={true}
-          pageSize={25}
-          currentPage={page}
-          totalPages={data?.last_page ?? 1}
-          totalItems={data?.total ?? articles.length}
-          onPageChange={setPage}
-          sortColumn={sortColumn}
-          sortDirection={sortDirection}
-          onSortChange={handleSortChange}
+          {...tableProps}
           emptyMessage="No hay artículos registrados"
           onRowClick={(article) => navigate(`/inventario/articulos/${article.id}`)}
         />

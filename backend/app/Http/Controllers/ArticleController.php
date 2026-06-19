@@ -8,11 +8,14 @@ use App\Http\Resources\ArticleResource;
 use App\Http\Resources\InventoryMovementResource;
 use App\Models\Article;
 use App\Models\Printer;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ArticleController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request): JsonResponse
     {
         $query = Article::with('supplier');
@@ -29,14 +32,7 @@ class ArticleController extends Controller
         if ($request->boolean('stock_bajo')) {
             $query->whereColumn('stock_actual', '<=', 'umbral_reposicion');
         }
-        if ($request->filled('buscar')) {
-            $buscar = $request->buscar;
-            $query->where(function ($q) use ($buscar) {
-                $q->where('nombre', 'like', "%{$buscar}%")
-                    ->orWhere('marca', 'like', "%{$buscar}%")
-                    ->orWhere('modelo_sku', 'like', "%{$buscar}%");
-            });
-        }
+        $query->search($request->search, ['nombre', 'marca', 'modelo_sku']);
         if ($request->has('activo')) {
             $query->where('activo', $request->boolean('activo'));
         } else {
@@ -45,7 +41,7 @@ class ArticleController extends Controller
 
         // Ordenamiento controlado por el cliente sobre TODO el dataset.
         // Se aplica antes de paginar para que cada página refleje el orden global.
-        $sortableColumns = [
+        $this->applySorting($query, $request, [
             'id',
             'nombre',
             'tipo_articulo',
@@ -55,17 +51,9 @@ class ArticleController extends Controller
             'umbral_reposicion',
             'costo_unitario',
             'fecha_creacion',
-        ];
+        ], 'nombre', 'asc');
 
-        $sortBy = $request->filled('sort_by') ? $request->sort_by : 'nombre';
-        if (!in_array($sortBy, $sortableColumns, true)) {
-            $sortBy = 'nombre';
-        }
-
-        $sortDir = strtolower((string) $request->get('sort_dir', 'asc'));
-        $sortDir = in_array($sortDir, ['asc', 'desc'], true) ? $sortDir : 'asc';
-
-        $articles = $query->orderBy($sortBy, $sortDir)->paginate($request->per_page ?? 20);
+        $articles = $query->paginate($request->per_page ?? 20);
 
         return response()->json($articles);
     }
