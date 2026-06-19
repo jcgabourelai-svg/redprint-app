@@ -188,16 +188,29 @@ export default function ArticleList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
   const [page, setPage] = useState(1)
+  const [sortColumn, setSortColumn] = useState<string>('nombre')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
     open: false,
     variant: 'success',
     message: '',
   })
-  const { data, isLoading, error } = useArticles({ page, per_page: 25 })
+  const { data, isLoading, error } = useArticles({
+    page,
+    per_page: 25,
+    sort_by: sortColumn,
+    sort_dir: sortDirection,
+  })
   const createMutation = useCreateArticle()
 
   const articles = data?.data || []
+
+  const handleSortChange = (column: string, direction: 'asc' | 'desc') => {
+    setSortColumn(column)
+    setSortDirection(direction)
+    setPage(1)
+  }
 
   const getStockStatus = (article: Article) => {
     if (article.stock_actual === 0) return 'agotado'
@@ -335,6 +348,9 @@ export default function ArticleList() {
           totalPages={data?.last_page ?? 1}
           totalItems={data?.total ?? articles.length}
           onPageChange={setPage}
+          sortColumn={sortColumn}
+          sortDirection={sortDirection}
+          onSortChange={handleSortChange}
           emptyMessage="No hay artículos registrados"
           onRowClick={(article) => navigate(`/inventario/articulos/${article.id}`)}
         />

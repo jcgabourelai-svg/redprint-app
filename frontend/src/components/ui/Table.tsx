@@ -1,5 +1,5 @@
 import { useState, ReactNode } from 'react'
-import { ChevronLeft, ChevronRight, Search, Filter, ArrowUpDown } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Button from './Button'
 
@@ -43,6 +43,12 @@ export interface TableProps<T> {
   totalItems?: number
   searchValue?: string
   onSearchChange?: (value: string) => void
+  // Ordenamiento controlado por el padre (server-side). Cuando se provee,
+  // la tabla delega el orden al servidor y solo muestra el indicador visual
+  // basándose en estos props, sin reordenar localmente la página actual.
+  sortColumn?: string | null
+  sortDirection?: 'asc' | 'desc'
+  onSortChange?: (column: string, direction: 'asc' | 'desc') => void
 }
 
 export default function Table<T extends Record<string, any>>({
@@ -64,6 +70,9 @@ export default function Table<T extends Record<string, any>>({
   totalItems,
   searchValue,
   onSearchChange,
+  sortColumn: controlledSortColumn,
+  sortDirection: controlledSortDirection,
+  onSortChange,
 }: TableProps<T>) {
   const [searchTerm, setSearchTerm] = useState('')
   const [sortColumn, setSortColumn] = useState<keyof T | null>(null)
@@ -71,6 +80,16 @@ export default function Table<T extends Record<string, any>>({
   const [localPage, setLocalPage] = useState(1)
   const [showFilters, setShowFilters] = useState(false)
   const [internalFilters, setInternalFilters] = useState<Record<string, string>>({})
+
+  // Si el padre controla el orden, se delega al servidor y no se ordena localmente.
+  const isSortControlled = onSortChange !== undefined
+  const activeSortColumn = isSortControlled ? (controlledSortColumn ?? null) : sortColumn
+  const activeSortDirection = isSortControlled ? (controlledSortDirection ?? 'asc') : sortDirection
+
+  // Resolución única de la clave de orden de una columna. Se reutiliza tanto en
+  // la lógica de toggle como en el indicador visual para evitar divergencia.
+  const resolveSortKey = (column: Column<T>): string =>
+    (column.sortableKey || column.key) as string
 
   const isControlled = onFilterChange !== undefined
   const isSearchControlled = searchValue !== undefined && onSearchChange !== undefined
@@ -109,7 +128,7 @@ export default function Table<T extends Record<string, any>>({
       )
     })
 
-  const sortedData = sortable && sortColumn
+  const sortedData = sortable && !isSortControlled && sortColumn
     ? [...filteredData].sort((a, b) => {
         const aValue = a[sortColumn]
         const bValue = b[sortColumn]
@@ -144,7 +163,18 @@ export default function Table<T extends Record<string, any>>({
   const handleSort = (column: Column<T>) => {
     if (!column.sortable || !sortable) return
 
-    const key = column.sortableKey || column.key
+    const key = resolveSortKey(column)
+
+    if (isSortControlled) {
+      // Ordenamiento server-side: notificamos al padre y dejamos que la query
+      // se rehaga con el orden global aplicado.
+      const nextDirection = activeSortColumn === key
+        ? (activeSortDirection === 'asc' ? 'desc' : 'asc')
+        : 'asc'
+      onSortChange?.(key, nextDirection)
+      return
+    }
+
     if (sortColumn === key) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
     } else {
@@ -261,9 +291,15 @@ export default function Table<T extends Record<string, any>>({
                 >
                   <div className="flex items-center gap-2">
                     {column.label}
-                    {column.sortable && sortable && (
-                      <ArrowUpDown className="h-3 w-3 text-gray-400" />
-                    )}
+                    {column.sortable && sortable && (() => {
+                      const key = resolveSortKey(column)
+                      if (activeSortColumn === key) {
+                        return activeSortDirection === 'asc'
+                          ? <ArrowUp className="h-3 w-3 text-gray-700" />
+                          : <ArrowDown className="h-3 w-3 text-gray-700" />
+                      }
+                      return <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                    })()}
                   </div>
                 </th>
               ))}

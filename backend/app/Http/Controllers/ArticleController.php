@@ -43,7 +43,29 @@ class ArticleController extends Controller
             $query->active();
         }
 
-        $articles = $query->orderBy('nombre')->paginate($request->per_page ?? 20);
+        // Ordenamiento controlado por el cliente sobre TODO el dataset.
+        // Se aplica antes de paginar para que cada página refleje el orden global.
+        $sortableColumns = [
+            'id',
+            'nombre',
+            'tipo_articulo',
+            'marca',
+            'modelo_sku',
+            'stock_actual',
+            'umbral_reposicion',
+            'costo_unitario',
+            'fecha_creacion',
+        ];
+
+        $sortBy = $request->filled('sort_by') ? $request->sort_by : 'nombre';
+        if (!in_array($sortBy, $sortableColumns, true)) {
+            $sortBy = 'nombre';
+        }
+
+        $sortDir = strtolower((string) $request->get('sort_dir', 'asc'));
+        $sortDir = in_array($sortDir, ['asc', 'desc'], true) ? $sortDir : 'asc';
+
+        $articles = $query->orderBy($sortBy, $sortDir)->paginate($request->per_page ?? 20);
 
         return response()->json($articles);
     }
