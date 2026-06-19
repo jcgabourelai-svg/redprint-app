@@ -1,4 +1,3 @@
-import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { FileText, Plus, MoreVertical, Eye } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
@@ -6,7 +5,8 @@ import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import type { Contract, ContractStatus } from '@/types/contract'
-import { useContracts } from '@/hooks/useContracts'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -25,16 +25,10 @@ function getEsquemaLabel(contract: Contract): string {
 
 export default function ContractList() {
   const navigate = useNavigate()
-  const [statusFilter, setStatusFilter] = useState<string>('todos')
-  const { data: contractsData, isLoading, error } = useContracts()
-  
-  const contracts = contractsData?.data || []
-  
-  const filteredContracts = useMemo(() => {
-    return statusFilter === 'todos'
-      ? contracts
-      : contracts.filter((c) => c.estado === statusFilter)
-  }, [contracts, statusFilter])
+  const { data: contracts, tableProps, isLoading, error } = useServerTable<Contract>({
+    queryKey: ['contracts'],
+    fetcher: (p) => api.get('/contracts', { params: p }).then((r) => r.data),
+  })
 
   if (isLoading) {
     return (
@@ -156,30 +150,30 @@ export default function ContractList() {
             <span className="text-sm text-gray-600">Estado:</span>
             <select
               className="rounded-md border border-gray-300 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              value={tableProps.filterState.estado || ''}
+              onChange={(e) => tableProps.onFilterChange({ ...tableProps.filterState, estado: e.target.value })}
             >
-              <option value="todos">Todos</option>
+              <option value="">Todos</option>
               <option value="ACTIVO">Activo</option>
               <option value="SUSPENDIDO">Suspendido</option>
               <option value="FINALIZADO">Finalizado</option>
               <option value="CANCELADO">Cancelado</option>
             </select>
           </div>
-          {statusFilter !== 'todos' && (
-            <Button variant="ghost" size="sm" onClick={() => setStatusFilter('todos')}>
+          {(tableProps.filterState.estado || '') !== '' && (
+            <Button variant="ghost" size="sm" onClick={() => tableProps.onFilterChange({ ...tableProps.filterState, estado: '' })}>
               Limpiar filtros
             </Button>
           )}
         </div>
 
         <Table
-          data={filteredContracts}
+          data={contracts}
           columns={columns}
           searchable={true}
           sortable={true}
           paginatable={true}
-          pageSize={25}
+          {...tableProps}
           emptyMessage="No hay contratos registrados"
           onRowClick={(contract) => navigate(`/contratos/${contract.id}`)}
         />

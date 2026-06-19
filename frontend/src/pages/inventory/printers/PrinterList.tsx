@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Printer as PrinterIcon, Plus, MoreVertical } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
@@ -7,9 +7,12 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import PrinterForm, { type PrinterFormData } from '@/components/printer/PrinterForm'
-import { usePrinters, useCreatePrinter } from '@/hooks/usePrinters'
+import api from '@/lib/api'
+import { useCreatePrinter } from '@/hooks/usePrinters'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency, formatDate, getPrinterStatusColor } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
+import type { Printer } from '@/types/printer'
 
 const PRINTER_FILTERS: FilterConfig[] = [
   {
@@ -22,45 +25,19 @@ const PRINTER_FILTERS: FilterConfig[] = [
       { label: 'Dada de baja', value: 'DADA_DE_BAJA' },
     ],
   },
-  {
-    key: 'marca',
-    label: 'Marca',
-    type: 'text',
-    placeholder: 'Ej: HP',
-  },
 ]
 
 export default function PrinterList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
-  const [page, setPage] = useState(1)
-  const [activeFilters, setActiveFilters] = useState<Record<string, string>>({})
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
-  const [searchInput, setSearchInput] = useState('')
-  const [search, setSearch] = useState('')
 
-  useEffect(() => {
-    const t = setTimeout(() => {
-      setSearch(searchInput)
-      setPage(1)
-    }, 400)
-    return () => clearTimeout(t)
-  }, [searchInput])
-
-  const params: Record<string, string | number> = { page, per_page: 25 }
-  if (activeFilters.estado) params.estado = activeFilters.estado
-  if (activeFilters.marca) params.marca = activeFilters.marca
-  if (search) params.search = search
-  const { data, isLoading, error } = usePrinters(params)
+  const { data: printers, tableProps, isLoading, error } = useServerTable<Printer>({
+    queryKey: ['printers'],
+    fetcher: (p) => api.get('/printers', { params: p }).then((r) => r.data),
+  })
   const createMutation = useCreatePrinter()
-
-  const printers = data?.data || []
-
-  const handleFilterChange = useCallback((next: Record<string, string>) => {
-    setActiveFilters(next)
-    setPage(1)
-  }, [])
 
   const handleCreate = useCallback(
     async (data: PrinterFormData) => {
@@ -173,19 +150,11 @@ export default function PrinterList() {
         <Table
           data={printers}
           columns={columns}
+          filters={PRINTER_FILTERS}
           searchable={true}
           sortable={true}
-          filters={PRINTER_FILTERS}
-          filterState={activeFilters}
-          onFilterChange={handleFilterChange}
           paginatable={true}
-          pageSize={25}
-          currentPage={page}
-          totalPages={data?.meta?.last_page ?? data?.last_page ?? 1}
-          totalItems={data?.meta?.total ?? data?.total}
-          onPageChange={setPage}
-          searchValue={searchInput}
-          onSearchChange={setSearchInput}
+          {...tableProps}
           emptyMessage="No hay impresoras registradas"
           onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
         />

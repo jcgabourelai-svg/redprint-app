@@ -6,11 +6,14 @@ use App\Http\Requests\StorePurchaseRequest;
 use App\Http\Resources\PurchaseResource;
 use App\Models\Purchase;
 use App\Services\PurchaseService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PurchaseController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private PurchaseService $purchaseService
     ) {}
@@ -32,7 +35,13 @@ class PurchaseController extends Controller
             $query->where('fecha', '<=', $request->fecha_hasta);
         }
 
-        $purchases = $query->orderBy('fecha', 'desc')->paginate($request->per_page ?? 20);
+        $query->search($request->search, ['concepto']);
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'estado', 'monto_total', 'created_at',
+        ], 'fecha', 'desc');
+
+        $purchases = $query->paginate($request->per_page ?? 20);
 
         return PurchaseResource::collection($purchases)->response();
     }

@@ -5,18 +5,25 @@ namespace App\Http\Controllers;
 use App\Http\Resources\WarehouseResource;
 use App\Models\Warehouse;
 use App\Models\Printer;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class WarehouseController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
-        $warehouses = Warehouse::with(['responsable'])
+        $query = Warehouse::with(['responsable'])
             ->withCount('printers')
-            ->when($request->search, fn($q, $s) => $q->where('nombre', 'ilike', "%{$s}%"))
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->search($request->search, ['nombre']);
+
+        $this->applySorting($query, $request, [
+            'id', 'nombre', 'created_at',
+        ], 'created_at', 'desc');
+
+        $warehouses = $query->paginate($request->per_page ?? 15);
 
         return WarehouseResource::collection($warehouses);
     }

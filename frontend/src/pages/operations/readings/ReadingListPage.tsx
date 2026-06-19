@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
@@ -6,13 +6,10 @@ import Table from '@/components/ui/Table'
 import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
 import type { Reading } from '@/types/reading'
-import { useReadings } from '@/hooks/useReadings'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
-
-interface ReadingWithClient extends Reading {
-  clienteNombre: string
-}
 
 const sociosOptions = [
   { value: '', label: 'Todos' },
@@ -27,13 +24,16 @@ export default function ReadingListPage() {
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
 
-  const { data: readingsData, isLoading, error } = useReadings({
-    socio_capturista: socioFilter || undefined,
-    fecha_inicio: fechaInicio || undefined,
-    fecha_fin: fechaFin || undefined,
+  const { data: readings, tableProps, isLoading, error } = useServerTable<Reading>({
+    queryKey: ['readings'],
+    fetcher: (p) => api.get('/readings', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'fecha', dir: 'desc' },
+    extraParams: {
+      socio_capturista: socioFilter || undefined,
+      fecha_inicio: fechaInicio || undefined,
+      fecha_fin: fechaFin || undefined,
+    },
   })
-
-  const readings = readingsData?.data || []
 
   const clearFilters = () => {
     setSocioFilter('')
@@ -171,10 +171,10 @@ export default function ReadingListPage() {
         <Table
           data={readings}
           columns={columns}
-          searchable={true}
+          searchable={false}
           sortable={true}
           paginatable={true}
-          pageSize={25}
+          {...tableProps}
           emptyMessage="No se encontraron lecturas con los filtros aplicados"
           onRowClick={(reading) => navigate(`/operaciones/visitas/${reading.visita_id}`)}
         />

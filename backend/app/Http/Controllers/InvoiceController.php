@@ -6,25 +6,30 @@ use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Models\Invoice;
 use App\Services\InvoiceService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class InvoiceController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private InvoiceService $invoiceService
     ) {}
 
     public function index(Request $request)
     {
-        $invoices = Invoice::with(['client', 'contract', 'socio'])
+        $query = Invoice::with(['client', 'contract', 'socio'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
-            ->when($request->search, function ($q, $s) {
-                $q->where('numero_factura', 'ilike', "%{$s}%");
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->search($request->search, ['numero_factura']);
+
+        $this->applySorting($query, $request, [
+            'id', 'numero_factura', 'estado', 'monto_total', 'fecha_emision', 'created_at',
+        ], 'created_at', 'desc');
+
+        $invoices = $query->paginate($request->per_page ?? 15);
 
         return InvoiceResource::collection($invoices);
     }

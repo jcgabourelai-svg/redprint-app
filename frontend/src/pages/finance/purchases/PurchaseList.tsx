@@ -10,7 +10,9 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatCurrency, formatDate } from '@/lib/formatters'
-import { usePurchases, useCreatePurchase, useReceivePurchase, useCancelPurchase } from '@/hooks/usePurchases'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
+import { useCreatePurchase, useReceivePurchase, useCancelPurchase } from '@/hooks/usePurchases'
 import type { Purchase } from '@/types/purchase'
 
 const proveedores = [
@@ -34,16 +36,18 @@ const articulos = [
 ]
 
 const statusLabels: Record<string, string> = {
-  pendiente: 'Pendiente',
-  recibida: 'Recibida',
-  cancelada: 'Cancelada',
+  PENDIENTE: 'Pendiente',
+  RECIBIDA: 'Recibida',
+  CANCELADA: 'Cancelada',
 }
 
 export default function PurchaseList() {
   const navigate = useNavigate()
-  const { data: purchasesData, isLoading, error } = usePurchases()
-  const [statusFilter, setStatusFilter] = useState('')
-  const [proveedorFilter, setProveedorFilter] = useState('')
+  const { data: purchases, tableProps, isLoading, error } = useServerTable<Purchase>({
+    queryKey: ['purchases'],
+    fetcher: (p) => api.get('/purchases', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'fecha', dir: 'desc' },
+  })
   const [showNewPurchase, setShowNewPurchase] = useState(false)
   const createPurchase = useCreatePurchase()
   const receivePurchase = useReceivePurchase()
@@ -61,16 +65,11 @@ export default function PurchaseList() {
     articulos: [{ articulo_id: '', cantidad: 1, costo_unitario: 0 }] as { articulo_id: string; cantidad: number; costo_unitario: number }[],
   })
 
-  const purchases = purchasesData?.data || []
-  const filteredPurchases = purchases
-    .filter((p) => (!statusFilter || p.estado === statusFilter))
-    .filter((p) => (!proveedorFilter || p.proveedor === proveedorFilter))
-
   const subtotalArticulos = purchaseForm.articulos.reduce((sum, a) => sum + (a.cantidad * a.costo_unitario), 0)
   const iva = (subtotalArticulos + purchaseForm.mano_de_obra) * 0.16
   const totalCompra = subtotalArticulos + purchaseForm.mano_de_obra + iva
 
-  const totalPendiente = filteredPurchases.reduce((sum, p) => sum + (p.saldo_pendiente ?? 0), 0)
+  const totalPendiente = purchases.reduce((sum, p) => sum + (p.saldo_pendiente ?? 0), 0)
 
   const columns = [
     {
@@ -176,11 +175,7 @@ export default function PurchaseList() {
     },
   ]
 
-  const hasFilters = statusFilter || proveedorFilter
-  const clearFilters = () => {
-    setStatusFilter('')
-    setProveedorFilter('')
-  }
+  const hasFilters = (tableProps.filterState.estado || '') !== ''
 
   return (
     <PageLayout title="Finanzas" showSearch>
@@ -253,47 +248,35 @@ export default function PurchaseList() {
                 <Select
                   options={[
                     { value: '', label: 'Todos los estados' },
-                    { value: 'pendiente', label: 'Pendiente' },
-                    { value: 'recibida', label: 'Recibida' },
+                    { value: 'PENDIENTE', label: 'Pendiente' },
+                    { value: 'RECIBIDA', label: 'Recibida' },
                     { value: 'CANCELADA', label: 'Cancelada' },
                   ]}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
+                  value={tableProps.filterState.estado || ''}
+                  onChange={(v) => tableProps.onFilterChange({ ...tableProps.filterState, estado: v })}
                   placeholder="Filtrar por estado"
                 />
               </div>
-              <div className="w-56">
-                <Select
-                  options={[
-                    { value: '', label: 'Todos los proveedores' },
-                    ...proveedores,
-                  ]}
-                  value={proveedorFilter}
-                  onChange={setProveedorFilter}
-                  placeholder="Filtrar por proveedor"
-                />
-              </div>
               {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Button variant="ghost" size="sm" onClick={() => tableProps.onFilterChange({ ...tableProps.filterState, estado: '' })}>
                   Limpiar filtros
                 </Button>
               )}
             </div>
 
             <Table
-              data={filteredPurchases}
+              data={purchases}
               columns={columns}
               searchable={true}
               sortable={true}
               paginatable={true}
-              pageSize={10}
+              {...tableProps}
               emptyMessage="No hay compras registradas"
               onRowClick={(row) => navigate(`/finanzas/compras/${row.id}`)}
             />
 
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>Total pendiente: <strong className="text-red-600">{formatCurrency(totalPendiente)}</strong></span>
-              <span>Mostrando {filteredPurchases.length} de {purchases.length} compras</span>
             </div>
           </>
         )}

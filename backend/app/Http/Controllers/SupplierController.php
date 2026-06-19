@@ -4,19 +4,24 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SupplierResource;
 use App\Models\Supplier;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SupplierController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
-        $suppliers = Supplier::when($request->search, function ($q, $s) {
-            $q->where('razon_social', 'ilike', "%{$s}%");
-        })
-            ->where('activo', true)
-            ->orderBy('razon_social')
-            ->paginate($request->per_page ?? 15);
+        $query = Supplier::search($request->search, ['razon_social'])
+            ->where('activo', true);
+
+        $this->applySorting($query, $request, [
+            'id', 'razon_social', 'created_at',
+        ], 'razon_social', 'asc');
+
+        $suppliers = $query->paginate($request->per_page ?? 15);
 
         return SupplierResource::collection($suppliers);
     }

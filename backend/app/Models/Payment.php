@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Enums\PaymentMethod;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Payment extends Model
 {
+    use Searchable;
+
     protected $table = 'payments';
 
     protected $fillable = [

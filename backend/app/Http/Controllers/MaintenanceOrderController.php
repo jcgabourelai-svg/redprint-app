@@ -7,11 +7,14 @@ use App\Http\Requests\UpdateMaintenanceOrderRequest;
 use App\Http\Resources\MaintenanceOrderResource;
 use App\Models\MaintenanceOrder;
 use App\Services\MaintenanceService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class MaintenanceOrderController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private MaintenanceService $maintenanceService
     ) {}
@@ -36,7 +39,13 @@ class MaintenanceOrderController extends Controller
             $query->where('fecha', '<=', $request->fecha_hasta);
         }
 
-        $orders = $query->orderBy('fecha', 'desc')->paginate($request->per_page ?? 20);
+        $query->search($request->search, ['desc_problema']);
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'estado', 'tipo_mantto', 'impresora_id', 'costo_mano_obra', 'created_at',
+        ], 'fecha', 'desc');
+
+        $orders = $query->paginate($request->per_page ?? 20);
 
         return MaintenanceOrderResource::collection($orders)->response();
     }

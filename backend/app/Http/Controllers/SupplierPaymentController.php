@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\SupplierPaymentResource;
 use App\Services\PurchaseService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SupplierPaymentController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private PurchaseService $purchaseService
     ) {}
@@ -27,7 +30,11 @@ class SupplierPaymentController extends Controller
             $query->where('fecha', '<=', $request->fecha_hasta);
         }
 
-        $payments = $query->orderBy('fecha', 'desc')->paginate($request->per_page ?? 20);
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'monto', 'created_at',
+        ], 'fecha', 'desc');
+
+        $payments = $query->paginate($request->per_page ?? 20);
 
         return SupplierPaymentResource::collection($payments)->response();
     }

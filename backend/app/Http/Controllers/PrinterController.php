@@ -8,30 +8,31 @@ use App\Http\Resources\PrinterDetailResource;
 use App\Http\Resources\PrinterResource;
 use App\Models\Printer;
 use App\Services\PrinterService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class PrinterController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private PrinterService $printerService
     ) {}
 
     public function index(Request $request)
     {
-        $printers = Printer::with(['warehouse', 'creator'])
+        $query = Printer::with(['warehouse', 'creator'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->marca, fn($q, $m) => $q->where('marca', 'ilike', "%{$m}%"))
             ->when($request->modelo, fn($q, $m) => $q->where('modelo', 'ilike', "%{$m}%"))
-            ->when($request->search, function ($q, $s) {
-                $q->where(function ($query) use ($s) {
-                    $query->where('codigo_negocio', 'ilike', "%{$s}%")
-                        ->orWhere('num_serie', 'ilike', "%{$s}%")
-                        ->orWhere('marca', 'ilike', "%{$s}%");
-                });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->search($request->search, ['codigo_negocio', 'num_serie', 'marca']);
+
+        $this->applySorting($query, $request, [
+            'id', 'codigo_negocio', 'num_serie', 'marca', 'modelo', 'estado', 'created_at',
+        ], 'created_at', 'desc');
+
+        $printers = $query->paginate($request->per_page ?? 15);
 
         return PrinterResource::collection($printers);
     }

@@ -1,21 +1,23 @@
-import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Plus, Eye } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
-import { useMaintenanceOrders } from '@/hooks/useMaintenanceOrders'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatDate, formatCurrency, getMaintenanceStatusColor } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
+import type { MaintenanceOrder } from '@/types/maintenance-order'
 
 export default function MaintenanceList() {
-  const [page, setPage] = useState(1)
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
-  const { data, isLoading, error } = useMaintenanceOrders({ page, per_page: 25 })
-
-  const orders = data?.data || []
+  const { data: orders, tableProps, isLoading, error } = useServerTable<MaintenanceOrder>({
+    queryKey: ['maintenance-orders'],
+    fetcher: (p) => api.get('/maintenance-orders', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'fecha', dir: 'desc' },
+  })
 
   const columns = [
     {
@@ -135,10 +137,7 @@ export default function MaintenanceList() {
           searchable={true}
           sortable={true}
           paginatable={true}
-          pageSize={25}
-          currentPage={page}
-          totalPages={data?.last_page || 1}
-          onPageChange={setPage}
+          {...tableProps}
           emptyMessage="No hay órdenes de mantenimiento"
           onRowClick={(order) => navigate(`/inventario/mantenimiento/${order.id}`)}
         />

@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Resources\PrinterExpenseResource;
 use App\Models\PrinterExpense;
 use App\Services\MaintenanceService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ExpenseController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private MaintenanceService $maintenanceService
     ) {}
@@ -31,7 +34,11 @@ class ExpenseController extends Controller
             $query->where('fecha', '<=', $request->fecha_hasta);
         }
 
-        $expenses = $query->orderBy('fecha', 'desc')->paginate($request->per_page ?? 20);
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'tipo', 'monto', 'created_at',
+        ], 'fecha', 'desc');
+
+        $expenses = $query->paginate($request->per_page ?? 20);
 
         return PrinterExpenseResource::collection($expenses)->response();
     }

@@ -6,22 +6,29 @@ use App\Http\Requests\StoreReadingRequest;
 use App\Http\Resources\ReadingResource;
 use App\Models\Reading;
 use App\Services\ReadingService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ReadingController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private ReadingService $readingService
     ) {}
 
     public function index(Request $request)
     {
-        $readings = Reading::with(['printer', 'visit', 'socio'])
+        $query = Reading::with(['printer', 'visit', 'socio'])
             ->when($request->impresora_id, fn($q, $id) => $q->where('impresora_id', $id))
-            ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id))
-            ->orderBy('fecha', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id));
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'impresora_id', 'created_at',
+        ], 'fecha', 'desc');
+
+        $readings = $query->paginate($request->per_page ?? 15);
 
         return ReadingResource::collection($readings);
     }

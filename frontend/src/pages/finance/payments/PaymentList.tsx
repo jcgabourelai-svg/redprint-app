@@ -9,11 +9,16 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatCurrency, formatDate } from '@/lib/formatters'
-import { usePayments } from '@/hooks/usePayments'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import type { Payment } from '@/types/payment'
 
 export default function PaymentList() {
-  const { data: paymentsData, isLoading, error } = usePayments()
+  const { data: payments, tableProps, isLoading, error } = useServerTable<Payment>({
+    queryKey: ['payments'],
+    fetcher: (p) => api.get('/payments', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'fecha', dir: 'desc' },
+  })
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [paymentForm, setPaymentForm] = useState({
@@ -24,7 +29,6 @@ export default function PaymentList() {
     socio_registro: '',
   })
 
-  const payments = paymentsData?.data || []
   const totalPagado = payments.reduce((sum, p) => sum + p.monto, 0)
 
   const columns = [
@@ -142,7 +146,7 @@ export default function PaymentList() {
               searchable={true}
               sortable={true}
               paginatable={true}
-              pageSize={10}
+              {...tableProps}
               emptyMessage="No hay pagos registrados"
             />
 

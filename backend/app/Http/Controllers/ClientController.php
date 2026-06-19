@@ -5,22 +5,24 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreClientRequest;
 use App\Http\Resources\ClientResource;
 use App\Models\Client;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ClientController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
-        $clients = Client::with(['contracts'])
-            ->when($request->search, function ($q, $s) {
-                $q->where(function ($query) use ($s) {
-                    $query->where('razon_social', 'ilike', "%{$s}%")
-                        ->orWhere('rfc', 'ilike', "%{$s}%");
-                });
-            })
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+        $query = Client::with(['contracts'])
+            ->search($request->search, ['razon_social', 'rfc']);
+
+        $this->applySorting($query, $request, [
+            'id', 'razon_social', 'rfc', 'created_at',
+        ], 'created_at', 'desc');
+
+        $clients = $query->paginate($request->per_page ?? 15);
 
         return ClientResource::collection($clients);
     }

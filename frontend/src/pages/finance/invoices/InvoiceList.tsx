@@ -10,12 +10,15 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
-import { useInvoices } from '@/hooks/useInvoices'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import type { Invoice } from '@/types/invoice'
 
 export default function InvoiceList() {
-  const { data: invoicesData, isLoading, error } = useInvoices()
-  const [statusFilter, setStatusFilter] = useState('')
+  const { data: invoices, tableProps, isLoading, error } = useServerTable<Invoice>({
+    queryKey: ['invoices'],
+    fetcher: (p) => api.get('/invoices', { params: p }).then((r) => r.data),
+  })
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [paymentForm, setPaymentForm] = useState({
@@ -26,12 +29,7 @@ export default function InvoiceList() {
   })
   const navigate = useNavigate()
 
-  const invoices = invoicesData?.data || []
-  const filteredInvoices = statusFilter
-    ? invoices.filter((inv) => inv.estado === statusFilter)
-    : invoices
-
-  const totalPendiente = filteredInvoices.reduce((sum, inv) => sum + inv.saldo_pendiente, 0)
+  const totalPendiente = invoices.reduce((sum, inv) => sum + inv.saldo_pendiente, 0)
 
   const columns = [
     {
@@ -201,29 +199,30 @@ export default function InvoiceList() {
               <Select
                 options={[
                   { value: '', label: 'Todos los estados' },
-                  { value: 'pendiente', label: 'Pendiente' },
-                  { value: 'parcialmente_pagada', label: 'Parcial' },
-                  { value: 'pagada', label: 'Pagada' },
-                  { value: 'vencida', label: 'Vencida' },
+                  { value: 'PENDIENTE', label: 'Pendiente' },
+                  { value: 'PARCIALMENTE_PAGADA', label: 'Parcial' },
+                  { value: 'PAGADA', label: 'Pagada' },
+                  { value: 'VENCIDA', label: 'Vencida' },
+                  { value: 'INCOBRABLE', label: 'Incobrable' },
                 ]}
-                value={statusFilter}
-                onChange={setStatusFilter}
+                value={tableProps.filterState.estado || ''}
+                onChange={(v) => tableProps.onFilterChange({ ...tableProps.filterState, estado: v })}
                 placeholder="Filtrar por estado"
               />
-              {statusFilter && (
-                <Button variant="ghost" size="sm" onClick={() => setStatusFilter('')}>
+              {(tableProps.filterState.estado || '') !== '' && (
+                <Button variant="ghost" size="sm" onClick={() => tableProps.onFilterChange({ ...tableProps.filterState, estado: '' })}>
                   Limpiar filtro
                 </Button>
               )}
             </div>
 
             <Table
-              data={filteredInvoices}
+              data={invoices}
               columns={columns}
               searchable={true}
               sortable={true}
               paginatable={true}
-              pageSize={10}
+              {...tableProps}
               emptyMessage="No hay facturas registradas"
             />
 

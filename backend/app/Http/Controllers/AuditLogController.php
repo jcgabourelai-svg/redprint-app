@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Traits\Sortable;
 use Illuminate\Http\Request;
 
 class AuditLogController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
         $query = AuditLog::query();
@@ -35,9 +38,14 @@ class AuditLogController extends Controller
             $query->where('fecha', '<=', $request->input('fecha_hasta'));
         }
 
+        $query->search($request->search, ['accion', 'entidad_tipo']);
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'accion', 'entidad_tipo', 'created_at',
+        ], 'fecha', 'desc');
+
         return response()->json([
-            'data' => $query->orderBy('fecha', 'desc')
-                ->paginate($request->input('per_page', 50)),
+            'data' => $query->paginate($request->input('per_page', 50)),
         ]);
     }
 

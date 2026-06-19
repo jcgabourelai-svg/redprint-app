@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Http\Resources\InventoryMovementResource;
 use App\Models\InventoryMovement;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class InventoryMovementController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request): JsonResponse
     {
         $query = InventoryMovement::with(['article', 'socio']);
@@ -29,7 +32,13 @@ class InventoryMovementController extends Controller
             $query->where('referencia_tipo', $request->referencia_tipo);
         }
 
-        $movements = $query->orderBy('fecha', 'desc')->paginate($request->per_page ?? 20);
+        $query->search($request->search, ['justificacion']);
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha', 'tipo_movimiento', 'cantidad', 'created_at',
+        ], 'fecha', 'desc');
+
+        $movements = $query->paginate($request->per_page ?? 20);
 
         return InventoryMovementResource::collection($movements)->response();
     }

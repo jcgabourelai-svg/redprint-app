@@ -8,7 +8,8 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
-import { useInventoryMovements } from '@/hooks/useInventoryMovements'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import { useWarehouses } from '@/hooks/useWarehouses'
 import { useArticles } from '@/hooks/useArticles'
 import { useUsers } from '@/hooks/useUsers'
@@ -43,14 +44,16 @@ const motivoLabels: Record<string, string> = {
 }
 
 export default function MovementList() {
-  const [page, setPage] = useState(1)
-  const { data, isLoading, error } = useInventoryMovements({ page, per_page: 10 })
+  const [tipoFilter, setTipoFilter] = useState('')
+  const { data: movements, tableProps, isLoading, error } = useServerTable<InventoryMovement>({
+    queryKey: ['inventory-movements'],
+    fetcher: (p) => api.get('/inventory-movements', { params: p }).then((r) => r.data),
+    defaultSort: { column: 'fecha', dir: 'desc' },
+    extraParams: { tipo_movimiento: tipoFilter || undefined },
+  })
   const { data: warehousesData } = useWarehouses({ per_page: 100 })
   const { data: articlesData } = useArticles({ per_page: 100 })
   const { data: usersData } = useUsers()
-  const [tipoFilter, setTipoFilter] = useState('')
-  const [almacenFilter, setAlmacenFilter] = useState('')
-  const [estadoFilter, setEstadoFilter] = useState('')
   const [showNewMovement, setShowNewMovement] = useState(false)
   const [movementForm, setMovementForm] = useState({
     tipo: 'ENTRADA' as 'ENTRADA' | 'SALIDA',
@@ -63,8 +66,6 @@ export default function MovementList() {
     responsable: '',
     notas: '',
   })
-
-  const movements = data?.data || []
 
   const almacenes = (warehousesData?.data || []).map((w: any) => ({
     value: String(w.id),
@@ -80,11 +81,6 @@ export default function MovementList() {
     value: u.nombre || u.correo || String(u.id),
     label: u.nombre || u.correo || `Usuario ${u.id}`,
   }))
-
-  const filteredMovements = movements
-    .filter((m) => (!tipoFilter || m.tipo === tipoFilter))
-    .filter((m) => (!almacenFilter || m.almacen_id === almacenFilter))
-    .filter((m) => (!estadoFilter || m.estado === estadoFilter))
 
   const totalMovements = movements.length
   const entradasMes = movements.filter((m) => m.tipo === 'ENTRADA').length
@@ -213,11 +209,9 @@ export default function MovementList() {
     )
   }
 
-  const hasFilters = tipoFilter || almacenFilter || estadoFilter
+  const hasFilters = !!tipoFilter
   const clearFilters = () => {
     setTipoFilter('')
-    setAlmacenFilter('')
-    setEstadoFilter('')
   }
 
   return (
@@ -283,34 +277,11 @@ export default function MovementList() {
                 { value: '', label: 'Todos los tipos' },
                 { value: 'ENTRADA', label: 'Entrada' },
                 { value: 'SALIDA', label: 'Salida' },
+                { value: 'AJUSTE', label: 'Ajuste' },
               ]}
               value={tipoFilter}
               onChange={setTipoFilter}
               placeholder="Filtrar por tipo"
-            />
-          </div>
-          <div className="w-52">
-            <Select
-              options={[
-                { value: '', label: 'Todos los almacenes' },
-                ...almacenes,
-              ]}
-              value={almacenFilter}
-              onChange={setAlmacenFilter}
-              placeholder="Filtrar por almacén"
-            />
-          </div>
-          <div className="w-44">
-            <Select
-              options={[
-                { value: '', label: 'Todos los estados' },
-                { value: 'completado', label: 'Completado' },
-                { value: 'pendiente', label: 'Pendiente' },
-                { value: 'cancelado', label: 'Cancelado' },
-              ]}
-              value={estadoFilter}
-              onChange={setEstadoFilter}
-              placeholder="Filtrar por estado"
             />
           </div>
           {hasFilters && (
@@ -321,15 +292,12 @@ export default function MovementList() {
         </div>
 
         <Table
-          data={filteredMovements}
+          data={movements}
           columns={columns}
           searchable={true}
           sortable={true}
           paginatable={true}
-          pageSize={10}
-          currentPage={page}
-          totalPages={data?.last_page || 1}
-          onPageChange={setPage}
+          {...tableProps}
           emptyMessage="No hay movimientos registrados"
         />
 
@@ -337,7 +305,7 @@ export default function MovementList() {
           <span>
             Entradas: <strong className="text-green-600">{entradasMes}</strong> | Salidas: <strong className="text-amber-600">{salidasMes}</strong>
           </span>
-          <span>Mostrando {filteredMovements.length} de {movements.length} movimientos</span>
+          <span>Mostrando {movements.length} movimientos en la página</span>
         </div>
       </div>
 

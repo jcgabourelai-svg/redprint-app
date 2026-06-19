@@ -6,21 +6,28 @@ use App\Http\Requests\StoreVisitRequest;
 use App\Http\Resources\VisitResource;
 use App\Enums\VisitStatus;
 use App\Models\Visit;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class VisitController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
-        $visits = Visit::with(['client', 'contract', 'socio', 'readings'])
+        $query = Visit::with(['client', 'contract', 'socio', 'readings'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
             ->when($request->socio_id, fn($q, $id) => $q->where('socio_id', $id))
             ->when($request->month, fn($q, $m) => $q->whereMonth('fecha_programada', $m))
-            ->when($request->year, fn($q, $y) => $q->whereYear('fecha_programada', $y))
-            ->orderBy('fecha_programada', 'asc')
-            ->paginate($request->per_page ?? 15);
+            ->when($request->year, fn($q, $y) => $q->whereYear('fecha_programada', $y));
+
+        $this->applySorting($query, $request, [
+            'id', 'fecha_programada', 'estado', 'created_at',
+        ], 'fecha_programada', 'asc');
+
+        $visits = $query->paginate($request->per_page ?? 15);
 
         return VisitResource::collection($visits);
     }

@@ -8,7 +8,9 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import type { Client } from '@/types/client'
-import { useClients, useCreateClient } from '@/hooks/useClients'
+import api from '@/lib/api'
+import { useCreateClient } from '@/hooks/useClients'
+import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -20,9 +22,12 @@ const estadoLabels: Record<string, string> = {
 
 export default function ClientList() {
   const navigate = useNavigate()
-  const { data: clientsData, isLoading, error } = useClients()
+  const { data: clients, tableProps, isLoading, error } = useServerTable<Client>({
+    queryKey: ['clients'],
+    fetcher: (p) => api.get('/clients', { params: p }).then((r) => r.data),
+  })
   const createClient = useCreateClient()
-  
+
   const [showNewClientModal, setShowNewClientModal] = useState(false)
   const [newClient, setNewClient] = useState({
     razon_social: '',
@@ -34,8 +39,6 @@ export default function ClientList() {
     notas: '',
   })
   const [createError, setCreateError] = useState('')
-
-  const clients = clientsData?.data || []
 
   const columns = [
     {
@@ -174,7 +177,7 @@ export default function ClientList() {
           searchable={true}
           sortable={true}
           paginatable={true}
-          pageSize={25}
+          {...tableProps}
           emptyMessage="No hay clientes registrados"
           onRowClick={(client) => navigate(`/clientes/${client.id}`)}
         />

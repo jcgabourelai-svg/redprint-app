@@ -9,18 +9,9 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
-import { useInvoices } from '@/hooks/useInvoices'
+import api from '@/lib/api'
+import { useServerTable } from '@/hooks/useServerTable'
 import type { Invoice } from '@/types/invoice'
-
-const clientes = [
-  { value: '', label: 'Todos los clientes' },
-  { value: 'CLI-001', label: 'Empresa Alpha S.A. de C.V.' },
-  { value: 'CLI-002', label: 'Grupo Beta México' },
-  { value: 'CLI-003', label: 'Corporativo Gamma' },
-  { value: 'CLI-004', label: 'Soluciones Delta S.C.' },
-  { value: 'CLI-005', label: 'Tecnologías Epsilon' },
-  { value: 'CLI-006', label: 'Industrias Zeta' },
-]
 
 function calcularDiasVencidos(fechaVencimiento: string): number {
   const hoy = new Date()
@@ -37,9 +28,10 @@ function getDiasVencidosLabel(dias: number): { text: string; className: string }
 }
 
 export default function ReceivablesList() {
-  const { data: invoicesData, isLoading, error } = useInvoices()
-  const [statusFilter, setStatusFilter] = useState('')
-  const [clienteFilter, setClienteFilter] = useState('')
+  const { data: invoices, tableProps, isLoading, error } = useServerTable<Invoice>({
+    queryKey: ['invoices'],
+    fetcher: (p) => api.get('/invoices', { params: p }).then((r) => r.data),
+  })
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [showHistoryModal, setShowHistoryModal] = useState(false)
@@ -53,13 +45,8 @@ export default function ReceivablesList() {
     referencia: '',
   })
 
-  const invoices = invoicesData?.data || []
-  const filteredInvoices = invoices
-    .filter((inv) => (!statusFilter || inv.estado === statusFilter))
-    .filter((inv) => (!clienteFilter || inv.cliente_id === clienteFilter))
-
-  const totalPendiente = filteredInvoices.reduce((sum, inv) => sum + inv.saldo_pendiente, 0)
-  const totalFacturado = filteredInvoices.reduce((sum, inv) => sum + inv.monto_total, 0)
+  const totalPendiente = invoices.reduce((sum, inv) => sum + inv.saldo_pendiente, 0)
+  const totalFacturado = invoices.reduce((sum, inv) => sum + inv.monto_total, 0)
 
   const columns = [
     {
@@ -175,11 +162,7 @@ export default function ReceivablesList() {
     },
   ]
 
-  const hasFilters = statusFilter || clienteFilter
-  const clearFilters = () => {
-    setStatusFilter('')
-    setClienteFilter('')
-  }
+  const hasFilters = (tableProps.filterState.estado || '') !== ''
 
   return (
     <PageLayout title="Finanzas" showSearch>
@@ -267,44 +250,36 @@ export default function ReceivablesList() {
                 <Select
                   options={[
                     { value: '', label: 'Todos los estados' },
-                    { value: 'pendiente', label: 'Pendiente' },
-                    { value: 'parcialmente_pagada', label: 'Parcial' },
-                    { value: 'pagada', label: 'Pagada' },
-                    { value: 'vencida', label: 'Vencida' },
+                    { value: 'PENDIENTE', label: 'Pendiente' },
+                    { value: 'PARCIALMENTE_PAGADA', label: 'Parcial' },
+                    { value: 'PAGADA', label: 'Pagada' },
+                    { value: 'VENCIDA', label: 'Vencida' },
+                    { value: 'INCOBRABLE', label: 'Incobrable' },
                   ]}
-                  value={statusFilter}
-                  onChange={setStatusFilter}
+                  value={tableProps.filterState.estado || ''}
+                  onChange={(v) => tableProps.onFilterChange({ ...tableProps.filterState, estado: v })}
                   placeholder="Filtrar por estado"
                 />
               </div>
-              <div className="w-56">
-                <Select
-                  options={clientes}
-                  value={clienteFilter}
-                  onChange={setClienteFilter}
-                  placeholder="Filtrar por cliente"
-                />
-              </div>
               {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <Button variant="ghost" size="sm" onClick={() => tableProps.onFilterChange({ ...tableProps.filterState, estado: '' })}>
                   Limpiar filtros
                 </Button>
               )}
             </div>
 
             <Table
-              data={filteredInvoices}
+              data={invoices}
               columns={columns}
               searchable={true}
               sortable={true}
               paginatable={true}
-              pageSize={10}
+              {...tableProps}
               emptyMessage="No hay cuentas por cobrar"
             />
 
             <div className="flex items-center justify-between text-sm text-gray-600">
               <span>Total por cobrar: <strong className="text-red-600">{formatCurrency(totalPendiente)}</strong></span>
-              <span>Mostrando {filteredInvoices.length} de {invoices.length} facturas</span>
             </div>
           </>
         )}

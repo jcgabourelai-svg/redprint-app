@@ -6,22 +6,30 @@ use App\Http\Requests\StoreContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Services\ContractService;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ContractController extends Controller
 {
+    use Sortable;
+
     public function __construct(
         private ContractService $contractService
     ) {}
 
     public function index(Request $request)
     {
-        $contracts = Contract::with(['client', 'printers'])
+        $query = Contract::with(['client', 'printers'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+            ->search($request->search, ['codigo_negocio']);
+
+        $this->applySorting($query, $request, [
+            'id', 'codigo_negocio', 'estado', 'fecha_inicio', 'fecha_fin', 'created_at',
+        ], 'created_at', 'desc');
+
+        $contracts = $query->paginate($request->per_page ?? 15);
 
         return ContractResource::collection($contracts);
     }

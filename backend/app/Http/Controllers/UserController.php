@@ -7,18 +7,25 @@ use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    use Sortable;
+
     public function index(Request $request)
     {
-        $users = User::query()
-            ->when($request->search, fn($q, $s) => $q->where('nombre', 'ilike', "%{$s}%"))
-            ->orderBy('created_at', 'desc')
-            ->paginate($request->per_page ?? 15);
+        $query = User::query()
+            ->search($request->search, ['nombre', 'correo']);
+
+        $this->applySorting($query, $request, [
+            'id', 'nombre', 'correo', 'created_at',
+        ], 'created_at', 'desc');
+
+        $users = $query->paginate($request->per_page ?? 15);
 
         return UserResource::collection($users);
     }

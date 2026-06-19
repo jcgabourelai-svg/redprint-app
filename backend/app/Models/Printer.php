@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\PrinterStatus;
+use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,6 +11,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Printer extends Model
 {
+    use Searchable;
+
     protected $table = 'printers';
 
     protected $fillable = [
