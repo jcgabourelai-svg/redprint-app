@@ -54,3 +54,15 @@ export function useArticleCompatiblePrinters(articleId: number) {
     enabled: !!articleId,
   })
 }
+
+export function useDeactivateArticle() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, reason }: { id: number; reason?: string }) =>
+      api.delete(`/articles/${id}`, { data: { reason } }).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['articles'] })
+      qc.invalidateQueries({ queryKey: ['articles', id] })
+    },
+  })
+}

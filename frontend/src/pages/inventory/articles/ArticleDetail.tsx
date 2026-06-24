@@ -1,11 +1,13 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Package, AlertTriangle, DollarSign, BoxIcon, Link2, Edit } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useArticle, useArticleCompatiblePrinters } from '@/hooks/useArticles'
+import { useArticle, useArticleCompatiblePrinters, useDeactivateArticle } from '@/hooks/useArticles'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import type { Article } from '@/types/article'
@@ -17,6 +19,10 @@ export default function ArticleDetail() {
   const articleId = id ? parseInt(id) : 0
   const { data: article, isLoading, error } = useArticle(articleId)
   const { data: compatiblePrinters } = useArticleCompatiblePrinters(articleId)
+  const deactivateArticle = useDeactivateArticle()
+  const [showDeactivateModal, setShowDeactivateModal] = useState(false)
+  const [deactivateReason, setDeactivateReason] = useState('')
+  const [deactivateError, setDeactivateError] = useState('')
 
   if (isLoading) {
     return (
@@ -50,6 +56,21 @@ export default function ArticleDetail() {
     return 'Stock suficiente'
   }
 
+  const handleDeactivate = () => {
+    setDeactivateError('')
+    deactivateArticle.mutate(
+      { id: articleId, reason: deactivateReason.trim() || undefined },
+      {
+        onSuccess: () => navigate('/inventario/articulos'),
+        onError: (err: any) => {
+          setDeactivateError(
+            err?.response?.data?.message || 'No se pudo dar de baja el artículo'
+          )
+        },
+      }
+    )
+  }
+
   return (
     <PageLayout title={`Inventario › Artículos › ${article.nombre}`}>
       <div className="space-y-6">
@@ -64,9 +85,18 @@ export default function ArticleDetail() {
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
-              <Button variant="danger" size="sm">
-                Dar de Baja
-              </Button>
+              {article.activo !== false && (
+                <Button
+                  variant="danger"
+                  size="sm"
+                  onClick={() => {
+                    setDeactivateError('')
+                    setShowDeactivateModal(true)
+                  }}
+                >
+                  Dar de Baja
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -206,6 +236,53 @@ export default function ArticleDetail() {
           </div>
         </div>
       </div>
+
+      <Modal
+        isOpen={showDeactivateModal}
+        onClose={() => setShowDeactivateModal(false)}
+        title="Dar de Baja Artículo"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            ¿Seguro que deseas dar de baja el artículo{' '}
+            <span className="font-medium text-gray-900">{article.nombre}</span>
+            ? Ya no aparecerá en el listado de inventario activo.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo de baja <span className="text-gray-400">(opcional)</span>
+            </label>
+            <textarea
+              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              placeholder="Ej: Obsoleto, descontinuado..."
+              value={deactivateReason}
+              onChange={(e) => setDeactivateReason(e.target.value)}
+              disabled={deactivateArticle.isPending}
+            />
+          </div>
+          {deactivateError && (
+            <p className="text-sm text-red-600">{deactivateError}</p>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setShowDeactivateModal(false)}
+              disabled={deactivateArticle.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              variant="danger"
+              onClick={handleDeactivate}
+              loading={deactivateArticle.isPending}
+            >
+              Confirmar Baja
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }

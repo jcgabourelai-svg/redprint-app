@@ -79,7 +79,8 @@ Route::prefix('v1')->group(function () {
         Route::get('suppliers/{supplier}', [SupplierController::class, 'show']);
         Route::put('suppliers/{supplier}', [SupplierController::class, 'update']);
 
-        Route::apiResource('articles', ArticleController::class);
+        Route::apiResource('articles', ArticleController::class)->except(['destroy']);
+        Route::delete('articles/{article}', [ArticleController::class, 'destroy'])->middleware('role:ADMIN');
         Route::get('articles/{article}/movements', [ArticleController::class, 'movements']);
         Route::get('articles/{article}/compatible-printers', [ArticleController::class, 'compatiblePrinters']);
 

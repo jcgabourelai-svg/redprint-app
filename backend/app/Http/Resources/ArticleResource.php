@@ -23,6 +23,8 @@ class ArticleResource extends JsonResource
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
             'impresoras_compatibles' => $this->impresoras_compatibles,
             'activo' => $this->activo,
+            'motivo_baja' => $this->motivo_baja,
+            'fecha_baja' => $this->fecha_baja,
             'is_low_stock' => $this->isLowStock(),
             'fecha_creacion' => $this->fecha_creacion,
         ];

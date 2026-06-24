@@ -13,6 +13,8 @@ export interface Article {
   proveedor_id?: number | null
   impresoras_compatibles?: number[]
   activo?: boolean
+  motivo_baja?: string | null
+  fecha_baja?: string | null
   is_low_stock?: boolean
   fecha_creacion?: string | null
 }

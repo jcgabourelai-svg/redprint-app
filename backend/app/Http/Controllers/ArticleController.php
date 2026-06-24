@@ -95,4 +95,21 @@ class ArticleController extends Controller
 
         return response()->json($printers);
     }
+
+    public function destroy(Article $article, Request $request): JsonResponse
+    {
+        if (! $article->activo) {
+            return response()->json(['message' => 'El artículo ya está dado de baja'], 409);
+        }
+
+        $rawReason = $request->input('reason');
+        $reason = ($rawReason !== null && trim((string) $rawReason) !== '') ? $rawReason : 'Dada de baja por usuario';
+
+        $article->activo = false;
+        $article->motivo_baja = $reason;
+        $article->fecha_baja = now();
+        $article->save();
+
+        return response()->json(['message' => 'Artículo dado de baja', 'reason' => $reason]);
+    }
 }

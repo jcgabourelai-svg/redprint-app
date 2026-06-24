@@ -26,6 +26,8 @@ class Article extends Model
         'proveedor_id',
         'impresoras_compatibles',
         'activo',
+        'motivo_baja',
+        'fecha_baja',
         'fecha_creacion',
     ];
 
@@ -38,6 +40,7 @@ class Article extends Model
             'costo_unitario' => 'decimal:2',
             'impresoras_compatibles' => 'array',
             'activo' => 'boolean',
+            'fecha_baja' => 'datetime',
             'fecha_creacion' => 'datetime',
         ];
     }
