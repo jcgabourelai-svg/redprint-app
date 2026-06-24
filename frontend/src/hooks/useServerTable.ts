@@ -37,12 +37,13 @@ function pickTotal(d: PaginatedResponse<unknown> | undefined): number {
 export function useServerTable<T>({
   queryKey,
   fetcher,
-  pageSize = 25,
+  pageSize: initialPageSize = 25,
   debounceMs = 350,
   defaultSort,
   extraParams,
 }: UseServerTableOptions<T>) {
   const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(initialPageSize)
   const [search, setSearch] = useState('')
   const debouncedSearch = useDebounce(search, debounceMs)
   const [sortColumn, setSortColumn] = useState<string | null>(defaultSort?.column ?? null)
@@ -106,6 +107,14 @@ export function useServerTable<T>({
 
   const onPageChange = useCallback((next: number) => setPage(next), [])
 
+  const onPageSizeChange = useCallback(
+    (size: number) => {
+      setPageSize(size)
+      resetPage()
+    },
+    [resetPage]
+  )
+
   const onFilterChange = useCallback(
     (next: Record<string, string>) => {
       setFilters(next)
@@ -125,6 +134,7 @@ export function useServerTable<T>({
     totalItems: pickTotal(query.data),
     onPageChange,
     pageSize,
+    onPageSizeChange,
     filterState: filters,
     onFilterChange,
   }

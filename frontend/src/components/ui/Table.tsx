@@ -1,4 +1,4 @@
-import { useState, ReactNode } from 'react'
+import { useState, useRef, ReactNode } from 'react'
 import { ChevronLeft, ChevronRight, Search, Filter, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Button from './Button'
@@ -31,6 +31,8 @@ export interface TableProps<T> {
   sortable?: boolean
   paginatable?: boolean
   pageSize?: number
+  pageSizeOptions?: number[]
+  onPageSizeChange?: (size: number) => void
   emptyMessage?: string
   className?: string
   filters?: FilterConfig[]
@@ -58,6 +60,8 @@ export default function Table<T extends Record<string, any>>({
   sortable = true,
   paginatable = true,
   pageSize = 25,
+  pageSizeOptions = [10, 25, 50, 100],
+  onPageSizeChange,
   emptyMessage = 'No hay datos disponibles',
   className,
   filters,
@@ -78,6 +82,7 @@ export default function Table<T extends Record<string, any>>({
   const [sortColumn, setSortColumn] = useState<keyof T | null>(null)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [localPage, setLocalPage] = useState(1)
+  const [localPageSize, setLocalPageSize] = useState(pageSize)
   const [showFilters, setShowFilters] = useState(false)
   const [internalFilters, setInternalFilters] = useState<Record<string, string>>({})
 
@@ -92,6 +97,16 @@ export default function Table<T extends Record<string, any>>({
     (column.sortableKey || column.key) as string
 
   const isControlled = onFilterChange !== undefined
+  const isPageSizeControlled = onPageSizeChange !== undefined
+  const activePageSize = isPageSizeControlled ? pageSize : localPageSize
+  // En modo no controlado, sincronizamos con el prop `pageSize` sólo cuando el
+  // prop cambia realmente (no cuando el usuario elige un tamaño distinto). Se
+  // evita así revertir la selección local del usuario en tablas cliente.
+  const prevPageSizeProp = useRef(pageSize)
+  if (!isPageSizeControlled && prevPageSizeProp.current !== pageSize) {
+    prevPageSizeProp.current = pageSize
+    setLocalPageSize(pageSize)
+  }
   const isSearchControlled = searchValue !== undefined && onSearchChange !== undefined
   const activeSearchTerm = isSearchControlled ? (searchValue as string) : searchTerm
   const activeFilters = isControlled && filterState ? filterState : internalFilters
@@ -147,10 +162,10 @@ export default function Table<T extends Record<string, any>>({
   const paginatedData = serverPaginated
     ? sortedData
     : paginatable
-      ? sortedData.slice((localPage - 1) * pageSize, localPage * pageSize)
+      ? sortedData.slice((localPage - 1) * activePageSize, localPage * activePageSize)
       : sortedData
 
-  const effectiveTotalPages = serverPaginated ? Math.max(1, totalPages ?? 1) : Math.ceil(sortedData.length / pageSize)
+  const effectiveTotalPages = serverPaginated ? Math.max(1, totalPages ?? 1) : Math.ceil(sortedData.length / activePageSize)
   const effectiveCurrentPage = serverPaginated ? Math.min(Math.max(1, currentPage ?? 1), effectiveTotalPages) : localPage
   const totalCount = serverPaginated ? (totalItems ?? sortedData.length) : sortedData.length
 
@@ -183,12 +198,12 @@ export default function Table<T extends Record<string, any>>({
     }
   }
 
-  const firstItemIndex = paginatedData.length === 0 ? 0 : ((effectiveCurrentPage - 1) * pageSize) + 1
+  const firstItemIndex = paginatedData.length === 0 ? 0 : ((effectiveCurrentPage - 1) * activePageSize) + 1
   const lastItemIndex = paginatedData.length === 0
     ? 0
     : serverPaginated
-      ? Math.min(effectiveCurrentPage * pageSize, totalCount)
-      : Math.min(effectiveCurrentPage * pageSize, sortedData.length)
+      ? Math.min(effectiveCurrentPage * activePageSize, totalCount)
+      : Math.min(effectiveCurrentPage * activePageSize, sortedData.length)
 
   return (
     <div className={cn('w-full', className)}>
@@ -339,35 +354,61 @@ export default function Table<T extends Record<string, any>>({
         </table>
       </div>
 
-      {paginatable && effectiveTotalPages > 1 && (
+      {paginatable && (
         <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-600">
-            Mostrando {firstItemIndex} a {lastItemIndex} de{' '}
-            {totalCount}
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-600">
+              Mostrando {firstItemIndex} a {lastItemIndex} de{' '}
+              {totalCount}
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="page-size-select" className="text-sm text-gray-600">
+                Filas por página
+              </label>
+              <select
+                id="page-size-select"
+                value={activePageSize}
+                onChange={(e) => {
+                  const size = Number(e.target.value)
+                  if (onPageSizeChange) onPageSizeChange(size)
+                  else setLocalPageSize(size)
+                  setLocalPage(1)
+                }}
+                className="rounded-md border border-gray-300 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {pageSizeOptions.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(effectiveCurrentPage - 1)}
-              disabled={effectiveCurrentPage === 1}
-              aria-label="Página anterior"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="px-3 py-1 text-sm text-gray-600">
-              {effectiveCurrentPage} de {effectiveTotalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => goToPage(effectiveCurrentPage + 1)}
-              disabled={effectiveCurrentPage === effectiveTotalPages}
-              aria-label="Página siguiente"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+          {effectiveTotalPages > 1 && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(effectiveCurrentPage - 1)}
+                disabled={effectiveCurrentPage === 1}
+                aria-label="Página anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-3 py-1 text-sm text-gray-600">
+                {effectiveCurrentPage} de {effectiveTotalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => goToPage(effectiveCurrentPage + 1)}
+                disabled={effectiveCurrentPage === effectiveTotalPages}
+                aria-label="Página siguiente"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
