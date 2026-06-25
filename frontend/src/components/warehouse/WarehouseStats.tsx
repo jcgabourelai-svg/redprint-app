@@ -7,20 +7,21 @@ export interface WarehouseStatsProps {
 }
 
 export default function WarehouseStats({ warehouse }: WarehouseStatsProps) {
+  const total = (warehouse.printers ?? []).length
   const stats = [
     {
       label: 'Total Impresoras',
-      value: warehouse.impresoras.length.toString(),
+      value: total.toString(),
       icon: Package,
       color: 'text-blue-600',
       bg: 'bg-blue-50',
     },
     {
       label: 'Estado',
-      value: warehouse.estado === 'activo' ? 'ACTIVO' : 'INACTIVO',
+      value: warehouse.activo ? 'ACTIVO' : 'INACTIVO',
       icon: WarehouseIcon,
-      color: warehouse.estado === 'activo' ? 'text-green-600' : 'text-gray-600',
-      bg: warehouse.estado === 'activo' ? 'bg-green-50' : 'bg-gray-50',
+      color: warehouse.activo ? 'text-green-600' : 'text-gray-600',
+      bg: warehouse.activo ? 'bg-green-50' : 'bg-gray-50',
     },
   ]
 

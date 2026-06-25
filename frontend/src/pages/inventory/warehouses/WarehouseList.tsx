@@ -16,7 +16,7 @@ export default function WarehouseList() {
   const isAdmin = useIsAdmin()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string | 'all'>('all')
-  const [encargadoFilter, setEncargadoFilter] = useState<string>('all')
+  const [responsableFilter, setResponsableFilter] = useState<string>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
@@ -30,27 +30,39 @@ export default function WarehouseList() {
 
   const warehouses = data?.data || []
 
-  const encargados = useMemo(
-    () => [...new Set(warehouses.map((w) => w.encargado))].sort(),
+  const responsables = useMemo(
+    () =>
+      [
+        ...new Set(
+          warehouses
+            .map((w) => w.responsable?.nombre ?? w.responsable?.correo)
+            .filter((r): r is string => Boolean(r))
+        ),
+      ].sort(),
     [warehouses]
   )
 
   const filtered = useMemo(() => {
     return warehouses.filter((w) => {
       const term = searchTerm.toLowerCase()
+      const responsable = w.responsable?.nombre ?? w.responsable?.correo ?? ''
       const matchesSearch =
         !term ||
         w.nombre.toLowerCase().includes(term) ||
         w.direccion.toLowerCase().includes(term) ||
-        w.encargado.toLowerCase().includes(term) ||
-        w.id.toLowerCase().includes(term)
+        responsable.toLowerCase().includes(term) ||
+        String(w.id).toLowerCase().includes(term)
 
-      const matchesStatus = statusFilter === 'all' || w.estado === statusFilter
-      const matchesEncargado = encargadoFilter === 'all' || w.encargado === encargadoFilter
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'activo' && w.activo) ||
+        (statusFilter === 'inactivo' && !w.activo)
+      const matchesResponsable =
+        responsableFilter === 'all' || responsable === responsableFilter
 
-      return matchesSearch && matchesStatus && matchesEncargado
+      return matchesSearch && matchesStatus && matchesResponsable
     })
-  }, [warehouses, searchTerm, statusFilter, encargadoFilter])
+  }, [warehouses, searchTerm, statusFilter, responsableFilter])
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safeCurrentPage = Math.min(currentPage, totalPages)
@@ -98,11 +110,11 @@ export default function WarehouseList() {
   const clearFilters = useCallback(() => {
     setSearchTerm('')
     setStatusFilter('all')
-    setEncargadoFilter('all')
+    setResponsableFilter('all')
   }, [])
 
   const hasActiveFilters =
-    statusFilter !== 'all' || encargadoFilter !== 'all'
+    statusFilter !== 'all' || responsableFilter !== 'all'
 
   if (isLoading) {
     return (
@@ -148,7 +160,7 @@ export default function WarehouseList() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Buscar por nombre, dirección, encargado..."
+                placeholder="Buscar por nombre, dirección, responsable..."
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value)
@@ -200,11 +212,11 @@ export default function WarehouseList() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Encargado</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Responsable</label>
                   <select
-                    value={encargadoFilter}
+                    value={responsableFilter}
                     onChange={(e) => {
-                      setEncargadoFilter(e.target.value)
+                      setResponsableFilter(e.target.value)
                       setCurrentPage(1)
                     }}
                     className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"

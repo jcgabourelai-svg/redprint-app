@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -6,7 +6,6 @@ import {
   Trash2,
   MapPin,
   User,
-  Phone,
   Calendar,
   Warehouse as WarehouseIcon,
   Search,
@@ -21,7 +20,7 @@ import WarehouseForm from '@/components/warehouse/WarehouseForm'
 import { useWarehouse } from '@/hooks/useWarehouses'
 import { formatDate } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
-import type { WarehouseDetail, WarehouseFormData } from '@/types/warehouse'
+import type { WarehouseFormData } from '@/types/warehouse'
 
 export default function WarehouseDetail() {
   const { id } = useParams<{ id: string }>()
@@ -74,13 +73,18 @@ export default function WarehouseDetail() {
     navigate('/inventario/almacenes')
   }
 
-  const filteredPrinters = warehouse.impresoras.filter((p) => {
+  const printers = warehouse.printers ?? []
+  const responsableNombre =
+    warehouse.responsable?.nombre ?? warehouse.responsable?.correo ?? 'Sin asignar'
+
+  const filteredPrinters = printers.filter((p) => {
+    const term = printerSearch.toLowerCase()
     const matchesSearch =
-      !printerSearch ||
-      p.id.toLowerCase().includes(printerSearch.toLowerCase()) ||
-      p.marca.toLowerCase().includes(printerSearch.toLowerCase()) ||
-      p.modelo.toLowerCase().includes(printerSearch.toLowerCase()) ||
-      p.numero_serie.toLowerCase().includes(printerSearch.toLowerCase())
+      !term ||
+      String(p.id).toLowerCase().includes(term) ||
+      (p.marca ?? '').toLowerCase().includes(term) ||
+      (p.modelo ?? '').toLowerCase().includes(term) ||
+      (p.numero_serie ?? p.num_serie ?? '').toLowerCase().includes(term)
 
     const matchesStatus =
       printerStatusFilter === 'all' || p.estado === printerStatusFilter
@@ -110,9 +114,9 @@ export default function WarehouseDetail() {
                 variant="danger"
                 size="sm"
                 onClick={() => setShowDeleteModal(true)}
-                disabled={warehouse.impresoras.length > 0}
+                disabled={printers.length > 0}
                 title={
-                  warehouse.impresoras.length > 0
+                  printers.length > 0
                     ? 'No se puede eliminar un almacén con impresoras asignadas'
                     : 'Eliminar almacén'
                 }
@@ -135,11 +139,11 @@ export default function WarehouseDetail() {
                     </div>
                     <div>
                       <CardTitle className="text-xl">{warehouse.nombre}</CardTitle>
-                      <p className="text-sm text-gray-500">{warehouse.id}</p>
+                      <p className="text-sm text-gray-500">ID: {warehouse.id}</p>
                     </div>
                   </div>
-                  <Badge variant={warehouse.estado === 'activo' ? 'success' : 'neutral'}>
-                    {warehouse.estado === 'activo' ? 'ACTIVO' : 'INACTIVO'}
+                  <Badge variant={warehouse.activo ? 'success' : 'neutral'}>
+                    {warehouse.activo ? 'ACTIVO' : 'INACTIVO'}
                   </Badge>
                 </div>
               </CardHeader>
@@ -155,41 +159,28 @@ export default function WarehouseDetail() {
                   <div className="flex items-start gap-2">
                     <User className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-gray-600">Encargado</p>
-                      <p className="text-gray-900 text-sm">{warehouse.encargado}</p>
+                      <p className="text-sm font-medium text-gray-600">Responsable</p>
+                      <p className="text-gray-900 text-sm">{responsableNombre}</p>
                     </div>
                   </div>
-                  {warehouse.telefono && (
+                  {warehouse.responsable?.telefono && (
                     <div className="flex items-start gap-2">
-                      <Phone className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <User className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
                       <div>
                         <p className="text-sm font-medium text-gray-600">Teléfono</p>
-                        <p className="text-gray-900 text-sm">{warehouse.telefono}</p>
-                      </div>
-                    </div>
-                  )}
-                  <div className="flex items-start gap-2">
-                    <Calendar className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-gray-600">Fecha de Creación</p>
-                      <p className="text-gray-900 text-sm">{formatDate(warehouse.fecha_creacion)}</p>
-                    </div>
-                  </div>
-                  {warehouse.fecha_ultima_actualizacion && (
-                    <div className="flex items-start gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-gray-600">Última Actualización</p>
                         <p className="text-gray-900 text-sm">
-                          {formatDate(warehouse.fecha_ultima_actualizacion)}
+                          {warehouse.responsable.telefono}
                         </p>
                       </div>
                     </div>
                   )}
-                  {warehouse.notas && (
-                    <div className="sm:col-span-2">
-                      <p className="text-sm font-medium text-gray-600">Notas</p>
-                      <p className="text-gray-900 text-sm">{warehouse.notas}</p>
+                  {warehouse.created_at && (
+                    <div className="flex items-start gap-2">
+                      <Calendar className="h-4 w-4 text-gray-400 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-600">Fecha de Creación</p>
+                        <p className="text-gray-900 text-sm">{formatDate(warehouse.created_at)}</p>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -229,14 +220,14 @@ export default function WarehouseDetail() {
                       className="rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="all">Todos los estados</option>
-                      <option value="en_almacen">En almacén</option>
-                      <option value="rentada">Rentada</option>
-                      <option value="en_mantenimiento">En mantenimiento</option>
-                      <option value="dada_de_baja">Dada de baja</option>
+                      <option value="EN_ALMACEN">En almacén</option>
+                      <option value="RENTADA">Rentada</option>
+                      <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+                      <option value="DADA_DE_BAJA">Dada de baja</option>
                     </select>
                   </div>
 
-                  {warehouse.impresoras.length === 0 ? (
+                  {printers.length === 0 ? (
                     <div className="text-center py-8">
                       <p className="text-sm text-gray-500">
                         No hay impresoras asignadas a este almacén.
@@ -287,19 +278,16 @@ export default function WarehouseDetail() {
                                   {printer.marca} {printer.modelo}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                  Serie: {printer.numero_serie}
+                                  Serie: {printer.num_serie}
                                 </p>
                               </td>
                               <td className="px-4 py-3 text-sm">
-                                <Badge
-                                  variant="printer_status"
-                                  color={printer.estado}
-                                >
-                                  {printer.estado.replace(/_/g, ' ').toUpperCase()}
+                                <Badge variant="printer_status" color={printer.estado}>
+                                  {String(printer.estado).replace(/_/g, ' ')}
                                 </Badge>
                               </td>
                               <td className="px-4 py-3 text-sm text-right tabular-nums text-gray-700">
-                                {printer.contador_total_actual.toLocaleString('es-MX')}
+                                {(printer.contador_actual ?? 0).toLocaleString('es-MX')}
                               </td>
                               <td className="px-4 py-3 text-right">
                                 <Button
@@ -307,9 +295,7 @@ export default function WarehouseDetail() {
                                   size="sm"
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    navigate(
-                                      `/inventario/impresoras/${printer.id}`
-                                    )
+                                    navigate(`/inventario/impresoras/${printer.id}`)
                                   }}
                                 >
                                   Ver

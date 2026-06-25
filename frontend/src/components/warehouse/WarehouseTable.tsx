@@ -40,25 +40,30 @@ export default function WarehouseTable({
       ),
     },
     {
-      key: 'encargado',
-      label: 'Encargado',
-      sortable: true,
-    },
-    {
-      key: 'ocupacion_actual',
-      label: 'Ocupación',
-      sortable: true,
-      render: (_value: number, row: Warehouse) => (
-        <span className="text-sm text-gray-600">{row.ocupacion_actual} impresoras</span>
+      key: 'responsable',
+      label: 'Responsable',
+      sortable: false,
+      render: (_value: unknown, row: Warehouse) => (
+        <span className="text-sm text-gray-600">
+          {row.responsable?.nombre ?? row.responsable?.correo ?? 'Sin asignar'}
+        </span>
       ),
     },
     {
-      key: 'estado',
+      key: 'printers_count',
+      label: 'Impresoras',
+      sortable: true,
+      render: (_value: number, row: Warehouse) => (
+        <span className="text-sm text-gray-600">{row.printers_count ?? 0}</span>
+      ),
+    },
+    {
+      key: 'activo',
       label: 'Estado',
       sortable: true,
-      render: (value: string) => (
-        <Badge variant={value === 'activo' ? 'success' : 'neutral'}>
-          {value === 'activo' ? 'ACTIVO' : 'INACTIVO'}
+      render: (value: boolean) => (
+        <Badge variant={value ? 'success' : 'neutral'}>
+          {value ? 'ACTIVO' : 'INACTIVO'}
         </Badge>
       ),
     },

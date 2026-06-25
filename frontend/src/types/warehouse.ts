@@ -1,27 +1,31 @@
 import type { Printer } from '@/types/printer'
 
+export interface WarehouseResponsable {
+  id: number
+  nombre?: string
+  correo?: string
+  telefono?: string
+}
+
 export interface Warehouse {
-  id: string
+  id: number
   nombre: string
   direccion: string
-  encargado: string
-  telefono?: string
-  ocupacion_actual: number
-  estado: 'activo' | 'inactivo'
-  notas?: string
-  fecha_creacion: string
-  fecha_ultima_actualizacion?: string
+  responsable_id?: number | null
+  responsable?: WarehouseResponsable | null
+  activo: boolean
+  printers_count?: number
+  created_at?: string
+  updated_at?: string
 }
 
 export interface WarehouseDetail extends Warehouse {
-  impresoras: Printer[]
+  printers?: Printer[]
 }
 
 export interface WarehouseFormData {
   nombre: string
   direccion: string
-  encargado: string
-  telefono?: string
-  estado: 'activo' | 'inactivo'
-  notas?: string
+  responsable_id?: number | null
+  activo: boolean
 }

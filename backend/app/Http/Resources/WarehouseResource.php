@@ -13,9 +13,13 @@ class WarehouseResource extends JsonResource
             'id' => $this->id,
             'nombre' => $this->nombre,
             'direccion' => $this->direccion,
+            'responsable_id' => $this->responsable_id,
             'responsable' => $this->whenLoaded('responsable'),
             'activo' => $this->activo,
             'printers_count' => $this->whenCounted('printers'),
+            'printers' => PrinterResource::collection($this->whenLoaded('printers')),
+            'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

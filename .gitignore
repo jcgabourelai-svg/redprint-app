@@ -10,3 +10,4 @@
 /frontend-new/node_modules/
 /frontend-new/dist/
 /nginx/ssl/
+/.playwright-mcp/

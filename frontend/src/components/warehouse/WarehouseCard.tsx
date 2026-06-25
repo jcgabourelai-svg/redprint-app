@@ -19,17 +19,26 @@ export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: W
             <h3 className="font-semibold text-gray-900">{warehouse.nombre}</h3>
             <p className="text-xs text-gray-500">{warehouse.direccion}</p>
           </div>
-          <Badge variant={warehouse.estado === 'activo' ? 'success' : 'neutral'}>
-            {warehouse.estado === 'activo' ? 'ACTIVO' : 'INACTIVO'}
+          <Badge variant={warehouse.activo ? 'success' : 'neutral'}>
+            {warehouse.activo ? 'ACTIVO' : 'INACTIVO'}
           </Badge>
         </div>
 
         <div className="space-y-2 text-sm text-gray-600 mb-3">
-          <p><span className="font-medium text-gray-700">Encargado:</span> {warehouse.encargado}</p>
-          {warehouse.telefono && (
-            <p><span className="font-medium text-gray-700">Tel:</span> {warehouse.telefono}</p>
+          <p>
+            <span className="font-medium text-gray-700">Responsable:</span>{' '}
+            {warehouse.responsable?.nombre ?? warehouse.responsable?.correo ?? 'Sin asignar'}
+          </p>
+          {warehouse.responsable?.telefono && (
+            <p>
+              <span className="font-medium text-gray-700">Tel:</span>{' '}
+              {warehouse.responsable.telefono}
+            </p>
           )}
-          <p><span className="font-medium text-gray-700">Impresoras:</span> {warehouse.ocupacion_actual}</p>
+          <p>
+            <span className="font-medium text-gray-700">Impresoras:</span>{' '}
+            {warehouse.printers_count ?? 0}
+          </p>
         </div>
 
         <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
