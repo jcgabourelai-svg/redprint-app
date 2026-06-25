@@ -8,15 +8,26 @@ use Symfony\Component\HttpFoundation\Response;
 
 class EnsureUserRole
 {
+    /**
+     * Middleware legacy por rol. Mantiene compatibilidad con el alias `role`,
+     * pero ahora resuelve el rol via la relacion `role` (slug o nombre).
+     * El control de acceso principal usa el middleware `permission:`.
+     */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
-        if (!$request->user()) {
+        $user = $request->user();
+
+        if (!$user) {
             return response()->json(['message' => 'No autenticado'], 401);
         }
 
-        $userRole = $request->user()->rol->value;
+        if ($user->isAdmin()) {
+            return $next($request);
+        }
 
-        if (!in_array($userRole, $roles)) {
+        $role = $user->role;
+
+        if (!$role || !in_array($role->slug, $roles) && !in_array($role->nombre, $roles)) {
             return response()->json(['message' => 'No autorizado'], 403);
         }
 

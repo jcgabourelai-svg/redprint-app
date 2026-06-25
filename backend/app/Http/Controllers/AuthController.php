@@ -42,7 +42,23 @@ class AuthController extends Controller
 
     public function user(Request $request): JsonResponse
     {
-        return response()->json($request->user());
+        $user = $request->user();
+        $role = $user->role;
+
+        return response()->json([
+            'id' => $user->id,
+            'nombre' => $user->nombre,
+            'correo' => $user->correo,
+            'telefono' => $user->telefono,
+            'rol_id' => $role?->id,
+            'rol_nombre' => $role?->nombre,
+            'rol_slug' => $role?->slug,
+            'es_sistema' => (bool) ($role?->es_sistema),
+            'permisos' => $user->permisos(),
+            'activo' => $user->activo,
+            'ultimo_acceso' => $user->when($user->ultimo_acceso, fn () => $user->ultimo_acceso?->toIso8601String()),
+            'fecha_creacion' => $user->fecha_creacion?->toIso8601String(),
+        ]);
     }
 
     public function csrf(): JsonResponse

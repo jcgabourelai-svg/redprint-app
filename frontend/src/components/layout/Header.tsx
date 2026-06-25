@@ -3,12 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Menu, User, Search, LogOut } from 'lucide-react'
 import Button from '@/components/ui/Button'
 import { useAuth } from '@/contexts/AuthContext'
-import type { UserRole } from '@/types/enums'
-
-const roleLabels: Record<UserRole, string> = {
-  ADMIN: 'Administrador',
-  OPERADOR: 'Operador',
-}
 
 export interface HeaderProps {
   title?: string
@@ -132,7 +126,7 @@ export default function Header({
                   {user?.nombre ?? 'Usuario'}
                 </p>
                 <p className="text-xs text-gray-500">
-                  {user ? roleLabels[user.rol] : ''}
+                  {user ? (user.rol_nombre ?? (user.es_sistema ? 'Administrador' : 'Usuario')) : ''}
                 </p>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">

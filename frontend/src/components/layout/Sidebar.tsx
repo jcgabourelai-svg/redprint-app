@@ -2,105 +2,16 @@ import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard,
   Package,
-  Users,
-  FileText,
-  Calendar,
-  DollarSign,
-  Settings,
   X,
   ChevronDown,
   User,
-  ShoppingCart,
-  BarChart3,
-  TrendingUp,
-  CreditCard,
-  FileSearch,
-  Bell,
-  ArrowLeftRight,
+  Settings,
 } from 'lucide-react'
+import { navItems, filterVisibleNav } from '@/config/nav'
+import { useAuth } from '@/contexts/AuthContext'
 
-export interface NavItem {
-  id: string
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-  path: string
-  badge?: number
-  children?: NavItem[]
-}
-
-const navItems: NavItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    path: '/',
-  },
-  {
-    id: 'inventario',
-    label: 'Inventario',
-    icon: Package,
-    path: '/inventario',
-    children: [
-      { id: 'impresoras', label: 'Impresoras', icon: Package, path: '/inventario/impresoras' },
-      { id: 'articulos', label: 'Artículos', icon: Package, path: '/inventario/articulos' },
-      { id: 'mantenimiento', label: 'Mantenimiento', icon: Settings, path: '/inventario/mantenimiento' },
-      { id: 'almacenes', label: 'Almacenes', icon: Package, path: '/inventario/almacenes' },
-      { id: 'movimientos', label: 'Movimientos', icon: ArrowLeftRight, path: '/inventario/movimientos' },
-    ],
-  },
-  {
-    id: 'clientes',
-    label: 'Clientes',
-    icon: Users,
-    path: '/clientes',
-  },
-  {
-    id: 'contratos',
-    label: 'Contratos',
-    icon: FileText,
-    path: '/contratos',
-  },
-  {
-    id: 'operaciones',
-    label: 'Operaciones',
-    icon: Calendar,
-    path: '/operaciones',
-    children: [
-      { id: 'calendario', label: 'Calendario', icon: Calendar, path: '/operaciones/calendario' },
-      { id: 'lecturas', label: 'Lecturas', icon: FileText, path: '/operaciones/lecturas' },
-    ],
-  },
-  {
-    id: 'finanzas',
-    label: 'Finanzas',
-    icon: DollarSign,
-    path: '/finanzas',
-    children: [
-      { id: 'facturas', label: 'Facturas', icon: FileText, path: '/finanzas/facturas' },
-      { id: 'cuentas-por-cobrar', label: 'Cuentas por Cobrar', icon: CreditCard, path: '/finanzas/cuentas-por-cobrar' },
-      { id: 'cuentas-por-pagar', label: 'Cuentas por Pagar', icon: DollarSign, path: '/finanzas/cuentas-por-pagar' },
-      { id: 'compras', label: 'Compras', icon: ShoppingCart, path: '/finanzas/compras' },
-      { id: 'rentabilidad', label: 'Rentabilidad', icon: BarChart3, path: '/finanzas/rentabilidad' },
-      { id: 'flujo-caja', label: 'Flujo de Caja', icon: TrendingUp, path: '/finanzas/flujo-caja' },
-      { id: 'cuentas-bancarias', label: 'Cuentas Bancarias', icon: CreditCard, path: '/finanzas/cuentas-bancarias' },
-      { id: 'conciliacion', label: 'Conciliación', icon: FileSearch, path: '/finanzas/conciliacion' },
-      { id: 'cierre', label: 'Cierre de Periodo', icon: Calendar, path: '/finanzas/cierre' },
-    ],
-  },
-  {
-    id: 'sistema',
-    label: 'Sistema',
-    icon: Settings,
-    path: '/sistema',
-    children: [
-      { id: 'usuarios', label: 'Usuarios', icon: Users, path: '/sistema/usuarios' },
-      { id: 'notificaciones', label: 'Notificaciones', icon: Bell, path: '/sistema/notificaciones' },
-      { id: 'configuracion', label: 'Configuración', icon: Settings, path: '/sistema/configuracion' },
-    ],
-  },
-]
+export type { NavItem } from '@/config/nav'
 
 interface SidebarProps {
   isOpen: boolean
@@ -132,6 +43,14 @@ function getInitialExpanded(pathname: string): Set<string> {
 export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const location = useLocation()
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const tienePermiso = (clave?: string) => {
+    if (!clave) return true
+    if (!user) return false
+    if (user.es_sistema) return true
+    return (user.permisos ?? []).includes(clave)
+  }
+  const visibleNavItems = filterVisibleNav(navItems, tienePermiso)
   const [expandedItems, setExpandedItems] = useState<Set<string>>(() =>
     getInitialExpanded(location.pathname)
   )
@@ -140,7 +59,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
   useEffect(() => {
     setExpandedItems((prev) => {
       const next = new Set(prev)
-      for (const item of navItems) {
+      for (const item of visibleNavItems) {
         if (!item.children || item.children.length === 0) continue
         if (location.pathname === item.path || location.pathname.startsWith(item.path + '/')) {
           next.add(item.id)
@@ -208,7 +127,7 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
         <nav className="flex-1 overflow-y-auto py-4">
           <ul className="space-y-1 px-3">
-            {navItems.map((item) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon
               const hasChildren = item.children && item.children.length > 0
               const isExpanded = expandedItems.has(item.id)
@@ -296,8 +215,10 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
               <User className="h-5 w-5 text-gray-600" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">Juan Pérez</p>
-              <p className="text-xs text-gray-500">Administrador</p>
+              <p className="text-sm font-medium text-gray-900">{user?.nombre ?? 'Usuario'}</p>
+              <p className="text-xs text-gray-500">
+                {user ? (user.rol_nombre ?? (user.es_sistema ? 'Administrador' : 'Usuario')) : ''}
+              </p>
             </div>
             <button
               className="rounded-md p-2 hover:bg-gray-100"

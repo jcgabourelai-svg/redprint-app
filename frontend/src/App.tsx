@@ -36,6 +36,7 @@ import NotificationCenterPage from '@/pages/admin/NotificationCenterPage'
 import ConfigPage from '@/pages/admin/ConfigPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
+import RequirePermission from '@/components/auth/RequirePermission'
 
 function App() {
   return (
@@ -45,39 +46,39 @@ function App() {
         <Route path="cambiar-contrasena" element={<ChangePasswordPage />} />
         <Route path="/">
           <Route index element={<Dashboard />} />
-          <Route path="inventario/impresoras" element={<PrinterList />} />
-          <Route path="inventario/impresoras/:id" element={<PrinterDetail />} />
-          <Route path="inventario/articulos" element={<ArticleList />} />
-          <Route path="inventario/articulos/:id" element={<ArticleDetail />} />
-          <Route path="inventario/mantenimiento" element={<MaintenanceList />} />
-          <Route path="inventario/mantenimiento/crear" element={<CreateMaintenanceOrder />} />
-          <Route path="inventario/mantenimiento/:id" element={<MaintenanceDetail />} />
-          <Route path="inventario/almacenes" element={<WarehouseList />} />
-          <Route path="inventario/almacenes/:id" element={<WarehouseDetail />} />
-          <Route path="inventario/movimientos" element={<MovementList />} />
-          <Route path="clientes" element={<ClientList />} />
-          <Route path="clientes/:id" element={<ClientDetail />} />
-          <Route path="contratos" element={<ContractList />} />
-          <Route path="contratos/crear" element={<CreateContract />} />
-          <Route path="contratos/:id" element={<ContractDetail />} />
-          <Route path="operaciones/calendario" element={<CalendarPage />} />
-          <Route path="operaciones/visitas/:id" element={<VisitDetailPage />} />
-          <Route path="operaciones/lecturas" element={<ReadingListPage />} />
-          <Route path="operaciones/lecturas/:visitaId" element={<CaptureReadingPage />} />
-          <Route path="finanzas/facturas" element={<InvoiceList />} />
-          <Route path="finanzas/facturas/registrar" element={<RegisterInvoicePage />} />
-          <Route path="finanzas/cuentas-por-cobrar" element={<ReceivablesList />} />
-          <Route path="finanzas/cuentas-por-pagar" element={<PaymentList />} />
-          <Route path="finanzas/compras" element={<PurchaseList />} />
-          <Route path="finanzas/compras/:id" element={<PurchaseDetail />} />
-          <Route path="finanzas/rentabilidad" element={<ProfitabilityReport />} />
-          <Route path="finanzas/flujo-caja" element={<CashFlowReport />} />
-          <Route path="finanzas/cuentas-bancarias" element={<BankAccountsPage />} />
-          <Route path="finanzas/conciliacion" element={<ReconciliationPage />} />
-          <Route path="finanzas/cierre" element={<ClosePeriodPage />} />
-          <Route path="sistema/usuarios" element={<UserListPage />} />
-          <Route path="sistema/notificaciones" element={<NotificationCenterPage />} />
-          <Route path="sistema/configuracion" element={<ConfigPage />} />
+          <Route path="inventario/impresoras" element={<RequirePermission permiso="inventario.impresoras"><PrinterList /></RequirePermission>} />
+          <Route path="inventario/impresoras/:id" element={<RequirePermission permiso="inventario.impresoras"><PrinterDetail /></RequirePermission>} />
+          <Route path="inventario/articulos" element={<RequirePermission permiso="inventario.articulos"><ArticleList /></RequirePermission>} />
+          <Route path="inventario/articulos/:id" element={<RequirePermission permiso="inventario.articulos"><ArticleDetail /></RequirePermission>} />
+          <Route path="inventario/mantenimiento" element={<RequirePermission permiso="inventario.mantenimiento"><MaintenanceList /></RequirePermission>} />
+          <Route path="inventario/mantenimiento/crear" element={<RequirePermission permiso="inventario.mantenimiento"><CreateMaintenanceOrder /></RequirePermission>} />
+          <Route path="inventario/mantenimiento/:id" element={<RequirePermission permiso="inventario.mantenimiento"><MaintenanceDetail /></RequirePermission>} />
+          <Route path="inventario/almacenes" element={<RequirePermission permiso="inventario.almacenes"><WarehouseList /></RequirePermission>} />
+          <Route path="inventario/almacenes/:id" element={<RequirePermission permiso="inventario.almacenes"><WarehouseDetail /></RequirePermission>} />
+          <Route path="inventario/movimientos" element={<RequirePermission permiso="inventario.movimientos"><MovementList /></RequirePermission>} />
+          <Route path="clientes" element={<RequirePermission permiso="clientes"><ClientList /></RequirePermission>} />
+          <Route path="clientes/:id" element={<RequirePermission permiso="clientes"><ClientDetail /></RequirePermission>} />
+          <Route path="contratos" element={<RequirePermission permiso="contratos"><ContractList /></RequirePermission>} />
+          <Route path="contratos/crear" element={<RequirePermission permiso="contratos"><CreateContract /></RequirePermission>} />
+          <Route path="contratos/:id" element={<RequirePermission permiso="contratos"><ContractDetail /></RequirePermission>} />
+          <Route path="operaciones/calendario" element={<RequirePermission permiso="operaciones.calendario"><CalendarPage /></RequirePermission>} />
+          <Route path="operaciones/visitas/:id" element={<RequirePermission permiso="operaciones.calendario"><VisitDetailPage /></RequirePermission>} />
+          <Route path="operaciones/lecturas" element={<RequirePermission permiso="operaciones.lecturas"><ReadingListPage /></RequirePermission>} />
+          <Route path="operaciones/lecturas/:visitaId" element={<RequirePermission permiso="operaciones.lecturas"><CaptureReadingPage /></RequirePermission>} />
+          <Route path="finanzas/facturas" element={<RequirePermission permiso="finanzas.facturas"><InvoiceList /></RequirePermission>} />
+          <Route path="finanzas/facturas/registrar" element={<RequirePermission permiso="finanzas.facturas"><RegisterInvoicePage /></RequirePermission>} />
+          <Route path="finanzas/cuentas-por-cobrar" element={<RequirePermission permiso="finanzas.cuentas-por-cobrar"><ReceivablesList /></RequirePermission>} />
+          <Route path="finanzas/cuentas-por-pagar" element={<RequirePermission permiso="finanzas.cuentas-por-pagar"><PaymentList /></RequirePermission>} />
+          <Route path="finanzas/compras" element={<RequirePermission permiso="finanzas.compras"><PurchaseList /></RequirePermission>} />
+          <Route path="finanzas/compras/:id" element={<RequirePermission permiso="finanzas.compras"><PurchaseDetail /></RequirePermission>} />
+          <Route path="finanzas/rentabilidad" element={<RequirePermission permiso="finanzas.rentabilidad"><ProfitabilityReport /></RequirePermission>} />
+          <Route path="finanzas/flujo-caja" element={<RequirePermission permiso="finanzas.flujo-caja"><CashFlowReport /></RequirePermission>} />
+          <Route path="finanzas/cuentas-bancarias" element={<RequirePermission permiso="finanzas.cuentas-bancarias"><BankAccountsPage /></RequirePermission>} />
+          <Route path="finanzas/conciliacion" element={<RequirePermission permiso="finanzas.conciliacion"><ReconciliationPage /></RequirePermission>} />
+          <Route path="finanzas/cierre" element={<RequirePermission permiso="finanzas.cierre"><ClosePeriodPage /></RequirePermission>} />
+          <Route path="sistema/usuarios" element={<RequirePermission permiso="sistema.usuarios"><UserListPage /></RequirePermission>} />
+          <Route path="sistema/notificaciones" element={<RequirePermission permiso="sistema.notificaciones"><NotificationCenterPage /></RequirePermission>} />
+          <Route path="sistema/configuracion" element={<RequirePermission permiso="sistema.configuracion"><ConfigPage /></RequirePermission>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>

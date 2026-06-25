@@ -8,7 +8,7 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->isAdmin();
+        return $this->user()->isAdmin() || $this->user()->tienePermiso('sistema.usuarios');
     }
 
     public function rules(): array
@@ -17,7 +17,7 @@ class UpdateUserRequest extends FormRequest
             'nombre' => 'sometimes|string|max:255',
             'correo' => 'sometimes|email|unique:users,correo,' . $this->user->id,
             'telefono' => 'nullable|string|max:30',
-            'rol' => 'sometimes|string|in:ADMIN,OPERADOR',
+            'rol_id' => 'sometimes|exists:roles,id',
             'activo' => 'sometimes|boolean',
         ];
     }

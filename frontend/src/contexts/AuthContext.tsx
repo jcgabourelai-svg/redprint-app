@@ -85,5 +85,12 @@ export function useAuth() {
 
 export function useIsAdmin() {
   const { user } = useAuth()
-  return user?.rol === 'ADMIN'
+  return !!user?.es_sistema
+}
+
+export function useTienePermiso(clave: string): boolean {
+  const { user } = useAuth()
+  if (!user) return false
+  if (user.es_sistema) return true
+  return (user.permisos ?? []).includes(clave)
 }

@@ -1,46 +1,11 @@
 import { Link, useLocation } from 'react-router-dom'
 import { cn } from '@/lib/utils'
-import {
-  LayoutDashboard,
-  Package,
-  Users,
-  Calendar,
-  DollarSign,
-  Menu,
-} from 'lucide-react'
+import { Menu } from 'lucide-react'
+import { navItems, filterVisibleNav, type NavItem } from '@/config/nav'
+import { useAuth } from '@/contexts/AuthContext'
 
-const navItems = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    icon: LayoutDashboard,
-    path: '/',
-  },
-  {
-    id: 'inventario',
-    label: 'Inventario',
-    icon: Package,
-    path: '/inventario',
-  },
-  {
-    id: 'clientes',
-    label: 'Clientes',
-    icon: Users,
-    path: '/clientes',
-  },
-  {
-    id: 'operaciones',
-    label: 'Operaciones',
-    icon: Calendar,
-    path: '/operaciones',
-  },
-  {
-    id: 'finanzas',
-    label: 'Finanzas',
-    icon: DollarSign,
-    path: '/finanzas',
-  },
-]
+// Curated top-level sections shown in the bottom bar (rest reachable via "Mas").
+const BOTTOM_NAV_IDS = ['dashboard', 'inventario', 'clientes', 'operaciones', 'finanzas']
 
 export interface BottomNavProps {
   onMenuClick?: () => void
@@ -48,6 +13,17 @@ export interface BottomNavProps {
 
 export default function BottomNav({ onMenuClick }: BottomNavProps) {
   const location = useLocation()
+  const { user } = useAuth()
+
+  const tienePermiso = (clave?: string) => {
+    if (!clave) return true
+    if (!user) return false
+    if (user.es_sistema) return true
+    return (user.permisos ?? []).includes(clave)
+  }
+
+  const filteredAll = filterVisibleNav(navItems, tienePermiso)
+  const items: NavItem[] = BOTTOM_NAV_IDS.map((id) => filteredAll.find((i) => i.id === id)).filter((i): i is NavItem => !!i)
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/'
@@ -56,7 +32,7 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-gray-200 bg-white px-2 py-2 lg:hidden">
-      {navItems.map((item) => {
+      {items.map((item) => {
         const Icon = item.icon
         const active = isActive(item.path)
 

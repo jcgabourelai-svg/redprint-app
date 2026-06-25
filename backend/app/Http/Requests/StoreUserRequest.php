@@ -8,7 +8,7 @@ class StoreUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->isAdmin();
+        return $this->user()->isAdmin() || $this->user()->tienePermiso('sistema.usuarios');
     }
 
     public function rules(): array
@@ -18,7 +18,7 @@ class StoreUserRequest extends FormRequest
             'correo' => 'required|email|unique:users,correo',
             'contrasena' => 'required|string|min:6',
             'telefono' => 'nullable|string|max:30',
-            'rol' => 'required|string|in:ADMIN,OPERADOR',
+            'rol_id' => 'required|exists:roles,id',
             'activo' => 'sometimes|boolean',
         ];
     }
@@ -32,7 +32,8 @@ class StoreUserRequest extends FormRequest
             'correo.unique' => 'El correo ya esta en uso',
             'contrasena.required' => 'La contrasena es obligatoria',
             'contrasena.min' => 'La contrasena debe tener al menos 6 caracteres',
-            'rol.required' => 'El rol es obligatorio',
+            'rol_id.required' => 'El rol es obligatorio',
+            'rol_id.exists' => 'El rol seleccionado no existe',
         ];
     }
 }

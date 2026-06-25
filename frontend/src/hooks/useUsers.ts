@@ -8,7 +8,10 @@ function mapUser(raw: any): User {
     id: String(raw.id),
     nombre: raw.nombre,
     email: raw.correo ?? raw.email,
-    rol: raw.rol,
+    rol_id: raw.rol_id,
+    rol_nombre: raw.rol_nombre,
+    rol_slug: raw.rol_slug,
+    es_sistema: raw.es_sistema,
     activo: raw.activo,
     fecha_creacion: raw.fecha_creacion,
     ultimo_acceso: raw.ultimo_acceso,
@@ -33,7 +36,7 @@ export type CreateUserInput = {
   nombre: string
   email: string
   password: string
-  rol: 'ADMIN' | 'OPERADOR'
+  rol_id: string | number
   activo?: boolean
 }
 
@@ -48,7 +51,7 @@ export function useCreateUser() {
           nombre: input.nombre,
           correo: input.email,
           contrasena: input.password,
-          rol: input.rol,
+          rol_id: input.rol_id,
           activo: input.activo,
         })
         .then((r) => r.data),
@@ -66,7 +69,7 @@ export function useUpdateUser() {
         .put(`/users/${id}`, {
           nombre: input.nombre,
           correo: input.email,
-          rol: input.rol,
+          rol_id: input.rol_id,
           activo: input.activo,
         })
         .then((r) => r.data),

@@ -20,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureUserRole::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
         ]);
 
         // Configurar autenticación para SPA sin redirección
