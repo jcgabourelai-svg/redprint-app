@@ -17,7 +17,7 @@ import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import WarehouseStats from '@/components/warehouse/WarehouseStats'
 import WarehouseForm from '@/components/warehouse/WarehouseForm'
-import { useWarehouse, useUpdateWarehouse } from '@/hooks/useWarehouses'
+import { useWarehouse, useUpdateWarehouse, useDeleteWarehouse } from '@/hooks/useWarehouses'
 import { formatDate } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import type { WarehouseFormData } from '@/types/warehouse'
@@ -34,6 +34,7 @@ export default function WarehouseDetail() {
   const warehouseId = id ? parseInt(id) : 0
   const { data: warehouse, isLoading, error } = useWarehouse(warehouseId)
   const updateMutation = useUpdateWarehouse()
+  const deleteMutation = useDeleteWarehouse()
 
   if (isLoading) {
     return (
@@ -76,9 +77,15 @@ export default function WarehouseDetail() {
   }
 
   const handleDelete = () => {
-    console.log('Delete warehouse:', warehouse.id)
-    setShowDeleteModal(false)
-    navigate('/inventario/almacenes')
+    deleteMutation.mutate(String(warehouse.id), {
+      onSuccess: () => {
+        setShowDeleteModal(false)
+        navigate('/inventario/almacenes')
+      },
+      onError: (err: any) => {
+        console.error('Error al eliminar almacén:', err)
+      },
+    })
   }
 
   const printers = warehouse.printers ?? []
@@ -361,7 +368,12 @@ export default function WarehouseDetail() {
             >
               Cancelar
             </Button>
-            <Button variant="danger" size="sm" onClick={handleDelete}>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDelete}
+              loading={deleteMutation.isPending}
+            >
               Eliminar
             </Button>
           </div>
