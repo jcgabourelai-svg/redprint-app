@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\" && vite build",
+    "build": "node -e \"const fs=require('fs'),p=require('path');if(fs.existsSync('dist'))for(const f of fs.readdirSync('dist'))fs.rmSync(p.join('dist',f),{recursive:true,force:true})\" && vite build",
     "preview": "vite preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "storybook": "storybook dev -p 6006",

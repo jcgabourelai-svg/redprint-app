@@ -51,6 +51,34 @@ Tras recompilar, recargar el navegador en `http://localhost:8080` (con
 > el usuario lo pida. El flujo esperado es: editar -> recompilar dist en Docker ->
 > recargar en 8080.
 
+### Gotcha: error 500 / "redirection cycle" tras recompilar (Windows + Docker)
+
+El `dist` se sirve en nginx por un **bind mount** (`./frontend/dist` ->
+`/usr/share/nginx/html`). En Docker Desktop sobre Windows (y especialmente con
+rutas dentro de **OneDrive**), si el build **borra y recrear la carpeta `dist`
+entera**, el contenedor nginx queda apuntando a un inodo inexistente y aparece:
+
+```
+rewrite or internal redirection cycle while internally redirecting to "/index.html"  -> HTTP 500
+```
+
+La API sigue funcionando (se sirve desde otro volumen), solo falla la SPA.
+
+**Prevención (ya aplicada):** el script `npm run build` de `frontend/package.json`
+**vacia el contenido de `dist` sin borrar la carpeta**, manteniendo estable el
+inodo del bind mount. **No lo cambies** por un `rm -rf dist` o volverá el 500.
+
+**Si de todos modos aparece el 500** (p. ej. alguien borró `frontend/dist` a mano
+mientras nginx corría), basta con reiniciar nginx para reestablecer el mount:
+
+```bash
+docker compose restart nginx
+```
+
+> Síntoma clave para distinguirlo de un error de backend: `/api/...` responde 200
+> pero `/` devuelve 500. Si también falla la API, el problema está en Laravel, no
+> en el mount del dist.
+
 ## Comandos habituales del proyecto
 
 ```bash

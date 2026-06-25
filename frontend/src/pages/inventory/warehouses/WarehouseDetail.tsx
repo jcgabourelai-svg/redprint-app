@@ -17,7 +17,7 @@ import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import WarehouseStats from '@/components/warehouse/WarehouseStats'
 import WarehouseForm from '@/components/warehouse/WarehouseForm'
-import { useWarehouse } from '@/hooks/useWarehouses'
+import { useWarehouse, useUpdateWarehouse } from '@/hooks/useWarehouses'
 import { formatDate } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import type { WarehouseFormData } from '@/types/warehouse'
@@ -33,6 +33,7 @@ export default function WarehouseDetail() {
 
   const warehouseId = id ? parseInt(id) : 0
   const { data: warehouse, isLoading, error } = useWarehouse(warehouseId)
+  const updateMutation = useUpdateWarehouse()
 
   if (isLoading) {
     return (
@@ -63,8 +64,15 @@ export default function WarehouseDetail() {
   }
 
   const handleEdit = (data: WarehouseFormData) => {
-    console.log('Edit warehouse:', data)
-    setShowEditModal(false)
+    updateMutation.mutate(
+      { id: warehouse.id, data },
+      {
+        onSuccess: () => setShowEditModal(false),
+        onError: (err: any) => {
+          console.error('Error al actualizar almacén:', err)
+        },
+      }
+    )
   }
 
   const handleDelete = () => {
@@ -329,6 +337,7 @@ export default function WarehouseDetail() {
           onSubmit={handleEdit}
           onCancel={() => setShowEditModal(false)}
           isEdit
+          loading={updateMutation.isPending}
         />
       </Modal>
 

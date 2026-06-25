@@ -52,6 +52,7 @@ class WarehouseController extends Controller
             'nombre' => 'sometimes|string|max:255',
             'direccion' => 'sometimes|string',
             'responsable_id' => 'nullable|exists:users,id',
+            'activo' => 'sometimes|boolean',
         ]);
 
         $warehouse->update($data);
