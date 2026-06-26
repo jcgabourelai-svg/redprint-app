@@ -36,7 +36,7 @@ class ContractController extends Controller
 
     public function show(Contract $contract): ContractResource
     {
-        $contract->load(['client', 'printers', 'visits', 'invoices']);
+        $contract->load(['client', 'printers.maintenanceOrders', 'printers.expenses', 'visits', 'invoices']);
         return new ContractResource($contract);
     }
 

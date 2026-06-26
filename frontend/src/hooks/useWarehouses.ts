@@ -13,7 +13,7 @@ export function useWarehouses(params?: Record<string, string | number>) {
 export function useWarehouse(id: number) {
   return useQuery<WarehouseDetail>({
     queryKey: ['warehouses', id],
-    queryFn: () => api.get(`/warehouses/${id}`).then(r => r.data.data),
+    queryFn: () => api.get(`/warehouses/${id}`).then(r => r.data),
     enabled: !!id,
   })
 }
