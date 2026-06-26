@@ -11,7 +11,7 @@ export interface Printer {
   estado: PrinterStatus
   ubicacion: string
   almacen?: string
-  contador_total_actual: number
+  contador_actual: number
   ultima_lectura?: number
   fecha_ultima_lectura?: string
   vida_util_restante?: number

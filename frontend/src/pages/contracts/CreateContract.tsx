@@ -273,7 +273,7 @@ export default function CreateContract() {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Contador:</span>{' '}
-                                <span className="text-muted-foreground">{printer.contador_total_actual.toLocaleString('es-MX')} hojas</span>
+                                <span className="text-muted-foreground">{Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Almacén:</span>{' '}
