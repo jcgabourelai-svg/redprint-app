@@ -57,7 +57,7 @@ export default function ContractList() {
       sortable: true,
       render: (_value: string, row: Contract) => (
         <div>
-          <p className="font-medium text-foreground">{row.id}</p>
+          <p className="font-medium text-foreground">{row.codigo_negocio || `Contrato #${row.id}`}</p>
           <p className="text-xs text-muted-foreground">{formatDate(row.fecha_inicio)}</p>
         </div>
       ),
