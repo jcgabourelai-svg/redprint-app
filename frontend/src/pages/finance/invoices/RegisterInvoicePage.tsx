@@ -65,8 +65,8 @@ export default function RegisterInvoicePage() {
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Registrar Factura</h2>
-            <p className="text-sm text-gray-500">Registro manual de factura emitida en PAC externo</p>
+            <h2 className="text-2xl font-bold text-foreground">Registrar Factura</h2>
+            <p className="text-sm text-muted-foreground">Registro manual de factura emitida en PAC externo</p>
           </div>
           <Button variant="ghost" onClick={() => navigate('/finanzas/cuentas-por-cobrar')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -79,16 +79,16 @@ export default function RegisterInvoicePage() {
             <div key={step.id} className="flex items-center">
               <div className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium ${
                 currentStep === index + 1
-                  ? 'bg-blue-500 text-white'
+                  ? 'bg-primary text-white'
                   : currentStep > index + 1
-                  ? 'bg-green-100 text-green-700'
-                  : 'bg-gray-100 text-gray-500'
+                  ? 'bg-success/10 text-success'
+                  : 'bg-muted text-muted-foreground'
               }`}>
                 {currentStep > index + 1 ? <Check className="h-4 w-4" /> : <span className="w-5 h-5 rounded-full bg-current bg-opacity-20 flex items-center justify-center text-xs">{index + 1}</span>}
                 {step.label}
               </div>
               {index < steps.length - 1 && (
-                <div className={`w-8 h-0.5 mx-1 ${currentStep > index + 1 ? 'bg-green-400' : 'bg-gray-300'}`} />
+                <div className={`w-8 h-0.5 mx-1 ${currentStep > index + 1 ? 'bg-success' : 'bg-border'}`} />
               )}
             </div>
           ))}
@@ -98,10 +98,10 @@ export default function RegisterInvoicePage() {
           <CardContent className="p-6">
             {currentStep === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Paso 1 de 3: Datos Generales de la Factura</h3>
+                <h3 className="text-lg font-semibold text-foreground">Paso 1 de 3: Datos Generales de la Factura</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Número de factura (del PAC externo) *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Número de factura (del PAC externo) *</label>
                   <Input
                     value={form.numero}
                     onChange={(e) => setForm({ ...form, numero: e.target.value })}
@@ -111,7 +111,7 @@ export default function RegisterInvoicePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
                   <Select
                     options={mockClientes}
                     value={form.cliente_id}
@@ -122,7 +122,7 @@ export default function RegisterInvoicePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de emisión *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de emisión *</label>
                   <Input
                     type="date"
                     value={form.fecha_emision}
@@ -131,7 +131,7 @@ export default function RegisterInvoicePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de vencimiento *</label>
                   <Input
                     type="date"
                     value={form.fecha_vencimiento}
@@ -141,7 +141,7 @@ export default function RegisterInvoicePage() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Periodo inicio *</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Periodo inicio *</label>
                     <Input
                       type="date"
                       value={form.periodo_inicio}
@@ -149,7 +149,7 @@ export default function RegisterInvoicePage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Periodo fin *</label>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Periodo fin *</label>
                     <Input
                       type="date"
                       value={form.periodo_fin}
@@ -159,14 +159,14 @@ export default function RegisterInvoicePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Método de cálculo *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Método de cálculo *</label>
                   <div className="space-y-2">
                     <label className="flex items-center gap-2">
-                      <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas' })} className="text-blue-500" />
+                      <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas' })} className="text-primary" />
                       <span className="text-sm">Según lecturas registradas (recomendado)</span>
                     </label>
                     <label className="flex items-center gap-2">
-                      <input type="radio" name="metodo" value="manual" checked={form.metodo_calculo === 'manual'} onChange={() => setForm({ ...form, metodo_calculo: 'manual' })} className="text-blue-500" />
+                      <input type="radio" name="metodo" value="manual" checked={form.metodo_calculo === 'manual'} onChange={() => setForm({ ...form, metodo_calculo: 'manual' })} className="text-primary" />
                       <span className="text-sm">Monto manual</span>
                     </label>
                   </div>
@@ -183,20 +183,20 @@ export default function RegisterInvoicePage() {
 
             {currentStep === 2 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Paso 2 de 3: Impresoras y Contratos</h3>
+                <h3 className="text-lg font-semibold text-foreground">Paso 2 de 3: Impresoras y Contratos</h3>
 
                 {form.cliente_id && (
-                  <div className="bg-gray-50 p-3 rounded-lg">
+                  <div className="bg-muted p-3 rounded-lg">
                     <p className="text-sm">Cliente seleccionado: <strong>{mockClientes.find(c => c.value === form.cliente_id)?.label}</strong></p>
                   </div>
                 )}
 
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Seleccione impresoras:</h4>
-                  <p className="text-sm text-gray-500">Las impresoras se cargarán desde el sistema al seleccionar un cliente.</p>
+                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Seleccione impresoras:</h4>
+                  <p className="text-sm text-muted-foreground">Las impresoras se cargarán desde el sistema al seleccionar un cliente.</p>
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg">
+                <div className="bg-primary/10 p-4 rounded-lg">
                   <p className="text-sm font-medium">El cálculo se realizará al registrar la factura</p>
                 </div>
 
@@ -213,7 +213,7 @@ export default function RegisterInvoicePage() {
 
             {currentStep === 3 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Paso 3 de 3: Revisión y Confirmación</h3>
+                <h3 className="text-lg font-semibold text-foreground">Paso 3 de 3: Revisión y Confirmación</h3>
 
                 <Card>
                   <CardHeader>
@@ -231,9 +231,9 @@ export default function RegisterInvoicePage() {
                 </Card>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Notas (opcional)</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Notas (opcional)</label>
                   <textarea
-                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                     rows={3}
                     value={form.notas}
                     onChange={(e) => setForm({ ...form, notas: e.target.value })}
@@ -242,8 +242,8 @@ export default function RegisterInvoicePage() {
                 </div>
 
                 {error && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-800">{error}</p>
+                  <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+                    <p className="text-sm text-destructive">{error}</p>
                   </div>
                 )}
 

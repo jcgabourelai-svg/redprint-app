@@ -38,19 +38,19 @@ export default function Breadcrumbs({
     <nav className={cn('flex items-center gap-2 text-sm', className)}>
       {items.map((item, index) => (
         <div key={index} className="flex items-center gap-2">
-          {index === 0 && <Home className="h-4 w-4 text-gray-400" />}
+          {index === 0 && <Home className="h-4 w-4 text-muted-foreground" />}
           {item.path && index !== items.length - 1 ? (
             <Link
               to={item.path}
-              className="text-gray-600 hover:text-blue-600 transition-colors"
+              className="text-muted-foreground hover:text-primary transition-colors"
             >
               {item.label}
             </Link>
           ) : (
-            <span className="font-medium text-gray-900">{item.label}</span>
+            <span className="font-medium text-foreground">{item.label}</span>
           )}
           {index !== items.length - 1 && (
-            <ChevronRight className="h-4 w-4 text-gray-400" />
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
           )}
         </div>
       ))}

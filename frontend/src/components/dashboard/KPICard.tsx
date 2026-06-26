@@ -24,10 +24,10 @@ export default function KPICard({
   className,
 }: KPICardProps) {
   const colorStyles = {
-    blue: 'bg-blue-500',
-    green: 'bg-green-500',
-    amber: 'bg-amber-500',
-    red: 'bg-red-500',
+    blue: 'bg-primary',
+    green: 'bg-success',
+    amber: 'bg-warning',
+    red: 'bg-destructive',
   }
 
   const trendIcons = {
@@ -39,20 +39,20 @@ export default function KPICard({
   const TrendIcon = trend ? trendIcons[trend] : undefined
 
   return (
-    <div className={cn('rounded-lg border border-gray-200 bg-white p-6 shadow-sm', className)}>
+    <div className={cn('rounded-lg border border-border bg-card p-6 shadow-sm', className)}>
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600">{title}</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+          <p className="text-sm font-medium text-muted-foreground">{title}</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{value}</p>
           {subtitle && (
-            <p className="mt-1 text-sm text-gray-500">{subtitle}</p>
+            <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>
           )}
           {trend && trendValue && TrendIcon && (
             <div className={cn(
               'mt-2 flex items-center gap-1 text-sm',
-              trend === 'up' && 'text-green-600',
-              trend === 'down' && 'text-red-600',
-              trend === 'neutral' && 'text-gray-600'
+              trend === 'up' && 'text-success',
+              trend === 'down' && 'text-destructive',
+              trend === 'neutral' && 'text-muted-foreground'
             )}>
               <TrendIcon className="h-4 w-4" />
               {trendValue}

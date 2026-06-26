@@ -28,7 +28,7 @@ export default function ArticleDetail() {
     return (
       <PageLayout title="Inventario › Artículos">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -38,16 +38,16 @@ export default function ArticleDetail() {
     return (
       <PageLayout title="Inventario › Artículos">
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Artículo no encontrado</p>
+          <p className="text-destructive">Artículo no encontrado</p>
         </div>
       </PageLayout>
     )
   }
 
   const getStockColor = () => {
-    if (article.stock_actual === 0) return 'text-red-600'
-    if (article.stock_actual < article.umbral_reposicion) return 'text-amber-600'
-    return 'text-green-600'
+    if (article.stock_actual === 0) return 'text-destructive'
+    if (article.stock_actual < article.umbral_reposicion) return 'text-warning'
+    return 'text-success'
   }
 
   const getStockLabel = () => {
@@ -107,12 +107,12 @@ export default function ArticleDetail() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded bg-blue-100">
-                      <Package className="h-6 w-6 text-blue-600" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded bg-primary/10">
+                      <Package className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                       <CardTitle className="text-xl">{article.nombre}</CardTitle>
-                      <p className="text-sm text-gray-500">{article.id} • {article.marca} {article.modelo_sku}</p>
+                      <p className="text-sm text-muted-foreground">{article.id} • {article.marca} {article.modelo_sku}</p>
                     </div>
                   </div>
                   <Badge variant={article.tipo_articulo === 'CONSUMIBLE' ? 'primary' : 'neutral'}>
@@ -123,12 +123,12 @@ export default function ArticleDetail() {
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Marca</p>
-                    <p className="text-gray-900">{article.marca}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Marca</p>
+                    <p className="text-foreground">{article.marca}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Modelo</p>
-                    <p className="text-gray-900">{article.modelo_sku}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Modelo</p>
+                    <p className="text-foreground">{article.modelo_sku}</p>
                   </div>
                 </div>
               </CardContent>
@@ -145,12 +145,12 @@ export default function ArticleDetail() {
                         content: (
                           <div className="space-y-3 pb-4">
                             {(compatiblePrinters ?? []).length === 0 ? (
-                              <p className="text-sm text-gray-500 py-4">No hay impresoras compatibles registradas.</p>
+                              <p className="text-sm text-muted-foreground py-4">No hay impresoras compatibles registradas.</p>
                             ) : (
                               (compatiblePrinters as any[]).map((printer) => (
-                                <div key={printer.id} className="flex items-center gap-3 rounded-lg border border-gray-200 p-3">
-                                  <Link2 className="h-4 w-4 text-blue-500" />
-                                  <span className="text-sm text-gray-900">{printer.id} • {printer.marca} {printer.modelo}</span>
+                                <div key={printer.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                                  <Link2 className="h-4 w-4 text-primary" />
+                                  <span className="text-sm text-foreground">{printer.id} • {printer.marca} {printer.modelo}</span>
                                 </div>
                               ))
                             )}
@@ -168,7 +168,7 @@ export default function ArticleDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <BoxIcon className="h-5 w-5 text-blue-600" />
+                  <BoxIcon className="h-5 w-5 text-primary" />
                   <CardTitle>Stock Actual</CardTitle>
                 </div>
               </CardHeader>
@@ -177,7 +177,7 @@ export default function ArticleDetail() {
                   <p className={`text-3xl font-bold ${getStockColor()}`}>
                     {article.stock_actual}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">unidades</p>
+                  <p className="text-sm text-muted-foreground mt-1">unidades</p>
                   <p className={`text-xs mt-2 font-medium ${getStockColor()}`}>
                     {getStockLabel()}
                   </p>
@@ -188,20 +188,20 @@ export default function ArticleDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5 text-green-600" />
+                  <DollarSign className="h-5 w-5 text-success" />
                   <CardTitle>Costo Unitario</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-foreground">
                     {formatCurrency(article.costo_unitario)}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">por unidad</p>
+                  <p className="text-sm text-muted-foreground mt-1">por unidad</p>
                 </div>
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <p className="text-xs text-gray-500">Valor total en stock</p>
-                  <p className="text-sm font-medium text-gray-900">
+                <div className="mt-4 pt-4 border-t border-border">
+                  <p className="text-xs text-muted-foreground">Valor total en stock</p>
+                  <p className="text-sm font-medium text-foreground">
                     {formatCurrency(article.costo_unitario * article.stock_actual)}
                   </p>
                 </div>
@@ -211,21 +211,21 @@ export default function ArticleDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                  <AlertTriangle className="h-5 w-5 text-warning" />
                   <CardTitle>Umbral de Reposición</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-2xl font-bold text-foreground">
                     {article.umbral_reposicion} uds
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">mínimo antes de reponer</p>
+                  <p className="text-sm text-muted-foreground mt-1">mínimo antes de reponer</p>
                 </div>
                 {article.stock_actual < article.umbral_reposicion && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="rounded-md bg-amber-50 p-3">
-                      <p className="text-xs text-amber-700">
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <div className="rounded-md bg-warning/10 p-3">
+                      <p className="text-xs text-warning">
                         Stock por debajo del umbral. Se sugiere reponer {article.umbral_reposicion - article.stock_actual} unidades.
                       </p>
                     </div>
@@ -243,17 +243,17 @@ export default function ArticleDetail() {
         title="Dar de Baja Artículo"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             ¿Seguro que deseas dar de baja el artículo{' '}
-            <span className="font-medium text-gray-900">{article.nombre}</span>
+            <span className="font-medium text-foreground">{article.nombre}</span>
             ? Ya no aparecerá en el listado de inventario activo.
           </p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Motivo de baja <span className="text-gray-400">(opcional)</span>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Motivo de baja <span className="text-muted-foreground">(opcional)</span>
             </label>
             <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               placeholder="Ej: Obsoleto, descontinuado..."
               value={deactivateReason}
               onChange={(e) => setDeactivateReason(e.target.value)}
@@ -261,7 +261,7 @@ export default function ArticleDetail() {
             />
           </div>
           {deactivateError && (
-            <p className="text-sm text-red-600">{deactivateError}</p>
+            <p className="text-sm text-destructive">{deactivateError}</p>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <Button

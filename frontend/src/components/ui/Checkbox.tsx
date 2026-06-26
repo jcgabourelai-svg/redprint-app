@@ -15,15 +15,15 @@ const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(
             type="checkbox"
             ref={ref}
             id={id}
-            className="peer h-4 w-4 cursor-pointer appearance-none rounded-md border border-gray-300 checked:border-blue-500 checked:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+            className="peer h-4 w-4 cursor-pointer appearance-none rounded-md border border-input checked:border-primary checked:bg-primary focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
             {...props}
           />
-          <Check className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 text-white opacity-0 peer-checked:opacity-100" />
+          <Check className="pointer-events-none absolute left-1/2 top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 text-primary-foreground opacity-0 peer-checked:opacity-100" />
         </div>
         {label && (
           <label
             htmlFor={id}
-            className="ml-2 cursor-pointer text-sm text-gray-700"
+            className="ml-2 cursor-pointer text-sm text-foreground"
           >
             {label}
           </label>

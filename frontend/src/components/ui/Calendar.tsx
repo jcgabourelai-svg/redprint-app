@@ -56,15 +56,15 @@ export default function Calendar({
     }
     switch (event.status) {
       case 'completada':
-        return { backgroundColor: undefined, className: 'bg-green-100 text-green-800' }
+        return { backgroundColor: undefined, className: 'bg-success/10 text-success' }
       case 'pendiente':
-        return { backgroundColor: undefined, className: 'bg-blue-100 text-blue-800' }
+        return { backgroundColor: undefined, className: 'bg-primary/10 text-primary' }
       case 'reprogramada':
-        return { backgroundColor: undefined, className: 'bg-yellow-100 text-yellow-800' }
+        return { backgroundColor: undefined, className: 'bg-warning/10 text-warning' }
       case 'cancelada':
-        return { backgroundColor: undefined, className: 'bg-gray-100 text-gray-800' }
+        return { backgroundColor: undefined, className: 'bg-muted text-muted-foreground' }
       default:
-        return { backgroundColor: undefined, className: 'bg-gray-100 text-gray-800' }
+        return { backgroundColor: undefined, className: 'bg-muted text-muted-foreground' }
     }
   }
 
@@ -77,14 +77,14 @@ export default function Calendar({
         <div className="flex gap-2">
           <button
             onClick={prevMonth}
-            className="rounded-md p-2 hover:bg-gray-100"
+            className="rounded-md p-2 hover:bg-muted"
             aria-label="Mes anterior"
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
           <button
             onClick={nextMonth}
-            className="rounded-md p-2 hover:bg-gray-100"
+            className="rounded-md p-2 hover:bg-muted"
             aria-label="Mes siguiente"
           >
             <ChevronRight className="h-5 w-5" />
@@ -92,7 +92,7 @@ export default function Calendar({
         </div>
       </div>
 
-      <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500">
+      <div className="mb-2 grid grid-cols-7 gap-1 text-center text-xs font-semibold text-muted-foreground">
         {['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'].map((day) => (
           <div key={day}>{day}</div>
         ))}
@@ -110,14 +110,14 @@ export default function Calendar({
               key={date.toISOString()}
               onClick={() => onDateClick?.(date)}
               className={cn(
-                'relative h-32 rounded-lg border border-gray-200 p-2 transition-colors hover:bg-gray-50 cursor-pointer',
-                !isSameMonth(date, currentMonth) && 'bg-gray-50',
-                isToday(date) && 'border-blue-500'
+                'relative h-32 rounded-lg border border-border p-2 transition-colors hover:bg-muted cursor-pointer',
+                !isSameMonth(date, currentMonth) && 'bg-muted',
+                isToday(date) && 'border-primary'
               )}
             >
               <div className={cn(
                 'mb-2 text-sm font-medium',
-                isToday(date) && 'rounded-full bg-blue-500 px-2 py-1 text-white'
+                isToday(date) && 'rounded-full bg-primary px-2 py-1 text-primary-foreground'
               )}>
                 {date.getDate()}
               </div>
@@ -145,7 +145,7 @@ export default function Calendar({
                   )
                 })}
                 {dayEvents.length > 3 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     +{dayEvents.length - 3} más
                   </div>
                 )}

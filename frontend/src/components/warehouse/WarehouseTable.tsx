@@ -27,7 +27,7 @@ export default function WarehouseTable({
       render: (value: string, row: Warehouse) => (
         <div>
           <p className="font-medium">{value}</p>
-          <p className="text-xs text-gray-500">ID: {row.id}</p>
+          <p className="text-xs text-muted-foreground">ID: {row.id}</p>
         </div>
       ),
     },
@@ -36,7 +36,7 @@ export default function WarehouseTable({
       label: 'Dirección',
       sortable: true,
       render: (value: string) => (
-        <span className="text-sm text-gray-600 max-w-[200px] truncate block">{value}</span>
+        <span className="text-sm text-muted-foreground max-w-[200px] truncate block">{value}</span>
       ),
     },
     {
@@ -44,7 +44,7 @@ export default function WarehouseTable({
       label: 'Responsable',
       sortable: false,
       render: (_value: unknown, row: Warehouse) => (
-        <span className="text-sm text-gray-600">
+        <span className="text-sm text-muted-foreground">
           {row.responsable?.nombre ?? row.responsable?.correo ?? 'Sin asignar'}
         </span>
       ),
@@ -54,7 +54,7 @@ export default function WarehouseTable({
       label: 'Impresoras',
       sortable: true,
       render: (_value: number, row: Warehouse) => (
-        <span className="text-sm text-gray-600">{row.printers_count ?? 0}</span>
+        <span className="text-sm text-muted-foreground">{row.printers_count ?? 0}</span>
       ),
     },
     {
@@ -75,28 +75,28 @@ export default function WarehouseTable({
           {onView && (
             <button
               onClick={(e) => { e.stopPropagation(); onView(row.id) }}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded"
               aria-label="Ver detalle"
             >
-              <Eye className="h-4 w-4 text-gray-500" />
+              <Eye className="h-4 w-4 text-muted-foreground" />
             </button>
           )}
           {onEdit && (
             <button
               onClick={(e) => { e.stopPropagation(); onEdit(row.id) }}
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded"
               aria-label="Editar"
             >
-              <Pencil className="h-4 w-4 text-gray-500" />
+              <Pencil className="h-4 w-4 text-muted-foreground" />
             </button>
           )}
           {onDelete && (
             <button
               onClick={(e) => { e.stopPropagation(); onDelete(row.id) }}
-              className="p-1 hover:bg-red-50 rounded"
+              className="p-1 hover:bg-destructive/10 rounded"
               aria-label="Eliminar"
             >
-              <Trash2 className="h-4 w-4 text-red-500" />
+              <Trash2 className="h-4 w-4 text-destructive" />
             </button>
           )}
         </div>

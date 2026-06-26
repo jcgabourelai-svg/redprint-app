@@ -43,8 +43,8 @@ export default function ProfitabilityReport() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Rentabilidad</h2>
-            <p className="text-sm text-gray-500">Reporte de rentabilidad por impresora, cliente y contrato</p>
+            <h2 className="text-2xl font-bold text-foreground">Rentabilidad</h2>
+            <p className="text-sm text-muted-foreground">Reporte de rentabilidad por impresora, cliente y contrato</p>
           </div>
           <Button variant="secondary">
             <Download className="mr-2 h-4 w-4" />
@@ -76,13 +76,13 @@ export default function ProfitabilityReport() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-50 p-2">
-                  <DollarSign className="h-5 w-5 text-blue-500" />
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <DollarSign className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Ingresos Total</p>
+                  <p className="text-sm text-muted-foreground">Ingresos Total</p>
                   <p className="text-lg font-bold">{formatCurrency(totalIngresos)}</p>
-                  <p className="text-xs text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12%</p>
+                  <p className="text-xs text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12%</p>
                 </div>
               </div>
             </CardContent>
@@ -90,13 +90,13 @@ export default function ProfitabilityReport() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-red-50 p-2">
-                  <DollarSign className="h-5 w-5 text-red-500" />
+                <div className="rounded-lg bg-destructive/10 p-2">
+                  <DollarSign className="h-5 w-5 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Costos Total</p>
+                  <p className="text-sm text-muted-foreground">Costos Total</p>
                   <p className="text-lg font-bold">{formatCurrency(totalCostos)}</p>
-                  <p className="text-xs text-red-600 flex items-center gap-1"><TrendingDown className="h-3 w-3" /> 8%</p>
+                  <p className="text-xs text-destructive flex items-center gap-1"><TrendingDown className="h-3 w-3" /> 8%</p>
                 </div>
               </div>
             </CardContent>
@@ -104,13 +104,13 @@ export default function ProfitabilityReport() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-green-50 p-2">
-                  <TrendingUp className="h-5 w-5 text-green-500" />
+                <div className="rounded-lg bg-success/10 p-2">
+                  <TrendingUp className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Rentabilidad Total</p>
-                  <p className="text-lg font-bold text-green-600">+{formatCurrency(totalRentabilidad)}</p>
-                  <p className="text-xs text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 15%</p>
+                  <p className="text-sm text-muted-foreground">Rentabilidad Total</p>
+                  <p className="text-lg font-bold text-success">+{formatCurrency(totalRentabilidad)}</p>
+                  <p className="text-xs text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 15%</p>
                 </div>
               </div>
             </CardContent>
@@ -125,10 +125,10 @@ export default function ProfitabilityReport() {
             <div className="space-y-3">
               {mockTrend.map((item) => (
                 <div key={item.mes} className="flex items-center gap-4">
-                  <span className="text-sm text-gray-600 w-20">{item.mes}</span>
-                  <div className="flex-1 bg-gray-100 rounded-full h-6 relative overflow-hidden">
+                  <span className="text-sm text-muted-foreground w-20">{item.mes}</span>
+                  <div className="flex-1 bg-muted rounded-full h-6 relative overflow-hidden">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-blue-400 to-green-400 transition-all duration-500"
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-success transition-all duration-500"
                       style={{ width: `${(item.valor / maxTrend) * 100}%` }}
                     />
                   </div>
@@ -141,7 +141,7 @@ export default function ProfitabilityReport() {
 
         {isLoadingPrinter ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando datos de rentabilidad...</p>
+            <p className="text-muted-foreground">Cargando datos de rentabilidad...</p>
           </div>
         ) : (
           <Card>
@@ -156,26 +156,26 @@ export default function ProfitabilityReport() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-3 font-medium text-gray-600">Impresora</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Ingresos</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Costos</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Rentabilidad</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">ROI</th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Impresora</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Ingresos</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Costos</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Rentabilidad</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">ROI</th>
                     </tr>
                   </thead>
                   <tbody>
                     {printerData.map((item) => (
-                      <tr key={item.impresora_id} className="border-b hover:bg-gray-50">
+                      <tr key={item.impresora_id} className="border-b hover:bg-muted">
                         <td className="py-3 px-3">
                           <p className="font-medium">{item.impresora_id}</p>
-                          <p className="text-xs text-gray-500">{item.impresora_nombre}</p>
+                          <p className="text-xs text-muted-foreground">{item.impresora_nombre}</p>
                         </td>
                         <td className="text-right py-3 px-3">{formatCurrency(item.ingresos)}</td>
                         <td className="text-right py-3 px-3">{formatCurrency(item.costos)}</td>
-                        <td className={`text-right py-3 px-3 font-medium ${item.rentabilidad >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className={`text-right py-3 px-3 font-medium ${item.rentabilidad >= 0 ? 'text-success' : 'text-destructive'}`}>
                           {item.rentabilidad >= 0 ? '+' : ''}{formatCurrency(item.rentabilidad)}
                         </td>
-                        <td className={`text-right py-3 px-3 font-medium ${item.roi >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className={`text-right py-3 px-3 font-medium ${item.roi >= 0 ? 'text-success' : 'text-destructive'}`}>
                           {item.roi >= 0 ? '+' : ''}{item.roi}%
                         </td>
                       </tr>
@@ -189,7 +189,7 @@ export default function ProfitabilityReport() {
 
         {isLoadingClient ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando datos por cliente...</p>
+            <p className="text-muted-foreground">Cargando datos por cliente...</p>
           </div>
         ) : (
           <Card>
@@ -201,22 +201,22 @@ export default function ProfitabilityReport() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left py-2 px-3 font-medium text-gray-600">Cliente</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Contratos</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Ingresos</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Costos</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Rentabilidad</th>
-                      <th className="text-right py-2 px-3 font-medium text-gray-600">Margen</th>
+                      <th className="text-left py-2 px-3 font-medium text-muted-foreground">Cliente</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Contratos</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Ingresos</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Costos</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Rentabilidad</th>
+                      <th className="text-right py-2 px-3 font-medium text-muted-foreground">Margen</th>
                     </tr>
                   </thead>
                   <tbody>
                     {clientData.map((item) => (
-                      <tr key={item.cliente_id} className="border-b hover:bg-gray-50">
+                      <tr key={item.cliente_id} className="border-b hover:bg-muted">
                         <td className="py-3 px-3 font-medium">{item.cliente_nombre}</td>
                         <td className="text-right py-3 px-3">{item.contratos}</td>
                         <td className="text-right py-3 px-3">{formatCurrency(item.ingresos)}</td>
                         <td className="text-right py-3 px-3">{formatCurrency(item.costos)}</td>
-                        <td className="text-right py-3 px-3 font-medium text-green-600">+{formatCurrency(item.rentabilidad)}</td>
+                        <td className="text-right py-3 px-3 font-medium text-success">+{formatCurrency(item.rentabilidad)}</td>
                         <td className="text-right py-3 px-3 font-medium">{item.margen}%</td>
                       </tr>
                     ))}

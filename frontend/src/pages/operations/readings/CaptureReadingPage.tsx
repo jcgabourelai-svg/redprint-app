@@ -83,7 +83,7 @@ export default function CaptureReadingPage() {
     return (
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
-          <p className="text-gray-500">ID de visita inválido</p>
+          <p className="text-muted-foreground">ID de visita inválido</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
             Volver al calendario
           </Button>
@@ -96,7 +96,7 @@ export default function CaptureReadingPage() {
     return (
       <PageLayout title="Captura de Lectura">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando visita...</p>
+          <p className="text-muted-foreground">Cargando visita...</p>
         </div>
       </PageLayout>
     )
@@ -106,7 +106,7 @@ export default function CaptureReadingPage() {
     return (
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
             Volver al calendario
           </Button>
@@ -171,10 +171,10 @@ export default function CaptureReadingPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Visita del {formatDate(visit.fecha_programada)}</p>
+                <p className="text-sm text-muted-foreground">Visita del {formatDate(visit.fecha_programada)}</p>
                 <p className="font-medium text-lg">{visit.cliente_nombre}</p>
               </div>
-              <div className="text-right text-sm text-gray-500">
+              <div className="text-right text-sm text-muted-foreground">
                 <p className="flex items-center gap-1">
                   {visit.socio_asignado}
                 </p>
@@ -185,7 +185,7 @@ export default function CaptureReadingPage() {
         </Card>
 
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          <h3 className="text-lg font-semibold text-foreground mb-4">
             Impresoras del cliente ({visit.impresoras.length})
           </h3>
           <div className="space-y-4">
@@ -196,25 +196,25 @@ export default function CaptureReadingPage() {
                 <Card key={imp.id}>
                   <CardContent className="p-4 space-y-4">
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-foreground">
                         {imp.marca} {imp.modelo}
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         SERIE: {imp.numero_serie} | Contrato: {imp.contrato_id}
                       </p>
                     </div>
 
                     <div className="text-sm">
-                      <p className="text-gray-500">
+                      <p className="text-muted-foreground">
                         Última lectura: {formatDate(imp.fecha_lectura_anterior)}
                       </p>
-                      <p className="text-gray-500">
+                      <p className="text-muted-foreground">
                         Contador anterior: {imp.lectura_anterior.toLocaleString()} hojas
                       </p>
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-sm font-medium text-muted-foreground mb-1">
                         Contador actual *
                       </label>
                       <Input
@@ -236,10 +236,10 @@ export default function CaptureReadingPage() {
 
                     {calc.lectura_actual > 0 && !calc.tieneAnomalia && (
                       <div className="flex items-center gap-4 text-sm">
-                        <span className="text-gray-600">
+                        <span className="text-muted-foreground">
                           Páginas del periodo: <span className="font-medium">{calc.paginas_consumidas.toLocaleString()}</span>
                         </span>
-                        <span className="flex items-center gap-1 text-green-600">
+                        <span className="flex items-center gap-1 text-success">
                           Consumo estimado: {formatCurrency(calc.montoEstimado)}
                           <CheckCircle className="h-4 w-4" />
                         </span>
@@ -247,16 +247,16 @@ export default function CaptureReadingPage() {
                     )}
 
                     {calc.tieneAnomalia && (
-                      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                        <div className="flex items-center gap-2 text-red-700 font-medium mb-2">
+                      <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                        <div className="flex items-center gap-2 text-destructive font-medium mb-2">
                           <AlertTriangle className="h-4 w-4" />
                           Lectura menor a la anterior
                         </div>
-                        <p className="text-sm text-red-600 mb-2">
+                        <p className="text-sm text-destructive mb-2">
                           El contador actual ({calc.lectura_actual.toLocaleString()}) es menor que la
                           última lectura registrada ({imp.lectura_anterior.toLocaleString()}).
                         </p>
-                        <div className="text-xs text-red-500 mb-3">
+                        <div className="text-xs text-destructive mb-3">
                           <p>Posibles causas:</p>
                           <ul className="list-disc list-inside ml-2">
                             <li>Cambio de tambor/toner</li>
@@ -284,7 +284,7 @@ export default function CaptureReadingPage() {
                     )}
 
                     {reading.fotoTomada && (
-                      <p className="text-sm text-green-600 flex items-center gap-1">
+                      <p className="text-sm text-success flex items-center gap-1">
                         <CheckCircle className="h-4 w-4" />
                         Foto capturada
                       </p>
@@ -312,15 +312,15 @@ export default function CaptureReadingPage() {
           <CardContent>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Total páginas:</span>
+                <span className="text-muted-foreground">Total páginas:</span>
                 <span className="font-medium">{totals.totalPaginas.toLocaleString()} hojas</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Total estimado:</span>
+                <span className="text-muted-foreground">Total estimado:</span>
                 <span className="font-medium">{formatCurrency(totals.totalMonto)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500">Impresoras:</span>
+                <span className="text-muted-foreground">Impresoras:</span>
                 <span className="font-medium">
                   {totals.completadas} de {totals.total} completadas
                 </span>
@@ -330,11 +330,11 @@ export default function CaptureReadingPage() {
         </Card>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-medium text-muted-foreground mb-1">
             Observaciones de la visita
           </label>
           <textarea
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             rows={3}
             value={observaciones}
             onChange={(e) => setObservaciones(e.target.value)}
@@ -343,7 +343,7 @@ export default function CaptureReadingPage() {
         </div>
 
         {saveError && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+          <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
             {saveError}
           </div>
         )}
@@ -374,9 +374,9 @@ export default function CaptureReadingPage() {
       >
         <div className="space-y-4">
           <div className="text-center mb-4">
-            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-2" />
+            <CheckCircle className="h-12 w-12 text-success mx-auto mb-2" />
             <p className="text-lg font-medium">Lecturas guardadas exitosamente</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               Se han registrado las lecturas de {totals.completadas} impresora(s) para {visit.cliente_nombre}.
             </p>
           </div>
@@ -388,7 +388,7 @@ export default function CaptureReadingPage() {
               .map((calc) => (
                 <div key={calc.printerId} className="text-sm py-1">
                   <p className="font-medium">{calc.marca} {calc.modelo}</p>
-                  <p className="text-gray-500 ml-4">
+                  <p className="text-muted-foreground ml-4">
                     Lectura: {calc.lectura_actual.toLocaleString()} | Consumo: {calc.paginas_consumidas.toLocaleString()} | Estimado: {formatCurrency(calc.montoEstimado)}
                   </p>
                 </div>
@@ -401,7 +401,7 @@ export default function CaptureReadingPage() {
             </div>
           </div>
 
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             La visita se ha marcado como completada y las lecturas están disponibles en el historial.
           </p>
 
@@ -434,15 +434,15 @@ export default function CaptureReadingPage() {
         size="md"
       >
         <div className="space-y-4">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-sm text-red-700">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+            <p className="text-sm text-destructive">
               El contador ingresado es menor a la lectura anterior. Por favor justifique esta anomalía.
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Justificación *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Justificación *</label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={3}
               value={anomaliaIdx >= 0 ? readings[anomaliaIdx].justificacion : ''}
               onChange={(e) => {

@@ -61,7 +61,7 @@ export default function WarehouseForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Nombre</label>
         <Input
           placeholder="Ej: Almacén Centro"
           value={nombre}
@@ -72,7 +72,7 @@ export default function WarehouseForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Dirección</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Dirección</label>
         <Input
           placeholder="Ej: Av. Insurgentes Sur 1250, CDMX"
           value={direccion}
@@ -83,7 +83,7 @@ export default function WarehouseForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Estado</label>
         <Select
           options={estadoOptions}
           value={activo}

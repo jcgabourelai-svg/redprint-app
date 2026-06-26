@@ -100,8 +100,8 @@ export default function MovementList() {
       sortable: true,
       render: (_value: string, row: InventoryMovement) => (
         <div>
-          <p className="font-medium text-gray-900">{row.articulo_nombre}</p>
-          <p className="text-xs text-gray-500">{row.articulo_id}</p>
+          <p className="font-medium text-foreground">{row.articulo_nombre}</p>
+          <p className="text-xs text-muted-foreground">{row.articulo_id}</p>
         </div>
       ),
     },
@@ -122,7 +122,7 @@ export default function MovementList() {
       render: (_value: string, row: InventoryMovement) => (
         <div>
           <p className="text-sm">{row.almacen_nombre}</p>
-          <p className="text-xs text-gray-400">{row.almacen_id}</p>
+          <p className="text-xs text-muted-foreground">{row.almacen_id}</p>
         </div>
       ),
     },
@@ -178,11 +178,11 @@ export default function MovementList() {
       label: 'Acciones',
       render: () => (
         <div className="flex items-center gap-1">
-          <button className="p-1 hover:bg-gray-100 rounded" title="Ver detalle">
-            <Eye className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Ver detalle">
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
-          <button className="p-1 hover:bg-gray-100 rounded" title="Eliminar">
-            <Trash2 className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Eliminar">
+            <Trash2 className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -193,7 +193,7 @@ export default function MovementList() {
     return (
       <PageLayout title="Inventario › Movimientos" showSearch>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -203,7 +203,7 @@ export default function MovementList() {
     return (
       <PageLayout title="Inventario › Movimientos" showSearch>
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar movimientos</p>
+          <p className="text-destructive">Error al cargar movimientos</p>
         </div>
       </PageLayout>
     )
@@ -219,8 +219,8 @@ export default function MovementList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Movimientos de Inventario</h2>
-            <p className="text-sm text-gray-500">Registro de entradas y salidas de artículos</p>
+            <h2 className="text-2xl font-bold text-foreground">Movimientos de Inventario</h2>
+            <p className="text-sm text-muted-foreground">Registro de entradas y salidas de artículos</p>
           </div>
           <Button onClick={() => setShowNewMovement(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -232,11 +232,11 @@ export default function MovementList() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-blue-50 p-2">
-                  <ArrowLeftRight className="h-5 w-5 text-blue-500" />
+                <div className="rounded-lg bg-primary/10 p-2">
+                  <ArrowLeftRight className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Total Movimientos</p>
+                  <p className="text-sm text-muted-foreground">Total Movimientos</p>
                   <p className="text-lg font-bold">{totalMovements}</p>
                 </div>
               </div>
@@ -245,12 +245,12 @@ export default function MovementList() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-green-50 p-2">
-                  <ArrowDown className="h-5 w-5 text-green-500" />
+                <div className="rounded-lg bg-success/10 p-2">
+                  <ArrowDown className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Entradas</p>
-                  <p className="text-lg font-bold text-green-600">{entradasMes}</p>
+                  <p className="text-sm text-muted-foreground">Entradas</p>
+                  <p className="text-lg font-bold text-success">{entradasMes}</p>
                 </div>
               </div>
             </CardContent>
@@ -258,12 +258,12 @@ export default function MovementList() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="rounded-lg bg-amber-50 p-2">
-                  <ArrowUp className="h-5 w-5 text-amber-500" />
+                <div className="rounded-lg bg-warning/10 p-2">
+                  <ArrowUp className="h-5 w-5 text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Salidas</p>
-                  <p className="text-lg font-bold text-amber-600">{salidasMes}</p>
+                  <p className="text-sm text-muted-foreground">Salidas</p>
+                  <p className="text-lg font-bold text-warning">{salidasMes}</p>
                 </div>
               </div>
             </CardContent>
@@ -301,9 +301,9 @@ export default function MovementList() {
           emptyMessage="No hay movimientos registrados"
         />
 
-        <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
           <span>
-            Entradas: <strong className="text-green-600">{entradasMes}</strong> | Salidas: <strong className="text-amber-600">{salidasMes}</strong>
+            Entradas: <strong className="text-success">{entradasMes}</strong> | Salidas: <strong className="text-warning">{salidasMes}</strong>
           </span>
           <span>Mostrando {movements.length} movimientos en la página</span>
         </div>
@@ -317,7 +317,7 @@ export default function MovementList() {
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de movimiento *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Tipo de movimiento *</label>
             <Select
               options={[
                 { value: 'ENTRADA', label: 'Entrada' },
@@ -330,7 +330,7 @@ export default function MovementList() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Artículo *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Artículo *</label>
               <Select
                 options={articulos}
                 value={movementForm.articulo_id}
@@ -340,7 +340,7 @@ export default function MovementList() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
                 {movementForm.tipo === 'ENTRADA' ? 'Almacén destino' : 'Almacén origen'} *
               </label>
               <Select
@@ -355,7 +355,7 @@ export default function MovementList() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Cantidad *</label>
               <Input
                 type="number"
                 value={movementForm.cantidad}
@@ -364,7 +364,7 @@ export default function MovementList() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Motivo *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Motivo *</label>
               <Select
                 options={motivosActivos}
                 value={movementForm.motivo}
@@ -376,7 +376,7 @@ export default function MovementList() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Costo unitario</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Costo unitario</label>
               <Input
                 type="number"
                 value={movementForm.costo_unitario}
@@ -385,7 +385,7 @@ export default function MovementList() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Referencia</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Referencia</label>
               <Input
                 value={movementForm.referencia}
                 onChange={(e) => setMovementForm({ ...movementForm, referencia: e.target.value })}
@@ -395,7 +395,7 @@ export default function MovementList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Responsable *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Responsable *</label>
             <Select
               options={responsables}
               value={movementForm.responsable}
@@ -406,9 +406,9 @@ export default function MovementList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Notas</label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={2}
               value={movementForm.notas}
               onChange={(e) => setMovementForm({ ...movementForm, notas: e.target.value })}

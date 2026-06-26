@@ -35,16 +35,16 @@ const Modal = ({ isOpen, onClose, title, children, size = 'md' }: ModalProps) =>
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className={`relative w-full ${sizeStyles[size]} rounded-lg bg-white shadow-xl`}
+              className={`relative w-full ${sizeStyles[size]} rounded-lg bg-card shadow-xl`}
             >
               {title && (
-                <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
+                <div className="flex items-center justify-between border-b border-border px-6 py-4">
                   <h2 className="text-lg font-semibold">{title}</h2>
                   <button
                     onClick={onClose}
-                    className="rounded-md p-1 hover:bg-gray-100"
+                    className="rounded-md p-1 hover:bg-muted"
                   >
-                    <X className="h-5 w-5 text-gray-500" />
+                    <X className="h-5 w-5 text-muted-foreground" />
                   </button>
                 </div>
               )}

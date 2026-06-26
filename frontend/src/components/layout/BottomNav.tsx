@@ -31,7 +31,7 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-gray-200 bg-white px-2 py-2 lg:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 flex items-center justify-around border-t border-border bg-card px-2 py-2 lg:hidden">
       {items.map((item) => {
         const Icon = item.icon
         const active = isActive(item.path)
@@ -42,7 +42,7 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
             to={item.path}
             className={cn(
               'flex flex-col items-center gap-1 rounded-md px-3 py-2 transition-colors',
-              active ? 'text-blue-600' : 'text-gray-500 hover:text-gray-700'
+              active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
             )}
           >
             <Icon className={cn('h-6 w-6', active && 'fill-current')} />
@@ -53,7 +53,7 @@ export default function BottomNav({ onMenuClick }: BottomNavProps) {
 
       <button
         onClick={onMenuClick}
-        className="flex flex-col items-center gap-1 rounded-md px-3 py-2 text-gray-500 hover:text-gray-700"
+        className="flex flex-col items-center gap-1 rounded-md px-3 py-2 text-muted-foreground hover:text-foreground"
       >
         <Menu className="h-6 w-6" />
         <span className="text-xs font-medium">Más</span>

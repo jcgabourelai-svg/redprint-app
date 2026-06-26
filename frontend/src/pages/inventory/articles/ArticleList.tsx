@@ -92,7 +92,7 @@ function ArticleForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Nombre</label>
         <Input
           placeholder="Ej: Tóner HP 85A"
           value={nombre}
@@ -103,7 +103,7 @@ function ArticleForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Tipo</label>
         <Select
           options={tipoOptions}
           value={tipo}
@@ -113,7 +113,7 @@ function ArticleForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Marca</label>
           <Input
             placeholder="Ej: HP"
             value={marca}
@@ -123,7 +123,7 @@ function ArticleForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Modelo</label>
           <Input
             placeholder="Ej: 85A"
             value={modelo}
@@ -136,7 +136,7 @@ function ArticleForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Cantidad en Stock</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Cantidad en Stock</label>
           <Input
             placeholder="0"
             type="number"
@@ -148,7 +148,7 @@ function ArticleForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Umbral Reposición</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Umbral Reposición</label>
           <Input
             placeholder="0"
             type="number"
@@ -160,7 +160,7 @@ function ArticleForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Costo Unitario</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Costo Unitario</label>
           <Input
             placeholder="0.00"
             type="number"
@@ -237,7 +237,7 @@ export default function ArticleList() {
       render: (value: string, row: Article) => (
         <div>
           <p className="font-medium">{value}</p>
-          <p className="text-xs text-gray-500">{row.marca} {row.modelo_sku}</p>
+          <p className="text-xs text-muted-foreground">{row.marca} {row.modelo_sku}</p>
         </div>
       ),
     },
@@ -259,11 +259,11 @@ export default function ArticleList() {
         const status = getStockStatus(row)
         return (
           <div>
-            <p className={status === 'agotado' ? 'text-red-600 font-semibold' : status === 'bajo' ? 'text-amber-600 font-semibold' : ''}>
+            <p className={status === 'agotado' ? 'text-destructive font-semibold' : status === 'bajo' ? 'text-warning font-semibold' : ''}>
               {value} uds
             </p>
             {status !== 'ok' && (
-              <p className="text-xs text-red-500">{status === 'agotado' ? 'Agotado' : 'Bajo stock'}</p>
+              <p className="text-xs text-destructive">{status === 'agotado' ? 'Agotado' : 'Bajo stock'}</p>
             )}
           </div>
         )
@@ -284,7 +284,7 @@ export default function ArticleList() {
       key: 'acciones',
       label: 'Acciones',
       render: () => (
-        <button className="p-1 hover:bg-gray-100 rounded">
+        <button className="p-1 hover:bg-muted rounded">
           <MoreVertical className="h-4 w-4" />
         </button>
       ),
@@ -295,7 +295,7 @@ export default function ArticleList() {
     return (
       <PageLayout title="Inventario › Artículos" showSearch>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -305,7 +305,7 @@ export default function ArticleList() {
     return (
       <PageLayout title="Inventario › Artículos" showSearch>
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar artículos</p>
+          <p className="text-destructive">Error al cargar artículos</p>
         </div>
       </PageLayout>
     )
@@ -316,8 +316,8 @@ export default function ArticleList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Artículos</h2>
-            <p className="text-sm text-gray-500">Gestión de consumibles y piezas de repuesto</p>
+            <h2 className="text-2xl font-bold text-foreground">Artículos</h2>
+            <p className="text-sm text-muted-foreground">Gestión de consumibles y piezas de repuesto</p>
           </div>
           {isAdmin && (
             <Button onClick={() => setShowCreateModal(true)}>

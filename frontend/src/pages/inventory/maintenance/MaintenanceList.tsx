@@ -32,7 +32,7 @@ export default function MaintenanceList() {
       render: (_value: string, row: any) => (
         <div>
           <p className="font-medium">{row.printer?.marca} {row.printer?.modelo}</p>
-          <p className="text-xs text-gray-500">{row.socio?.nombre}</p>
+          <p className="text-xs text-muted-foreground">{row.socio?.nombre}</p>
         </div>
       ),
     },
@@ -56,7 +56,7 @@ export default function MaintenanceList() {
       key: 'desc_problema',
       label: 'Descripción',
       render: (value: string) => (
-        <p className="text-sm text-gray-700 max-w-xs truncate">{value || '-'}</p>
+        <p className="text-sm text-muted-foreground max-w-xs truncate">{value || '-'}</p>
       ),
     },
     {
@@ -81,14 +81,14 @@ export default function MaintenanceList() {
       render: (_value: unknown, row: any) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/inventario/mantenimiento/${row.id}`)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -99,7 +99,7 @@ export default function MaintenanceList() {
     return (
       <PageLayout title="Inventario › Mantenimiento" showSearch>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -109,7 +109,7 @@ export default function MaintenanceList() {
     return (
       <PageLayout title="Inventario › Mantenimiento" showSearch>
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar órdenes de mantenimiento</p>
+          <p className="text-destructive">Error al cargar órdenes de mantenimiento</p>
         </div>
       </PageLayout>
     )
@@ -120,8 +120,8 @@ export default function MaintenanceList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Órdenes de Mantenimiento</h2>
-            <p className="text-sm text-gray-500">Gestión de servicios de mantenimiento</p>
+            <h2 className="text-2xl font-bold text-foreground">Órdenes de Mantenimiento</h2>
+            <p className="text-sm text-muted-foreground">Gestión de servicios de mantenimiento</p>
           </div>
           {isAdmin && (
             <Button onClick={() => navigate('/inventario/mantenimiento/crear')}>

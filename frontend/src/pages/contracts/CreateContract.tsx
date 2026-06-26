@@ -132,7 +132,7 @@ export default function CreateContract() {
     return (
       <PageLayout title="Contratos › Crear Nuevo Contrato">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando datos necesarios...</p>
+          <p className="text-muted-foreground">Cargando datos necesarios...</p>
         </div>
       </PageLayout>
     )
@@ -160,19 +160,19 @@ export default function CreateContract() {
                     <div
                       className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
                         isActive
-                          ? 'bg-blue-500 text-white'
+                          ? 'bg-primary text-white'
                           : isCompleted
-                          ? 'bg-green-500 text-white'
-                          : 'bg-gray-200 text-gray-500'
+                          ? 'bg-success text-white'
+                          : 'bg-muted text-muted-foreground'
                       }`}
                     >
                       {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
                     </div>
-                    <span className={`text-sm hidden sm:inline ${isActive ? 'font-medium text-blue-600' : 'text-gray-500'}`}>
+                    <span className={`text-sm hidden sm:inline ${isActive ? 'font-medium text-primary' : 'text-muted-foreground'}`}>
                       {label}
                     </span>
                     {i < stepLabels.length - 1 && (
-                      <div className={`w-8 lg:w-16 h-0.5 mx-1 ${i < step ? 'bg-green-500' : 'bg-gray-200'}`} />
+                      <div className={`w-8 lg:w-16 h-0.5 mx-1 ${i < step ? 'bg-success' : 'bg-muted'}`} />
                     )}
                   </div>
                 )
@@ -186,7 +186,7 @@ export default function CreateContract() {
             {step === 0 && (
               <div className="space-y-4 max-w-lg">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
                   <Select
                     options={clientOptions}
                     value={cliente_id}
@@ -196,7 +196,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de inicio *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de inicio *</label>
                   <Input
                     type="date"
                     value={fecha_inicio}
@@ -204,7 +204,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
                     Fecha de fin (opcional, vacío = indefinido)
                   </label>
                   <Input
@@ -215,7 +215,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Días de gracia para pago *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Días de gracia para pago *</label>
                   <Input
                     type="number"
                     value={dias_gracia}
@@ -223,7 +223,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Frecuencia de visitas *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Frecuencia de visitas *</label>
                   <Select
                     options={frecuenciaOptions}
                     value={frecuencia}
@@ -236,12 +236,12 @@ export default function CreateContract() {
             {step === 1 && (
               <div className="space-y-4">
                 {selectedClient && (
-                  <div className="bg-blue-50 rounded-lg p-3 text-sm">
-                    <p className="font-medium text-blue-800">Cliente: {selectedClient.razon_social} ({selectedClient.nombre_contacto})</p>
-                    <p className="text-blue-600">RFC: {selectedClient.rfc || '-'}</p>
+                  <div className="bg-primary/10 rounded-lg p-3 text-sm">
+                    <p className="font-medium text-primary">Cliente: {selectedClient.razon_social} ({selectedClient.nombre_contacto})</p>
+                    <p className="text-primary">RFC: {selectedClient.rfc || '-'}</p>
                   </div>
                 )}
-                <p className="text-sm text-gray-600">Impresoras disponibles en almacén:</p>
+                <p className="text-sm text-muted-foreground">Impresoras disponibles en almacén:</p>
                 <div className="space-y-3">
                   {printers.map((printer) => {
                     const isSelected = selectedPrinters.includes(printer.id)
@@ -249,35 +249,35 @@ export default function CreateContract() {
                       <div
                         key={printer.id}
                         className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
+                          isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-input'
                         }`}
                         onClick={() => togglePrinter(printer.id)}
                       >
                         <div className="flex items-start gap-3">
                           <div
                             className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
-                              isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300'
+                              isSelected ? 'bg-primary border-primary' : 'border-input'
                             }`}
                           >
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
+                            <p className="font-medium text-foreground">
                               {printer.id} - {printer.marca} {printer.modelo}
                             </p>
-                            <p className="text-xs text-gray-500">SERIE: {printer.numero_serie}</p>
+                            <p className="text-xs text-muted-foreground">SERIE: {printer.numero_serie}</p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
                               <div>
-                                <span className="text-gray-400">Costo:</span>{' '}
-                                <span className="text-gray-700">{formatCurrency(printer.costo_adquisicion)}</span>
+                                <span className="text-muted-foreground">Costo:</span>{' '}
+                                <span className="text-muted-foreground">{formatCurrency(printer.costo_adquisicion)}</span>
                               </div>
                               <div>
-                                <span className="text-gray-400">Contador:</span>{' '}
-                                <span className="text-gray-700">{printer.contador_total_actual.toLocaleString('es-MX')} hojas</span>
+                                <span className="text-muted-foreground">Contador:</span>{' '}
+                                <span className="text-muted-foreground">{printer.contador_total_actual.toLocaleString('es-MX')} hojas</span>
                               </div>
                               <div>
-                                <span className="text-gray-400">Almacén:</span>{' '}
-                                <span className="text-gray-700">{printer.almacen || '-'}</span>
+                                <span className="text-muted-foreground">Almacén:</span>{' '}
+                                <span className="text-muted-foreground">{printer.almacen || '-'}</span>
                               </div>
                               <div>
                                 <Badge variant="printer_status" color={printer.estado}>
@@ -291,7 +291,7 @@ export default function CreateContract() {
                     )
                   })}
                 </div>
-                <p className="text-sm text-gray-500">
+                <p className="text-sm text-muted-foreground">
                   Seleccionadas: {selectedPrinters.length} impresora(s)
                 </p>
               </div>
@@ -300,12 +300,12 @@ export default function CreateContract() {
             {step === 2 && (
               <div className="space-y-4 max-w-lg">
                 {selectedClient && (
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-muted-foreground">
                     Cliente: <span className="font-medium">{selectedClient.razon_social}</span> • Impresoras: {selectedPrinters.length}
                   </p>
                 )}
 
-                <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-700">
+                <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">
                   <code>monto = tarifa_base + max(0, páginas - incluidas) × costo_por_pagina_excedente</code>
                 </div>
 
@@ -337,7 +337,7 @@ export default function CreateContract() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tarifa base mensual ($)</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Tarifa base mensual ($)</label>
                   <Input
                     type="number"
                     step="0.01"
@@ -346,7 +346,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Páginas incluidas</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Páginas incluidas</label>
                   <Input
                     type="number"
                     value={paginas_incluidas}
@@ -354,7 +354,7 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Costo por página excedente ($)</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Costo por página excedente ($)</label>
                   <Input
                     type="number"
                     step="0.001"
@@ -365,11 +365,11 @@ export default function CreateContract() {
 
                 {selectedPrinterDetails.length > 0 && (
                   <div>
-                    <p className="text-sm font-medium text-gray-700 mb-2">Lecturas iniciales de contador:</p>
+                    <p className="text-sm font-medium text-muted-foreground mb-2">Lecturas iniciales de contador:</p>
                     <div className="space-y-3">
                       {selectedPrinterDetails.map((printer) => (
                         <div key={printer.id} className="flex items-center gap-3">
-                          <span className="text-sm text-gray-600 min-w-[200px]">
+                          <span className="text-sm text-muted-foreground min-w-[200px]">
                             {printer.id} - {printer.marca} {printer.modelo}
                           </span>
                           <Input
@@ -391,81 +391,81 @@ export default function CreateContract() {
 
             {step === 3 && (
               <div className="space-y-4">
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="font-medium text-blue-900 mb-2">Resumen del Contrato</p>
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <p className="font-medium text-primary mb-2">Resumen del Contrato</p>
                   <div className="grid gap-2 sm:grid-cols-2 text-sm">
                     <div>
-                      <span className="text-blue-600">Cliente:</span>{' '}
+                      <span className="text-primary">Cliente:</span>{' '}
                       <span className="font-medium">{selectedClient?.razon_social} ({selectedClient?.nombre_contacto})</span>
                     </div>
                     <div>
-                      <span className="text-blue-600">RFC:</span>{' '}
+                      <span className="text-primary">RFC:</span>{' '}
                       <span className="font-medium">{selectedClient?.rfc || '-'}</span>
                     </div>
                     {selectedClient?.correo && (
                       <div>
-                        <span className="text-blue-600">Contacto:</span>{' '}
+                        <span className="text-primary">Contacto:</span>{' '}
                         <span className="font-medium">{selectedClient.telefono}, {selectedClient.correo}</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="bg-green-50 rounded-lg p-4">
-                  <p className="font-medium text-green-900 mb-2">Fechas del Contrato</p>
+                <div className="bg-success/10 rounded-lg p-4">
+                  <p className="font-medium text-success mb-2">Fechas del Contrato</p>
                   <div className="grid gap-2 sm:grid-cols-2 text-sm">
                     <div>
-                      <span className="text-green-600">Inicio:</span>{' '}
+                      <span className="text-success">Inicio:</span>{' '}
                       <span className="font-medium">{fecha_inicio}</span>
                     </div>
                     <div>
-                      <span className="text-green-600">Fin:</span>{' '}
+                      <span className="text-success">Fin:</span>{' '}
                       <span className="font-medium">{fecha_fin || 'Indefinido (renovación tácita)'}</span>
                     </div>
                     <div>
-                      <span className="text-green-600">Días de gracia:</span>{' '}
+                      <span className="text-success">Días de gracia:</span>{' '}
                       <span className="font-medium">{dias_gracia} días</span>
                     </div>
                     <div>
-                      <span className="text-green-600">Frecuencia:</span>{' '}
+                      <span className="text-success">Frecuencia:</span>{' '}
                       <span className="font-medium capitalize">{frecuencia}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-amber-50 rounded-lg p-4">
-                  <p className="font-medium text-amber-900 mb-2">Esquema de Cobro</p>
-                  <div className="bg-white rounded p-2 text-sm font-mono mb-2">
+                <div className="bg-warning/10 rounded-lg p-4">
+                  <p className="font-medium text-warning mb-2">Esquema de Cobro</p>
+                  <div className="bg-card rounded p-2 text-sm font-mono mb-2">
                     tarifa_base + max(0, p - {paginas_incluidas}) × {costo_por_pagina_excedente}
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3 text-sm">
                     <div>
-                      <span className="text-amber-600">Tarifa base:</span>{' '}
+                      <span className="text-warning">Tarifa base:</span>{' '}
                       <span className="font-medium">{formatCurrency(Number(tarifa_base))}</span>
                     </div>
                     <div>
-                      <span className="text-amber-600">Páginas incluidas:</span>{' '}
+                      <span className="text-warning">Páginas incluidas:</span>{' '}
                       <span className="font-medium">{Number(paginas_incluidas).toLocaleString('es-MX')}</span>
                     </div>
                     <div>
-                      <span className="text-amber-600">Costo excedente:</span>{' '}
+                      <span className="text-warning">Costo excedente:</span>{' '}
                       <span className="font-medium">{formatCurrency(Number(costo_por_pagina_excedente))}/página</span>
                     </div>
                   </div>
                 </div>
 
                 {selectedPrinterDetails.length > 0 && (
-                  <div className="bg-purple-50 rounded-lg p-4">
-                    <p className="font-medium text-purple-900 mb-2">
+                  <div className="bg-primary/10 rounded-lg p-4">
+                    <p className="font-medium text-primary mb-2">
                       Impresoras Asignadas ({selectedPrinterDetails.length})
                     </p>
                     <div className="space-y-2">
                       {selectedPrinterDetails.map((printer) => (
                         <div key={printer.id} className="flex items-center gap-3 text-sm">
-                          <Printer className="h-4 w-4 text-purple-600" />
+                          <Printer className="h-4 w-4 text-primary" />
                           <span className="font-medium">{printer.id} - {printer.marca} {printer.modelo}</span>
-                          <span className="text-purple-600">SERIE: {printer.numero_serie}</span>
-                          <span className="text-gray-500">
+                          <span className="text-primary">SERIE: {printer.numero_serie}</span>
+                          <span className="text-muted-foreground">
                             Lectura: {lecturas_iniciales[printer.id] || '0'} páginas
                           </span>
                         </div>
@@ -474,7 +474,7 @@ export default function CreateContract() {
                   </div>
                 )}
 
-                <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+                <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground">
                   El sistema generará automáticamente las visitas {frecuencia}es para este cliente.
                 </div>
               </div>
@@ -506,18 +506,18 @@ export default function CreateContract() {
 
       <Modal isOpen={showConfirm} onClose={() => setShowConfirm(false)} title="Confirmar Creación">
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">¿Estás seguro de que deseas crear este contrato?</p>
+          <p className="text-sm text-muted-foreground">¿Estás seguro de que deseas crear este contrato?</p>
           <div className="text-sm space-y-1">
-            <p><span className="text-gray-500">Cliente:</span> {selectedClient?.razon_social}</p>
-            <p><span className="text-gray-500">Impresoras:</span> {selectedPrinters.length}</p>
-            <p><span className="text-gray-500">Tarifa base:</span> {formatCurrency(Number(tarifa_base))}</p>
+            <p><span className="text-muted-foreground">Cliente:</span> {selectedClient?.razon_social}</p>
+            <p><span className="text-muted-foreground">Impresoras:</span> {selectedPrinters.length}</p>
+            <p><span className="text-muted-foreground">Tarifa base:</span> {formatCurrency(Number(tarifa_base))}</p>
           </div>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
               {error}
             </div>
           )}
-          <div className="bg-amber-50 rounded p-3 text-xs text-amber-700 space-y-1">
+          <div className="bg-warning/10 rounded p-3 text-xs text-warning space-y-1">
             <p>• Creará el contrato en estado ACTIVO</p>
             <p>• Cambiará las impresoras a estado RENTADA</p>
             <p>• Generará visitas en el calendario</p>
@@ -534,16 +534,16 @@ export default function CreateContract() {
       <Modal isOpen={showSuccess} onClose={handleSuccessClose} title="Contrato Creado Exitosamente">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <Check className="h-8 w-8 text-green-600" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+              <Check className="h-8 w-8 text-success" />
             </div>
           </div>
           <div>
             <p className="font-medium">Contrato creado para {selectedClient?.razon_social}</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {selectedPrinters.length} impresoras asignadas: {selectedPrinters.join(', ')}
             </p>
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-muted-foreground mt-2">
               Las visitas se han programado en el calendario.
             </p>
           </div>

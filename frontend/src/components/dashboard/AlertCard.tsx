@@ -21,12 +21,12 @@ const icons = {
 }
 
 const iconStyles = {
-  success: 'text-green-500',
-  error: 'text-red-500',
-  warning: 'text-amber-500',
-  info: 'text-blue-500',
-  primary: 'text-blue-500',
-  neutral: 'text-gray-500',
+  success: 'text-success',
+  error: 'text-destructive',
+  warning: 'text-warning',
+  info: 'text-primary',
+  primary: 'text-primary',
+  neutral: 'text-muted-foreground',
 }
 
 export default function AlertCard({
@@ -40,16 +40,16 @@ export default function AlertCard({
   const Icon = icons[type]
 
   return (
-    <div className={cn('rounded-lg border border-gray-200 bg-white p-4 shadow-sm', className)}>
+    <div className={cn('rounded-lg border border-border bg-card p-4 shadow-sm', className)}>
       <div className="flex gap-3">
         <Icon className={cn('mt-0.5 h-5 w-5 flex-shrink-0', iconStyles[type])} />
         <div className="flex-1">
-          <h3 className="font-medium text-gray-900">{title}</h3>
-          <p className="mt-1 text-sm text-gray-600">{message}</p>
+          <h3 className="font-medium text-foreground">{title}</h3>
+          <p className="mt-1 text-sm text-muted-foreground">{message}</p>
           {action && onActionClick && (
             <button
               onClick={onActionClick}
-              className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700"
+              className="mt-2 text-sm font-medium text-primary hover:text-primary"
             >
               {action}
             </button>

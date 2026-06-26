@@ -120,7 +120,7 @@ export default function WarehouseList() {
     return (
       <PageLayout title="Inventario › Almacenes">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -130,7 +130,7 @@ export default function WarehouseList() {
     return (
       <PageLayout title="Inventario › Almacenes">
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar almacenes</p>
+          <p className="text-destructive">Error al cargar almacenes</p>
         </div>
       </PageLayout>
     )
@@ -141,8 +141,8 @@ export default function WarehouseList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Almacenes</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Almacenes</h2>
+            <p className="text-sm text-muted-foreground">
               Gestión de almacenes y ubicaciones de impresoras
             </p>
           </div>
@@ -157,7 +157,7 @@ export default function WarehouseList() {
         <div className="space-y-4">
           <div className="flex items-center gap-3">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar por nombre, dirección, responsable..."
@@ -166,13 +166,13 @@ export default function WarehouseList() {
                   setSearchTerm(e.target.value)
                   setCurrentPage(1)
                 }}
-                className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-input py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label="Buscar almacenes"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-muted-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -186,7 +186,7 @@ export default function WarehouseList() {
               <Filter className="mr-2 h-4 w-4" />
               Filtros
               {hasActiveFilters && (
-                <span className="ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-blue-500 text-xs text-white">
+                <span className="ml-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs text-white">
                   !
                 </span>
               )}
@@ -194,17 +194,17 @@ export default function WarehouseList() {
           </div>
 
           {showFilters && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Estado</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Estado</label>
                   <select
                     value={statusFilter}
                     onChange={(e) => {
                       setStatusFilter(e.target.value as string | 'all')
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos</option>
                     <option value="activo">Activo</option>
@@ -212,14 +212,14 @@ export default function WarehouseList() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Responsable</label>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1">Responsable</label>
                   <select
                     value={responsableFilter}
                     onChange={(e) => {
                       setResponsableFilter(e.target.value)
                       setCurrentPage(1)
                     }}
-                    className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                   >
                     <option value="all">Todos</option>
                     {encargados.map((e) => (
@@ -242,9 +242,9 @@ export default function WarehouseList() {
 
         {warehouses.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <WarehouseIcon className="h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">No hay almacenes</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <WarehouseIcon className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">No hay almacenes</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Comienza creando tu primer almacén para gestionar las ubicaciones de impresoras.
             </p>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -254,9 +254,9 @@ export default function WarehouseList() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-600 mb-2">Sin resultados</h3>
-            <p className="text-sm text-gray-500 mb-4">
+            <Search className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Sin resultados</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               No se encontraron almacenes con los filtros aplicados.
             </p>
             <Button variant="secondary" size="sm" onClick={clearFilters}>
@@ -287,7 +287,7 @@ export default function WarehouseList() {
 
             {totalPages > 1 && (
               <div className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-muted-foreground">
                   Mostrando {(safeCurrentPage - 1) * pageSize + 1} a{' '}
                   {Math.min(safeCurrentPage * pageSize, filtered.length)} de {filtered.length}
                 </div>
@@ -300,7 +300,7 @@ export default function WarehouseList() {
                   >
                     Anterior
                   </Button>
-                  <span className="px-3 py-1 text-sm text-gray-600">
+                  <span className="px-3 py-1 text-sm text-muted-foreground">
                     {safeCurrentPage} de {totalPages}
                   </span>
                   <Button
@@ -337,11 +337,11 @@ export default function WarehouseList() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             ¿Estás seguro de que deseas eliminar este almacén? Esta acción no se puede deshacer.
           </p>
           {deleteError && (
-            <p className="text-sm text-red-600">{deleteError}</p>
+            <p className="text-sm text-destructive">{deleteError}</p>
           )}
           <div className="flex justify-end gap-3">
             <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(null)} disabled={deleteMutation.isPending}>

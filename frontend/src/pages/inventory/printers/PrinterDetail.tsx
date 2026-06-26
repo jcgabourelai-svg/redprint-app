@@ -33,7 +33,7 @@ export default function PrinterDetail() {
     return (
       <PageLayout title="Inventario › Impresoras">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -43,7 +43,7 @@ export default function PrinterDetail() {
     return (
       <PageLayout title="Inventario › Impresoras">
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Impresora no encontrada</p>
+          <p className="text-destructive">Impresora no encontrada</p>
         </div>
       </PageLayout>
     )
@@ -136,14 +136,14 @@ export default function PrinterDetail() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded bg-blue-100">
-                      <PrinterIcon className="h-6 w-6 text-blue-600" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded bg-primary/10">
+                      <PrinterIcon className="h-6 w-6 text-primary" />
                     </div>
                     <div>
                       <CardTitle className="text-xl">
                         {printerData.marca} {printerData.modelo}
                       </CardTitle>
-                      <p className="text-sm text-gray-500">{printerData.id} • {printerData.num_serie}</p>
+                      <p className="text-sm text-muted-foreground">{printerData.id} • {printerData.num_serie}</p>
                     </div>
                   </div>
                   <Badge variant="printer_status" color={printerData.estado}>
@@ -154,36 +154,36 @@ export default function PrinterDetail() {
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Marca</p>
-                    <p className="text-gray-900">{printerData.marca}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Marca</p>
+                    <p className="text-foreground">{printerData.marca}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Modelo</p>
-                    <p className="text-gray-900">{printerData.modelo}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Modelo</p>
+                    <p className="text-foreground">{printerData.modelo}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Número de Serie</p>
-                    <p className="text-gray-900">{printerData.num_serie}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Número de Serie</p>
+                    <p className="text-foreground">{printerData.num_serie}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Fecha de Adquisición</p>
-                    <p className="text-gray-900">{formatDate(printerData.fecha_adquisicion)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Fecha de Adquisición</p>
+                    <p className="text-foreground">{formatDate(printerData.fecha_adquisicion)}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Costo de Adquisición</p>
-                    <p className="text-gray-900">{formatCurrency(printerData.costo_adquisicion)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Costo de Adquisición</p>
+                    <p className="text-foreground">{formatCurrency(printerData.costo_adquisicion)}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Vida Útil Estimada</p>
-                    <p className="text-gray-900">{printerData.vida_util_meses} meses</p>
+                    <p className="text-sm font-medium text-muted-foreground">Vida Útil Estimada</p>
+                    <p className="text-foreground">{printerData.vida_util_meses} meses</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Ubicación Actual</p>
-                    <p className="text-gray-900">{printerData.warehouse?.direccion || printerData.codigo_negocio || '-'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Ubicación Actual</p>
+                    <p className="text-foreground">{printerData.warehouse?.direccion || printerData.codigo_negocio || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-600">Almacén</p>
-                    <p className="text-gray-900">{printerData.warehouse?.nombre || '-'}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Almacén</p>
+                    <p className="text-foreground">{printerData.warehouse?.nombre || '-'}</p>
                   </div>
                 </div>
               </CardContent>
@@ -200,20 +200,20 @@ export default function PrinterDetail() {
                         content: (
                           <div className="space-y-4 pb-4">
                             {history.length === 0 ? (
-                              <p className="text-sm text-gray-500 py-4">No hay eventos en el historial.</p>
+                              <p className="text-sm text-muted-foreground py-4">No hay eventos en el historial.</p>
                             ) : (
                               history.map((event: any) => (
-                                <div key={event.id} className="flex gap-4 border-b border-gray-100 pb-4 last:border-0">
-                                  <div className="text-sm text-gray-500 min-w-[100px]">
+                                <div key={event.id} className="flex gap-4 border-b border-border pb-4 last:border-0">
+                                  <div className="text-sm text-muted-foreground min-w-[100px]">
                                     {formatDate(event.fecha)}
                                   </div>
                                   <div className="flex-1">
-                                    <p className="text-sm font-medium text-gray-900">{event.tipo}</p>
-                                    <p className="text-xs text-gray-500">{event.descripcion}</p>
+                                    <p className="text-sm font-medium text-foreground">{event.tipo}</p>
+                                    <p className="text-xs text-muted-foreground">{event.descripcion}</p>
                                     {event.detalles && (
-                                      <p className="text-xs text-gray-400 mt-1">{event.detalles}</p>
+                                      <p className="text-xs text-muted-foreground mt-1">{event.detalles}</p>
                                     )}
-                                    <p className="text-xs text-gray-400 mt-1">Responsable: {event.responsable}</p>
+                                    <p className="text-xs text-muted-foreground mt-1">Responsable: {event.responsable}</p>
                                   </div>
                                 </div>
                               ))
@@ -228,7 +228,7 @@ export default function PrinterDetail() {
                           <div className="space-y-4 pb-4">
                             {maintenance.length === 0 ? (
                               <div className="text-center py-8">
-                                <p className="text-sm text-gray-500">No hay órdenes de mantenimiento registradas</p>
+                                <p className="text-sm text-muted-foreground">No hay órdenes de mantenimiento registradas</p>
                                 {isAdmin && (
                                   <Button size="sm" className="mt-3">
                                     <Plus className="mr-2 h-4 w-4" />
@@ -238,16 +238,16 @@ export default function PrinterDetail() {
                               </div>
                             ) : (
                               maintenance.map((order: any) => (
-                                <div key={order.id} className="border border-gray-200 rounded-lg p-4">
+                                <div key={order.id} className="border border-border rounded-lg p-4">
                                   <div className="flex items-center justify-between mb-2">
                                     <p className="text-sm font-medium">{order.id} - {formatDate(order.fecha)}</p>
                                     <Badge variant="document_status" color={order.estado}>
                                       {(order.estado || '').replace(/_/g, ' ').toUpperCase()}
                                     </Badge>
                                   </div>
-                                  <p className="text-xs text-gray-500">Tipo: {(order.tipo_mantto || '').toLowerCase() === 'preventivo' ? 'Preventivo' : 'Correctivo'}</p>
-                                  <p className="text-xs text-gray-500">Responsable: {order.socio?.nombre ?? '-'}</p>
-                                  <p className="text-xs text-gray-500">Costo: {formatCurrency(order.costo_mano_obra)}</p>
+                                  <p className="text-xs text-muted-foreground">Tipo: {(order.tipo_mantto || '').toLowerCase() === 'preventivo' ? 'Preventivo' : 'Correctivo'}</p>
+                                  <p className="text-xs text-muted-foreground">Responsable: {order.socio?.nombre ?? '-'}</p>
+                                  <p className="text-xs text-muted-foreground">Costo: {formatCurrency(order.costo_mano_obra)}</p>
                                 </div>
                               ))
                             )}
@@ -260,26 +260,26 @@ export default function PrinterDetail() {
                         content: (
                           <div className="pb-4">
                             {readings.length === 0 ? (
-                              <p className="text-sm text-gray-500 py-4">No hay lecturas registradas.</p>
+                              <p className="text-sm text-muted-foreground py-4">No hay lecturas registradas.</p>
                             ) : (
                               <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                   <thead>
-                                    <tr className="border-b border-gray-200">
-                                      <th className="pb-2 text-left text-xs font-medium text-gray-500">Fecha</th>
-                                      <th className="pb-2 text-right text-xs font-medium text-gray-500">Contador</th>
-                                      <th className="pb-2 text-right text-xs font-medium text-gray-500">Consumo</th>
-                                      <th className="pb-2 text-left text-xs font-medium text-gray-500">Visitante</th>
-                                      <th className="pb-2 text-center text-xs font-medium text-gray-500">Estado</th>
+                                    <tr className="border-b border-border">
+                                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Fecha</th>
+                                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Contador</th>
+                                      <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Consumo</th>
+                                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Visitante</th>
+                                      <th className="pb-2 text-center text-xs font-medium text-muted-foreground">Estado</th>
                                     </tr>
                                   </thead>
                                   <tbody>
                                     {readings.map((reading: any) => (
-                                      <tr key={reading.id} className="border-b border-gray-100">
-                                        <td className="py-2 text-gray-700">{formatDate(reading.fecha)}</td>
+                                      <tr key={reading.id} className="border-b border-border">
+                                        <td className="py-2 text-muted-foreground">{formatDate(reading.fecha)}</td>
                                         <td className="py-2 text-right tabular-nums">{Number(reading.valor_contador ?? 0).toLocaleString('es-MX')}</td>
-                                        <td className="py-2 text-right tabular-nums text-green-600">+{Number(reading.paginas_periodo ?? 0).toLocaleString('es-MX')}</td>
-                                        <td className="py-2 text-gray-700">{reading.socio_capturista || '-'}</td>
+                                        <td className="py-2 text-right tabular-nums text-success">+{Number(reading.paginas_periodo ?? 0).toLocaleString('es-MX')}</td>
+                                        <td className="py-2 text-muted-foreground">{reading.socio_capturista || '-'}</td>
                                         <td className="py-2 text-center">
                                           {reading.es_anomalia ? '⚠️' : '✅'}
                                         </td>
@@ -303,21 +303,21 @@ export default function PrinterDetail() {
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-blue-600" />
+                  <Activity className="h-5 w-5 text-primary" />
                   <CardTitle>Contador</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="text-center">
-                  <p className="text-3xl font-bold text-gray-900 tabular-nums">
+                  <p className="text-3xl font-bold text-foreground tabular-nums">
                     {(printerData.contador_actual ?? 0).toLocaleString('es-MX')}
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">páginas totales</p>
+                  <p className="text-sm text-muted-foreground mt-1">páginas totales</p>
                 </div>
                 {printerData.ultima_lectura !== undefined && printerData.fecha_ultima_lectura && (
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-500">Última lectura</p>
-                    <p className="text-sm text-gray-900">{formatDate(printerData.fecha_ultima_lectura)}</p>
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <p className="text-xs text-muted-foreground">Última lectura</p>
+                    <p className="text-sm text-foreground">{formatDate(printerData.fecha_ultima_lectura)}</p>
                   </div>
                 )}
               </CardContent>
@@ -327,21 +327,21 @@ export default function PrinterDetail() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-green-600" />
+                    <Calendar className="h-5 w-5 text-success" />
                     <CardTitle>Vida Útil</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center">
-                    <p className={`text-2xl font-bold ${(printerData.vida_util_restante ?? 0) <= 12 ? 'text-red-600' : 'text-green-600'}`}>
+                    <p className={`text-2xl font-bold ${(printerData.vida_util_restante ?? 0) <= 12 ? 'text-destructive' : 'text-success'}`}>
                       {printerData.vida_util_restante} meses
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">restantes</p>
+                    <p className="text-sm text-muted-foreground mt-1">restantes</p>
                   </div>
                   {printerData.garantia_hasta && (
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-xs text-gray-500">Garantía hasta</p>
-                      <p className="text-sm text-gray-900">{formatDate(printerData.garantia_hasta)}</p>
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <p className="text-xs text-muted-foreground">Garantía hasta</p>
+                      <p className="text-sm text-foreground">{formatDate(printerData.garantia_hasta)}</p>
                     </div>
                   )}
                 </CardContent>
@@ -352,16 +352,16 @@ export default function PrinterDetail() {
               <Card>
                 <CardHeader>
                   <div className="flex items-center gap-2">
-                    <Settings className="h-5 w-5 text-amber-600" />
+                    <Settings className="h-5 w-5 text-warning" />
                     <CardTitle>Stock Consumibles</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent>
                   <div className="text-center">
-                    <p className={`text-2xl font-bold ${printerData.stock_consumibles <= 3 ? 'text-red-600' : 'text-amber-600'}`}>
+                    <p className={`text-2xl font-bold ${printerData.stock_consumibles <= 3 ? 'text-destructive' : 'text-warning'}`}>
                       {printerData.stock_consumibles} uds
                     </p>
-                    <p className="text-sm text-gray-500 mt-1">disponibles</p>
+                    <p className="text-sm text-muted-foreground mt-1">disponibles</p>
                   </div>
                 </CardContent>
               </Card>
@@ -391,19 +391,19 @@ export default function PrinterDetail() {
         title="Dar de Baja Impresora"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             ¿Seguro que deseas dar de baja la impresora{' '}
-            <span className="font-medium text-gray-900">
+            <span className="font-medium text-foreground">
               {printerData.marca} {printerData.modelo}
             </span>
             ? Esta acción no se puede deshacer.
           </p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Motivo de baja <span className="text-gray-400">(opcional)</span>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Motivo de baja <span className="text-muted-foreground">(opcional)</span>
             </label>
             <textarea
-              className="flex min-h-[80px] w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+              className="flex min-h-[80px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
               placeholder="Ej: Fin de vida útil, daño irreparable..."
               value={deactivateReason}
               onChange={(e) => setDeactivateReason(e.target.value)}
@@ -411,7 +411,7 @@ export default function PrinterDetail() {
             />
           </div>
           {deactivateError && (
-            <p className="text-sm text-red-600">{deactivateError}</p>
+            <p className="text-sm text-destructive">{deactivateError}</p>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <Button
@@ -440,8 +440,8 @@ export default function PrinterDetail() {
         title="Eliminar Impresora"
       >
         <div className="space-y-4">
-          <div className="rounded-md bg-red-50 border border-red-200 p-3">
-            <p className="text-sm text-red-700">
+          <div className="rounded-md bg-destructive/10 border border-destructive/20 p-3">
+            <p className="text-sm text-destructive">
               Estás por <span className="font-semibold">borrar definitivamente</span> el registro de la impresora{' '}
               <span className="font-semibold">
                 {printerData.marca} {printerData.modelo}
@@ -449,11 +449,11 @@ export default function PrinterDetail() {
               ({printerData.num_serie}). Esta acción <span className="font-semibold">no se puede deshacer</span> y eliminará también su historial.
             </p>
           </div>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Esto se recomienda solo para correcciones por error de captura. Si la impresora realmente existió y salió de circulación, usa <span className="font-medium">Dar de baja</span> en su lugar para conservar el historial.
           </p>
           {deleteError && (
-            <p className="text-sm text-red-600">{deleteError}</p>
+            <p className="text-sm text-destructive">{deleteError}</p>
           )}
           <div className="flex justify-end gap-3 pt-2">
             <Button

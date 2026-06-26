@@ -40,9 +40,9 @@ export default function RadioGroup({
             checked={value === option.value}
             onChange={() => onChange(option.value)}
             disabled={disabled || option.disabled}
-            className="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+            className="h-4 w-4 border-border text-primary focus:ring-ring"
           />
-          <span className="ml-2 text-sm text-gray-700">{option.label}</span>
+          <span className="ml-2 text-sm text-foreground">{option.label}</span>
         </label>
       ))}
     </div>

@@ -70,8 +70,8 @@ export default function BankAccountsPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Cuentas Bancarias</h2>
-            <p className="text-sm text-gray-500">Gestion de cuentas bancarias y movimientos</p>
+            <h2 className="text-2xl font-bold text-foreground">Cuentas Bancarias</h2>
+            <p className="text-sm text-muted-foreground">Gestion de cuentas bancarias y movimientos</p>
           </div>
           <Button onClick={() => setShowNewAccountModal(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -81,11 +81,11 @@ export default function BankAccountsPage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando cuentas...</p>
+            <p className="text-muted-foreground">Cargando cuentas...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar cuentas: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar cuentas: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -93,11 +93,11 @@ export default function BankAccountsPage() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <Landmark className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <Landmark className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Saldo</p>
+                      <p className="text-sm text-muted-foreground">Total Saldo</p>
                       <p className="text-lg font-bold">{formatCurrency(totalSaldo)}</p>
                     </div>
                   </div>
@@ -106,11 +106,11 @@ export default function BankAccountsPage() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-green-50 p-2">
-                      <DollarSign className="h-5 w-5 text-green-500" />
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <DollarSign className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Cuentas</p>
+                      <p className="text-sm text-muted-foreground">Cuentas</p>
                       <p className="text-lg font-bold">{accounts.length}</p>
                     </div>
                   </div>
@@ -119,12 +119,12 @@ export default function BankAccountsPage() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-yellow-50 p-2">
-                      <DollarSign className="h-5 w-5 text-yellow-500" />
+                    <div className="rounded-lg bg-warning/10 p-2">
+                      <DollarSign className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Pendientes Conciliar</p>
-                      <p className="text-lg font-bold text-yellow-600">
+                      <p className="text-sm text-muted-foreground">Pendientes Conciliar</p>
+                      <p className="text-lg font-bold text-warning">
                         {accounts.filter(a => a.conciliacion_status === 'PENDIENTE').length}
                       </p>
                     </div>
@@ -133,24 +133,24 @@ export default function BankAccountsPage() {
               </Card>
             </div>
 
-            <div className="bg-white rounded-lg border overflow-hidden">
+            <div className="bg-card rounded-lg border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Banco</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">No. Cuenta</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Saldo Actual</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Acciones</th>
+                  <tr className="bg-muted border-b">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Banco</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">No. Cuenta</th>
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">Saldo Actual</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {accounts.map((account) => (
-                    <tr key={account.id} className="border-b hover:bg-gray-50">
+                    <tr key={account.id} className="border-b hover:bg-muted">
                       <td className="py-3 px-4 font-medium">{account.banco}</td>
                       <td className="py-3 px-4">{tipoLabels[account.tipo]}</td>
-                      <td className="py-3 px-4 text-gray-600">{account.numero_cuenta}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{account.numero_cuenta}</td>
                       <td className="py-3 px-4 text-right font-medium">{formatCurrency(account.saldo)}</td>
                       <td className="py-3 px-4 text-center">
                         <Badge
@@ -162,14 +162,14 @@ export default function BankAccountsPage() {
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-muted rounded"
                             title="Ver movimientos"
                             onClick={() => {
                               setSelectedAccount(account)
                               setAccountId(account.id)
                             }}
                           >
-                            <Eye className="h-4 w-4 text-gray-500" />
+                            <Eye className="h-4 w-4 text-muted-foreground" />
                           </button>
                         </div>
                       </td>
@@ -179,7 +179,7 @@ export default function BankAccountsPage() {
               </table>
             </div>
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total saldo: <strong>{formatCurrency(totalSaldo)}</strong></span>
               <span>Cuentas: <strong>{accounts.length}</strong></span>
             </div>
@@ -195,13 +195,13 @@ export default function BankAccountsPage() {
           size="xl"
         >
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg space-y-1">
-              <p className="text-sm text-gray-600">Banco: <strong>{selectedAccount.banco}</strong></p>
-              <p className="text-sm text-gray-600">Tipo: <strong>{tipoLabels[selectedAccount.tipo]}</strong></p>
-              <p className="text-sm text-gray-600">No. Cuenta: <strong>{selectedAccount.numero_cuenta}</strong></p>
-              <p className="text-sm text-gray-600">Moneda: <strong>{selectedAccount.moneda}</strong></p>
-              <p className="text-sm text-gray-600">Saldo actual: <strong>{formatCurrency(selectedAccount.saldo)}</strong></p>
-              <p className="text-sm text-gray-600">
+            <div className="bg-muted p-4 rounded-lg space-y-1">
+              <p className="text-sm text-muted-foreground">Banco: <strong>{selectedAccount.banco}</strong></p>
+              <p className="text-sm text-muted-foreground">Tipo: <strong>{tipoLabels[selectedAccount.tipo]}</strong></p>
+              <p className="text-sm text-muted-foreground">No. Cuenta: <strong>{selectedAccount.numero_cuenta}</strong></p>
+              <p className="text-sm text-muted-foreground">Moneda: <strong>{selectedAccount.moneda}</strong></p>
+              <p className="text-sm text-muted-foreground">Saldo actual: <strong>{formatCurrency(selectedAccount.saldo)}</strong></p>
+              <p className="text-sm text-muted-foreground">
                 Estado:{' '}
                 <Badge variant={selectedAccount.conciliacion_status === 'CONCILIADO' ? 'success' : 'warning'}>
                   {conciliacionLabels[selectedAccount.conciliacion_status]}
@@ -210,18 +210,18 @@ export default function BankAccountsPage() {
             </div>
 
             <div>
-              <h4 className="font-medium text-gray-900 mb-3">Movimientos Recientes</h4>
+              <h4 className="font-medium text-foreground mb-3">Movimientos Recientes</h4>
               <div className="space-y-2">
                 {movements.length === 0 && (
-                  <p className="text-sm text-gray-500 py-4 text-center">No hay movimientos registrados</p>
+                  <p className="text-sm text-muted-foreground py-4 text-center">No hay movimientos registrados</p>
                 )}
                 {movements.map((mov) => (
-                  <div key={mov.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                    <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-green-50' : 'bg-red-50'}`}>
+                  <div key={mov.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                    <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-success/10' : 'bg-destructive/10'}`}>
                       {mov.tipo === 'DEPOSITO' ? (
-                        <ArrowUpRight className="h-4 w-4 text-green-600" />
+                        <ArrowUpRight className="h-4 w-4 text-success" />
                       ) : (
-                        <ArrowDownRight className="h-4 w-4 text-red-600" />
+                        <ArrowDownRight className="h-4 w-4 text-destructive" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -231,11 +231,11 @@ export default function BankAccountsPage() {
                           {mov.conciliacion_status === 'CONCILIADO' ? 'Conciliado' : 'Pendiente'}
                         </Badge>
                       </div>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         {formatDate(mov.fecha)} · Ref: {mov.referencia}
                       </p>
                     </div>
-                    <span className={`font-medium ${mov.tipo === 'DEPOSITO' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-medium ${mov.tipo === 'DEPOSITO' ? 'text-success' : 'text-destructive'}`}>
                       {mov.tipo === 'DEPOSITO' ? '+' : '-'}{formatCurrency(mov.monto)}
                     </span>
                   </div>
@@ -260,7 +260,7 @@ export default function BankAccountsPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Banco *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Banco *</label>
             <Select
               options={[
                 { value: 'BBVA', label: 'BBVA' },
@@ -275,7 +275,7 @@ export default function BankAccountsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de cuenta *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Tipo de cuenta *</label>
             <Select
               options={[
                 { value: 'cheques', label: 'Cuenta de Cheques' },
@@ -288,7 +288,7 @@ export default function BankAccountsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Moneda *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Moneda *</label>
             <Select
               options={[
                 { value: 'MXN', label: 'MXN' },
@@ -300,7 +300,7 @@ export default function BankAccountsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Numero de cuenta / CLABE *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Numero de cuenta / CLABE *</label>
             <Input
               value={newAccount.numero_cuenta}
               onChange={(e) => setNewAccount({ ...newAccount, numero_cuenta: e.target.value })}
@@ -309,7 +309,7 @@ export default function BankAccountsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Saldo inicial ($)</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Saldo inicial ($)</label>
             <Input
               type="number"
               value={newAccount.saldo_inicial}
@@ -318,7 +318,7 @@ export default function BankAccountsPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Descripcion</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Descripcion</label>
             <Input
               value={newAccount.descripcion}
               onChange={(e) => setNewAccount({ ...newAccount, descripcion: e.target.value })}
@@ -327,8 +327,8 @@ export default function BankAccountsPage() {
           </div>
 
           {createError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-sm text-red-800">{createError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+              <p className="text-sm text-destructive">{createError}</p>
             </div>
           )}
 

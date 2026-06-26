@@ -38,8 +38,8 @@ export default function CashFlowReport() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Flujo de Caja</h2>
-            <p className="text-sm text-gray-500">Reporte de flujo de caja mensual</p>
+            <h2 className="text-2xl font-bold text-foreground">Flujo de Caja</h2>
+            <p className="text-sm text-muted-foreground">Reporte de flujo de caja mensual</p>
           </div>
           <Button variant="secondary">
             <Download className="mr-2 h-4 w-4" />
@@ -61,7 +61,7 @@ export default function CashFlowReport() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando datos de flujo de caja...</p>
+            <p className="text-muted-foreground">Cargando datos de flujo de caja...</p>
           </div>
         ) : currentMonth ? (
           <>
@@ -69,13 +69,13 @@ export default function CashFlowReport() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <ArrowUpRight className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <ArrowUpRight className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Ingresos</p>
+                      <p className="text-sm text-muted-foreground">Ingresos</p>
                       <p className="text-lg font-bold">{formatCurrency(currentMonth.ingresos)}</p>
-                      <p className="text-xs text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12%</p>
+                      <p className="text-xs text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 12%</p>
                     </div>
                   </div>
                 </CardContent>
@@ -83,13 +83,13 @@ export default function CashFlowReport() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-red-50 p-2">
-                      <ArrowDownRight className="h-5 w-5 text-red-500" />
+                    <div className="rounded-lg bg-destructive/10 p-2">
+                      <ArrowDownRight className="h-5 w-5 text-destructive" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Egresos</p>
+                      <p className="text-sm text-muted-foreground">Egresos</p>
                       <p className="text-lg font-bold">{formatCurrency(currentMonth.egresos)}</p>
-                      <p className="text-xs text-red-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 8%</p>
+                      <p className="text-xs text-destructive flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 8%</p>
                     </div>
                   </div>
                 </CardContent>
@@ -97,13 +97,13 @@ export default function CashFlowReport() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-green-50 p-2">
-                      <DollarSign className="h-5 w-5 text-green-500" />
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <DollarSign className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Flujo Neto</p>
-                      <p className="text-lg font-bold text-green-600">+{formatCurrency(currentMonth.flujo_neto)}</p>
-                      <p className="text-xs text-green-600 flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 13%</p>
+                      <p className="text-sm text-muted-foreground">Flujo Neto</p>
+                      <p className="text-lg font-bold text-success">+{formatCurrency(currentMonth.flujo_neto)}</p>
+                      <p className="text-xs text-success flex items-center gap-1"><TrendingUp className="h-3 w-3" /> 13%</p>
                     </div>
                   </div>
                 </CardContent>
@@ -118,33 +118,33 @@ export default function CashFlowReport() {
                 <div className="space-y-3">
                   {cashFlow.map((item) => (
                     <div key={item.mes} className="flex items-center gap-4">
-                      <span className="text-sm text-gray-600 w-20">{item.mes}</span>
+                      <span className="text-sm text-muted-foreground w-20">{item.mes}</span>
                       <div className="flex-1 space-y-1">
-                        <div className="bg-gray-100 rounded-full h-3 relative overflow-hidden">
+                        <div className="bg-muted rounded-full h-3 relative overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-blue-400 transition-all duration-500"
+                            className="h-full rounded-full bg-primary transition-all duration-500"
                             style={{ width: `${(item.ingresos / (currentMonth?.ingresos || 1)) * 100}%` }}
                           />
                         </div>
-                        <div className="bg-gray-100 rounded-full h-3 relative overflow-hidden">
+                        <div className="bg-muted rounded-full h-3 relative overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-red-400 transition-all duration-500"
+                            className="h-full rounded-full bg-destructive transition-all duration-500"
                             style={{ width: `${(item.egresos / (currentMonth?.ingresos || 1)) * 100}%` }}
                           />
                         </div>
                       </div>
-                      <span className="text-sm font-medium w-24 text-right text-green-600">+{formatCurrency(item.flujo_neto)}</span>
+                      <span className="text-sm font-medium w-24 text-right text-success">+{formatCurrency(item.flujo_neto)}</span>
                     </div>
                   ))}
                   <div className="flex items-center gap-4 mt-2 pt-2 border-t">
-                    <span className="text-xs text-gray-500 w-20">Leyenda:</span>
+                    <span className="text-xs text-muted-foreground w-20">Leyenda:</span>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-blue-400" />
-                      <span className="text-xs text-gray-600">Ingresos</span>
+                      <div className="w-3 h-3 rounded-full bg-primary" />
+                      <span className="text-xs text-muted-foreground">Ingresos</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full bg-red-400" />
-                      <span className="text-xs text-gray-600">Egresos</span>
+                      <div className="w-3 h-3 rounded-full bg-destructive" />
+                      <span className="text-xs text-muted-foreground">Egresos</span>
                     </div>
                   </div>
                 </div>
@@ -160,22 +160,22 @@ export default function CashFlowReport() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2 font-medium text-gray-600">Cliente</th>
-                        <th className="text-right py-2 font-medium text-gray-600">Facturas</th>
-                        <th className="text-right py-2 font-medium text-gray-600">Monto</th>
-                        <th className="text-right py-2 font-medium text-gray-600">% Total</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Cliente</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Facturas</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Monto</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">% Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {mockIncomeBreakdown.map((item) => (
-                        <tr key={item.cliente} className="border-b hover:bg-gray-50">
+                        <tr key={item.cliente} className="border-b hover:bg-muted">
                           <td className="py-2 font-medium">{item.cliente}</td>
                           <td className="text-right py-2">{item.facturas}</td>
                           <td className="text-right py-2">{formatCurrency(item.monto)}</td>
                           <td className="text-right py-2">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 bg-gray-100 rounded-full h-2">
-                                <div className="h-full bg-blue-400 rounded-full" style={{ width: `${item.porcentaje}%` }} />
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div className="h-full bg-primary rounded-full" style={{ width: `${item.porcentaje}%` }} />
                               </div>
                               <span>{item.porcentaje}%</span>
                             </div>
@@ -195,22 +195,22 @@ export default function CashFlowReport() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="text-left py-2 font-medium text-gray-600">Categoria</th>
-                        <th className="text-right py-2 font-medium text-gray-600">Gastos</th>
-                        <th className="text-right py-2 font-medium text-gray-600">Monto</th>
-                        <th className="text-right py-2 font-medium text-gray-600">% Total</th>
+                        <th className="text-left py-2 font-medium text-muted-foreground">Categoria</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Gastos</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">Monto</th>
+                        <th className="text-right py-2 font-medium text-muted-foreground">% Total</th>
                       </tr>
                     </thead>
                     <tbody>
                       {mockExpenseBreakdown.map((item) => (
-                        <tr key={item.categoria} className="border-b hover:bg-gray-50">
+                        <tr key={item.categoria} className="border-b hover:bg-muted">
                           <td className="py-2 font-medium">{item.categoria}</td>
                           <td className="text-right py-2">{item.gastos}</td>
                           <td className="text-right py-2">{formatCurrency(item.monto)}</td>
                           <td className="text-right py-2">
                             <div className="flex items-center justify-end gap-2">
-                              <div className="w-16 bg-gray-100 rounded-full h-2">
-                                <div className="h-full bg-red-400 rounded-full" style={{ width: `${item.porcentaje}%` }} />
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div className="h-full bg-destructive rounded-full" style={{ width: `${item.porcentaje}%` }} />
                               </div>
                               <span>{item.porcentaje}%</span>
                             </div>
@@ -233,10 +233,10 @@ export default function CashFlowReport() {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-2 px-4 font-medium text-gray-600">Concepto</th>
-                          <th className="text-right py-2 px-4 font-medium text-gray-600">Mes Actual</th>
-                          <th className="text-right py-2 px-4 font-medium text-gray-600">Mes Anterior</th>
-                          <th className="text-right py-2 px-4 font-medium text-gray-600">Variacion</th>
+                          <th className="text-left py-2 px-4 font-medium text-muted-foreground">Concepto</th>
+                          <th className="text-right py-2 px-4 font-medium text-muted-foreground">Mes Actual</th>
+                          <th className="text-right py-2 px-4 font-medium text-muted-foreground">Mes Anterior</th>
+                          <th className="text-right py-2 px-4 font-medium text-muted-foreground">Variacion</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -244,7 +244,7 @@ export default function CashFlowReport() {
                           <td className="py-3 px-4 font-medium">Ingresos</td>
                           <td className="text-right py-3 px-4">{formatCurrency(currentMonth.ingresos)}</td>
                           <td className="text-right py-3 px-4">{formatCurrency(previousMonth.ingresos)}</td>
-                          <td className="text-right py-3 px-4 text-green-600 font-medium">
+                          <td className="text-right py-3 px-4 text-success font-medium">
                             +{((currentMonth.ingresos - previousMonth.ingresos) / previousMonth.ingresos * 100).toFixed(0)}%
                           </td>
                         </tr>
@@ -252,15 +252,15 @@ export default function CashFlowReport() {
                           <td className="py-3 px-4 font-medium">Egresos</td>
                           <td className="text-right py-3 px-4">{formatCurrency(currentMonth.egresos)}</td>
                           <td className="text-right py-3 px-4">{formatCurrency(previousMonth.egresos)}</td>
-                          <td className="text-right py-3 px-4 text-red-600 font-medium">
+                          <td className="text-right py-3 px-4 text-destructive font-medium">
                             +{((currentMonth.egresos - previousMonth.egresos) / previousMonth.egresos * 100).toFixed(0)}%
                           </td>
                         </tr>
                         <tr>
                           <td className="py-3 px-4 font-medium">Flujo Neto</td>
-                          <td className="text-right py-3 px-4 font-bold text-green-600">{formatCurrency(currentMonth.flujo_neto)}</td>
+                          <td className="text-right py-3 px-4 font-bold text-success">{formatCurrency(currentMonth.flujo_neto)}</td>
                           <td className="text-right py-3 px-4">{formatCurrency(previousMonth.flujo_neto)}</td>
-                          <td className="text-right py-3 px-4 text-green-600 font-medium">
+                          <td className="text-right py-3 px-4 text-success font-medium">
                             +{((currentMonth.flujo_neto - previousMonth.flujo_neto) / previousMonth.flujo_neto * 100).toFixed(0)}%
                           </td>
                         </tr>
@@ -273,7 +273,7 @@ export default function CashFlowReport() {
           </>
         ) : (
           <div className="text-center py-12">
-            <p className="text-gray-500">No hay datos de flujo de caja disponibles</p>
+            <p className="text-muted-foreground">No hay datos de flujo de caja disponibles</p>
           </div>
         )}
       </div>

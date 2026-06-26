@@ -48,7 +48,7 @@ export default function ClosePeriodPage() {
     return (
       <PageLayout title="Finanzas" showSearch>
         <div className="text-center py-12">
-          <p className="text-gray-500">Cargando periodo actual...</p>
+          <p className="text-muted-foreground">Cargando periodo actual...</p>
         </div>
       </PageLayout>
     )
@@ -59,8 +59,8 @@ export default function ClosePeriodPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Cierre de Periodo</h2>
-            <p className="text-sm text-gray-500">Cierre mensual del periodo contable</p>
+            <h2 className="text-2xl font-bold text-foreground">Cierre de Periodo</h2>
+            <p className="text-sm text-muted-foreground">Cierre mensual del periodo contable</p>
           </div>
         </div>
 
@@ -68,14 +68,14 @@ export default function ClosePeriodPage() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Estado del Periodo</p>
+                <p className="text-sm text-muted-foreground">Estado del Periodo</p>
                 <div className="flex items-center gap-2">
                   <Badge variant={isClosed ? 'success' : 'warning'}>
                     {isClosed ? 'CERRADO' : 'ABIERTO'}
                   </Badge>
                   <span className="font-medium">{currentPeriod?.periodo || 'Cargando...'}</span>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">Ultimo cierre: {periodHistory[0]?.periodo || 'No registrado'}</p>
+                <p className="text-xs text-muted-foreground mt-1">Ultimo cierre: {periodHistory[0]?.periodo || 'No registrado'}</p>
               </div>
               {!isClosed && (
                 <Button onClick={() => setShowConfirmModal(true)} disabled={errorsCount > 0}>
@@ -93,20 +93,20 @@ export default function ClosePeriodPage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-              <div className="bg-blue-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Ingresos</p>
-                <p className="text-xl font-bold text-blue-600">{formatCurrency(currentPeriod?.ingresos || 0)}</p>
+              <div className="bg-primary/10 p-4 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Ingresos</p>
+                <p className="text-xl font-bold text-primary">{formatCurrency(currentPeriod?.ingresos || 0)}</p>
               </div>
-              <div className="bg-red-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Egresos</p>
-                <p className="text-xl font-bold text-red-600">{formatCurrency(currentPeriod?.egresos || 0)}</p>
+              <div className="bg-destructive/10 p-4 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Egresos</p>
+                <p className="text-xl font-bold text-destructive">{formatCurrency(currentPeriod?.egresos || 0)}</p>
               </div>
-              <div className="bg-green-50 p-4 rounded-lg text-center">
-                <p className="text-sm text-gray-500">Rentabilidad</p>
-                <p className="text-xl font-bold text-green-600">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</p>
+              <div className="bg-success/10 p-4 rounded-lg text-center">
+                <p className="text-sm text-muted-foreground">Rentabilidad</p>
+                <p className="text-xl font-bold text-success">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</p>
               </div>
             </div>
-            <div className="space-y-1 text-sm text-gray-600">
+            <div className="space-y-1 text-sm text-muted-foreground">
               <p>Facturas: <strong>{currentPeriod?.facturas_emitidas}</strong> emitidas, <strong>{currentPeriod?.facturas_pagadas}</strong> pagadas, <strong>{currentPeriod?.facturas_pendientes}</strong> pendientes</p>
               <p>Gastos: <strong>{currentPeriod?.gastos_registrados}</strong> gastos registrados</p>
               <p>Movimientos bancarios: <strong>{currentPeriod?.movimientos_bancarios}</strong> movimientos, <strong>{currentPeriod?.movimientos_conciliados}</strong> conciliados, <strong>{currentPeriod?.movimientos_pendientes}</strong> pendientes</p>
@@ -118,7 +118,7 @@ export default function ClosePeriodPage() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                <AlertTriangle className="h-5 w-5 text-warning" />
                 Validaciones Previas al Cierre
               </CardTitle>
             </CardHeader>
@@ -127,17 +127,17 @@ export default function ClosePeriodPage() {
                 {currentPeriod.validaciones.map((val) => (
                   <div key={val.id} className="flex items-start gap-3 p-2 rounded">
                     {val.estado === 'ok' ? (
-                      <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
                     ) : val.estado === 'warning' ? (
-                      <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                      <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
                     ) : (
-                      <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
                     )}
                     <div className="flex-1">
-                      <p className={`text-sm font-medium ${val.estado === 'error' ? 'text-red-600' : ''}`}>
+                      <p className={`text-sm font-medium ${val.estado === 'error' ? 'text-destructive' : ''}`}>
                         {val.nombre}
                       </p>
-                      <p className="text-xs text-gray-500">{val.mensaje}</p>
+                      <p className="text-xs text-muted-foreground">{val.mensaje}</p>
                     </div>
                   </div>
                 ))}
@@ -168,7 +168,7 @@ export default function ClosePeriodPage() {
                       <span className="font-medium">{h.periodo}</span>
                       <Badge variant="success">Cerrado</Badge>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-muted-foreground mt-1">
                       Cerrado: {h.fecha_cierre} · Responsable: {h.cerrado_por}
                     </p>
                   </div>
@@ -176,7 +176,7 @@ export default function ClosePeriodPage() {
                     <div className="flex items-center gap-4 text-sm">
                       <span>Ingresos: <strong>{formatCurrency(h.ingresos)}</strong></span>
                       <span>Egresos: <strong>{formatCurrency(h.egresos)}</strong></span>
-                      <span className="text-green-600 font-medium">+{formatCurrency(h.rentabilidad)}</span>
+                      <span className="text-success font-medium">+{formatCurrency(h.rentabilidad)}</span>
                     </div>
                   </div>
                 </div>
@@ -194,29 +194,29 @@ export default function ClosePeriodPage() {
       >
         <div className="space-y-4">
           <div>
-            <p className="text-sm text-gray-700">
+            <p className="text-sm text-muted-foreground">
               Estas seguro de que deseas realizar el cierre del periodo <strong>{currentPeriod?.periodo}</strong>?
             </p>
           </div>
 
-          <div className="bg-yellow-50 p-3 rounded-lg space-y-2 text-sm">
-            <p className="font-medium text-yellow-800">Esta accion:</p>
-            <p className="text-yellow-700">Consolidara todas las facturas y gastos del mes</p>
-            <p className="text-yellow-700">Congelara los datos del periodo (no se podran editar)</p>
-            <p className="text-yellow-700">Generara el reporte de rentabilidad del periodo</p>
-            <p className="text-yellow-700">Actualizara las metricas del dashboard</p>
+          <div className="bg-warning/10 p-3 rounded-lg space-y-2 text-sm">
+            <p className="font-medium text-warning">Esta accion:</p>
+            <p className="text-warning">Consolidara todas las facturas y gastos del mes</p>
+            <p className="text-warning">Congelara los datos del periodo (no se podran editar)</p>
+            <p className="text-warning">Generara el reporte de rentabilidad del periodo</p>
+            <p className="text-warning">Actualizara las metricas del dashboard</p>
           </div>
 
-          <div className="bg-gray-50 p-3 rounded-lg text-sm space-y-1">
+          <div className="bg-muted p-3 rounded-lg text-sm space-y-1">
             <p>Periodo: <strong>{currentPeriod?.periodo}</strong></p>
             <p>Ingresos: <strong>{formatCurrency(currentPeriod?.ingresos || 0)}</strong></p>
             <p>Egresos: <strong>{formatCurrency(currentPeriod?.egresos || 0)}</strong></p>
-            <p>Rentabilidad: <strong className="text-green-600">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</strong></p>
+            <p>Rentabilidad: <strong className="text-success">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</strong></p>
           </div>
 
           {warningsCount > 0 && (
-            <div className="bg-yellow-50 border border-yellow-200 p-3 rounded-lg text-sm">
-              <p className="text-yellow-800">
+            <div className="bg-warning/10 border border-warning/20 p-3 rounded-lg text-sm">
+              <p className="text-warning">
                 <AlertTriangle className="inline h-4 w-4 mr-1" />
                 Hay {warningsCount} movimientos bancarios pendientes de conciliar. Deseas continuar?
               </p>
@@ -224,8 +224,8 @@ export default function ClosePeriodPage() {
           )}
 
           {closeError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{closeError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{closeError}</p>
             </div>
           )}
 
@@ -234,9 +234,9 @@ export default function ClosePeriodPage() {
               type="checkbox"
               checked={aceptaTerminos}
               onChange={(e) => setAceptaTerminos(e.target.checked)}
-              className="rounded border-gray-300"
+              className="rounded border-input"
             />
-            <span className="text-sm text-gray-700">Entiendo que esta accion no se puede deshacer</span>
+            <span className="text-sm text-muted-foreground">Entiendo que esta accion no se puede deshacer</span>
           </label>
 
           <div className="flex justify-end gap-3 pt-4 border-t">
@@ -261,20 +261,20 @@ export default function ClosePeriodPage() {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-blue-50 p-3 rounded-lg text-center">
-              <p className="text-xs text-gray-500">Ingresos</p>
-              <p className="text-lg font-bold text-blue-600">{formatCurrency(currentPeriod?.ingresos || 0)}</p>
+            <div className="bg-primary/10 p-3 rounded-lg text-center">
+              <p className="text-xs text-muted-foreground">Ingresos</p>
+              <p className="text-lg font-bold text-primary">{formatCurrency(currentPeriod?.ingresos || 0)}</p>
             </div>
-            <div className="bg-red-50 p-3 rounded-lg text-center">
-              <p className="text-xs text-gray-500">Egresos</p>
-              <p className="text-lg font-bold text-red-600">{formatCurrency(currentPeriod?.egresos || 0)}</p>
+            <div className="bg-destructive/10 p-3 rounded-lg text-center">
+              <p className="text-xs text-muted-foreground">Egresos</p>
+              <p className="text-lg font-bold text-destructive">{formatCurrency(currentPeriod?.egresos || 0)}</p>
             </div>
-            <div className="bg-green-50 p-3 rounded-lg text-center">
-              <p className="text-xs text-gray-500">Rentabilidad</p>
-              <p className="text-lg font-bold text-green-600">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</p>
+            <div className="bg-success/10 p-3 rounded-lg text-center">
+              <p className="text-xs text-muted-foreground">Rentabilidad</p>
+              <p className="text-lg font-bold text-success">+{formatCurrency(currentPeriod?.rentabilidad || 0)}</p>
             </div>
           </div>
-          <div className="text-sm text-gray-600 space-y-1">
+          <div className="text-sm text-muted-foreground space-y-1">
             <p>Margen: <strong>{margen}%</strong> · ROI: <strong>{roi}%</strong></p>
             <p>Facturas emitidas: {currentPeriod?.facturas_emitidas} · Pagadas: {currentPeriod?.facturas_pagadas} · Pendientes: {currentPeriod?.facturas_pendientes}</p>
             <p>Gastos registrados: {currentPeriod?.gastos_registrados}</p>
@@ -298,15 +298,15 @@ export default function ClosePeriodPage() {
           {currentPeriod?.validaciones.map((val) => (
             <div key={val.id} className="flex items-start gap-3 p-3 border rounded-lg">
               {val.estado === 'ok' ? (
-                <CheckCircle className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
+                <CheckCircle className="h-5 w-5 text-success mt-0.5 flex-shrink-0" />
               ) : val.estado === 'warning' ? (
-                <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-warning mt-0.5 flex-shrink-0" />
               ) : (
-                <AlertTriangle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="h-5 w-5 text-destructive mt-0.5 flex-shrink-0" />
               )}
               <div className="flex-1">
                 <p className="text-sm font-medium">{val.nombre}</p>
-                <p className="text-xs text-gray-500">{val.mensaje}</p>
+                <p className="text-xs text-muted-foreground">{val.mensaje}</p>
               </div>
             </div>
           ))}

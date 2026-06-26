@@ -144,7 +144,7 @@ export default function PrinterForm({
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Marca</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Marca</label>
           <Input
             placeholder="Ej: HP"
             value={marca}
@@ -154,7 +154,7 @@ export default function PrinterForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Modelo</label>
           <Input
             placeholder="Ej: LaserJet Pro M404"
             value={modelo}
@@ -166,7 +166,7 @@ export default function PrinterForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Número de serie</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Número de serie</label>
         <Input
           placeholder="Ej: VNB3K12345"
           value={numSerie}
@@ -177,7 +177,7 @@ export default function PrinterForm({
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Almacén</label>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Almacén</label>
         <Select
           options={warehouseOptions}
           value={almacenId}
@@ -187,13 +187,13 @@ export default function PrinterForm({
           error={!!errors.almacen_id}
         />
         {errors.almacen_id && (
-          <p className="mt-1 text-xs text-red-600">{errors.almacen_id}</p>
+          <p className="mt-1 text-xs text-destructive">{errors.almacen_id}</p>
         )}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de adquisición</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de adquisición</label>
           <Input
             type="date"
             value={fechaAdquisicion}
@@ -203,7 +203,7 @@ export default function PrinterForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Costo de adquisición</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Costo de adquisición</label>
           <Input
             type="number"
             min={0}
@@ -219,7 +219,7 @@ export default function PrinterForm({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Vida útil (meses)</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Vida útil (meses)</label>
           <Input
             type="number"
             min={1}
@@ -231,7 +231,7 @@ export default function PrinterForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Contador inicial</label>
+          <label className="block text-sm font-medium text-muted-foreground mb-1">Contador inicial</label>
           <Input
             type="number"
             min={0}

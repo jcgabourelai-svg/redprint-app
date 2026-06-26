@@ -30,7 +30,7 @@ export default function Tabs({
       <div
         className={cn(
           'flex',
-          variant === 'underline' && 'border-b border-gray-200',
+          variant === 'underline' && 'border-b border-border',
           variant === 'boxed' && 'space-x-2'
         )}
         role="tablist"
@@ -47,14 +47,14 @@ export default function Tabs({
               variant === 'underline' && [
                 'border-b-2 -mb-px px-1',
                 activeTab === tab.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700',
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground',
               ],
               variant === 'boxed' && [
                 'rounded-md px-4 py-2',
                 activeTab === tab.id
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200',
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-foreground hover:bg-muted/70',
               ],
               tab.disabled && 'cursor-not-allowed opacity-50'
             )}

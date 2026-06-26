@@ -51,7 +51,7 @@ export default function PaymentList() {
       label: 'Método',
       sortable: true,
       render: (value: string) => (
-        <Badge className="bg-gray-100 text-gray-800">
+        <Badge className="bg-muted text-foreground">
           {value.charAt(0).toUpperCase() + value.slice(1)}
         </Badge>
       ),
@@ -66,8 +66,8 @@ export default function PaymentList() {
       label: 'Acciones',
       render: (_value: unknown, row: Payment) => (
         <div className="flex items-center gap-1">
-          <button className="p-1 hover:bg-gray-100 rounded" title="Ver detalle">
-            <Eye className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Ver detalle">
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -79,8 +79,8 @@ export default function PaymentList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Historial de Pagos</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Historial de Pagos</h2>
+            <p className="text-sm text-muted-foreground">
               Pagos registrados en el sistema
             </p>
           </div>
@@ -88,11 +88,11 @@ export default function PaymentList() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando pagos...</p>
+            <p className="text-muted-foreground">Cargando pagos...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar pagos: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar pagos: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -100,11 +100,11 @@ export default function PaymentList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <CreditCard className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <CreditCard className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Pagos</p>
+                      <p className="text-sm text-muted-foreground">Total Pagos</p>
                       <p className="text-lg font-bold">{payments.length}</p>
                     </div>
                   </div>
@@ -113,12 +113,12 @@ export default function PaymentList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-green-50 p-2">
-                      <DollarSign className="h-5 w-5 text-green-500" />
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <DollarSign className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Pagado</p>
-                      <p className="text-lg font-bold text-green-600">{formatCurrency(totalPagado)}</p>
+                      <p className="text-sm text-muted-foreground">Total Pagado</p>
+                      <p className="text-lg font-bold text-success">{formatCurrency(totalPagado)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -126,11 +126,11 @@ export default function PaymentList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-purple-50 p-2">
-                      <CheckCircle className="h-5 w-5 text-purple-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <CheckCircle className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Último Pago</p>
+                      <p className="text-sm text-muted-foreground">Último Pago</p>
                       <p className="text-lg font-bold">
                         {payments.length > 0 ? formatDate(payments[0].fecha) : '-'}
                       </p>
@@ -150,8 +150,8 @@ export default function PaymentList() {
               emptyMessage="No hay pagos registrados"
             />
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Total pagado: <strong className="text-green-600">{formatCurrency(totalPagado)}</strong></span>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Total pagado: <strong className="text-success">{formatCurrency(totalPagado)}</strong></span>
               <span>Mostrando {payments.length} pagos</span>
             </div>
           </>
@@ -166,11 +166,11 @@ export default function PaymentList() {
       >
         {selectedPayment && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Fecha: <strong>{formatDate(selectedPayment.fecha)}</strong></p>
-              <p className="text-sm text-gray-600">Monto: <strong>{formatCurrency(selectedPayment.monto)}</strong></p>
-              <p className="text-sm text-gray-600">Método: <strong>{selectedPayment.metodo}</strong></p>
-              <p className="text-sm text-gray-600">Registrado por: <strong>{selectedPayment.socio_registro}</strong></p>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">Fecha: <strong>{formatDate(selectedPayment.fecha)}</strong></p>
+              <p className="text-sm text-muted-foreground">Monto: <strong>{formatCurrency(selectedPayment.monto)}</strong></p>
+              <p className="text-sm text-muted-foreground">Método: <strong>{selectedPayment.metodo}</strong></p>
+              <p className="text-sm text-muted-foreground">Registrado por: <strong>{selectedPayment.socio_registro}</strong></p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">

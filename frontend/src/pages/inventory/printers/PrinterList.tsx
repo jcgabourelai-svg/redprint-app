@@ -64,8 +64,8 @@ export default function PrinterList() {
       render: (_value: string, row: any) => (
         <div>
           <p className="font-medium">{row.marca} {_value}</p>
-          <p className="text-xs text-gray-500">SERIE: {row.num_serie}</p>
-          <p className="text-xs text-gray-400">COSTO: {formatCurrency(row.costo_adquisicion ?? 0)}</p>
+          <p className="text-xs text-muted-foreground">SERIE: {row.num_serie}</p>
+          <p className="text-xs text-muted-foreground">COSTO: {formatCurrency(row.costo_adquisicion ?? 0)}</p>
         </div>
       ),
     },
@@ -87,7 +87,7 @@ export default function PrinterList() {
         <div>
           <p>{row.codigo_negocio}</p>
           {row.warehouse && (
-            <p className="text-xs text-gray-500">ALMACÉN: {row.warehouse.nombre || row.warehouse.id}</p>
+            <p className="text-xs text-muted-foreground">ALMACÉN: {row.warehouse.nombre || row.warehouse.id}</p>
           )}
         </div>
       ),
@@ -104,7 +104,7 @@ export default function PrinterList() {
       key: 'acciones',
       label: 'Acciones',
       render: (_value: unknown, _row: any) => (
-        <button className="p-1 hover:bg-gray-100 rounded">
+        <button className="p-1 hover:bg-muted rounded">
           <MoreVertical className="h-4 w-4" />
         </button>
       ),
@@ -115,7 +115,7 @@ export default function PrinterList() {
     return (
       <PageLayout title="Inventario › Impresoras" showSearch>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -125,7 +125,7 @@ export default function PrinterList() {
     return (
       <PageLayout title="Inventario › Impresoras" showSearch>
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar impresoras</p>
+          <p className="text-destructive">Error al cargar impresoras</p>
         </div>
       </PageLayout>
     )
@@ -136,8 +136,8 @@ export default function PrinterList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Impresoras</h2>
-            <p className="text-sm text-gray-500">Gestión de impresoras del negocio</p>
+            <h2 className="text-2xl font-bold text-foreground">Impresoras</h2>
+            <p className="text-sm text-muted-foreground">Gestión de impresoras del negocio</p>
           </div>
           {isAdmin && (
             <Button onClick={() => { setShowCreateModal(true); setCreateError(null) }}>
@@ -167,7 +167,7 @@ export default function PrinterList() {
         size="lg"
       >
         {createError && (
-          <div className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-700">
+          <div className="mb-4 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
             {createError}
           </div>
         )}

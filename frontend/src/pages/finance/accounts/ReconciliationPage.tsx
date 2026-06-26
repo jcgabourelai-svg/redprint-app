@@ -62,14 +62,14 @@ export default function ReconciliationPage() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Conciliacion Bancaria</h2>
-            <p className="text-sm text-gray-500">Concilia movimientos bancarios con transacciones del sistema</p>
+            <h2 className="text-2xl font-bold text-foreground">Conciliacion Bancaria</h2>
+            <p className="text-sm text-muted-foreground">Concilia movimientos bancarios con transacciones del sistema</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cuenta</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Cuenta</label>
             <Select
               options={[
                 { value: 'BA-001', label: 'Cuenta principal - BBVA' },
@@ -80,7 +80,7 @@ export default function ReconciliationPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Periodo</label>
             <Select
               options={[
                 { value: 'mayo-2026', label: 'Mayo 2026' },
@@ -95,13 +95,13 @@ export default function ReconciliationPage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando datos de conciliación...</p>
+            <p className="text-muted-foreground">Cargando datos de conciliación...</p>
           </div>
         ) : (
           <>
             <Card>
               <CardContent className="p-4">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-muted-foreground">
                   Estado de Conciliacion: <strong>{conciliados.length} movimientos conciliados</strong>,
                   {' '}{pendientes.length} movimientos pendientes de conciliar
                 </p>
@@ -116,24 +116,24 @@ export default function ReconciliationPage() {
                 <CardContent>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {movements.slice(0, 10).map((mov) => (
-                      <div key={mov.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
-                        <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <div key={mov.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                        <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-success/10' : 'bg-destructive/10'}`}>
                           {mov.tipo === 'DEPOSITO' ? (
-                            <ArrowUpRight className="h-4 w-4 text-green-600" />
+                            <ArrowUpRight className="h-4 w-4 text-success" />
                           ) : (
-                            <ArrowDownRight className="h-4 w-4 text-red-600" />
+                            <ArrowDownRight className="h-4 w-4 text-destructive" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-medium truncate">{mov.descripcion}</span>
                           </div>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-muted-foreground">
                             {formatDate(mov.fecha)} · Ref: {mov.referencia}
                           </p>
                         </div>
                         <div className="text-right">
-                          <span className={`text-sm font-medium ${mov.tipo === 'DEPOSITO' ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`text-sm font-medium ${mov.tipo === 'DEPOSITO' ? 'text-success' : 'text-destructive'}`}>
                             {mov.tipo === 'DEPOSITO' ? '+' : '-'}{formatCurrency(mov.monto)}
                           </span>
                           <div className="mt-1">
@@ -147,10 +147,10 @@ export default function ReconciliationPage() {
                         {mov.conciliacion_status !== 'conciliado' && (
                           <button
                             onClick={() => handleVincular(mov)}
-                            className="p-1 hover:bg-gray-100 rounded"
+                            className="p-1 hover:bg-muted rounded"
                             title="Vincular movimiento"
                           >
-                            <Link2 className="h-4 w-4 text-blue-500" />
+                            <Link2 className="h-4 w-4 text-primary" />
                           </button>
                         )}
                       </div>
@@ -166,20 +166,20 @@ export default function ReconciliationPage() {
                 <CardContent>
                   <div className="space-y-2 max-h-96 overflow-y-auto">
                     {conciliados.slice(0, 10).map((mov) => (
-                      <div key={mov.id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
-                        <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-green-50' : 'bg-red-50'}`}>
+                      <div key={mov.id} className="flex items-center gap-3 p-3 rounded-lg border border-border">
+                        <div className={`rounded-full p-2 ${mov.tipo === 'DEPOSITO' ? 'bg-success/10' : 'bg-destructive/10'}`}>
                           {mov.tipo === 'DEPOSITO' ? (
-                            <ArrowUpRight className="h-4 w-4 text-green-600" />
+                            <ArrowUpRight className="h-4 w-4 text-success" />
                           ) : (
-                            <ArrowDownRight className="h-4 w-4 text-red-600" />
+                            <ArrowDownRight className="h-4 w-4 text-destructive" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{mov.descripcion}</p>
-                          <p className="text-xs text-gray-500">{formatDate(mov.fecha)}</p>
+                          <p className="text-xs text-muted-foreground">{formatDate(mov.fecha)}</p>
                         </div>
                         <div className="text-right">
-                          <span className={`text-sm font-medium ${mov.tipo === 'DEPOSITO' ? 'text-green-600' : 'text-red-600'}`}>
+                          <span className={`text-sm font-medium ${mov.tipo === 'DEPOSITO' ? 'text-success' : 'text-destructive'}`}>
                             {mov.tipo === 'DEPOSITO' ? '+' : '-'}{formatCurrency(mov.monto)}
                           </span>
                         </div>
@@ -197,30 +197,30 @@ export default function ReconciliationPage() {
               <CardContent>
                 <div className="space-y-3">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-50 p-3 rounded-lg text-center">
-                      <p className="text-sm text-gray-500">Total movimientos</p>
+                    <div className="bg-muted p-3 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground">Total movimientos</p>
                       <p className="text-lg font-bold">{movements.length}</p>
                     </div>
-                    <div className="bg-green-50 p-3 rounded-lg text-center">
-                      <p className="text-sm text-gray-500">Conciliados</p>
-                      <p className="text-lg font-bold text-green-600">{conciliados.length}</p>
-                      <p className="text-xs text-gray-500">{formatCurrency(Math.abs(montoConciliado))}</p>
+                    <div className="bg-success/10 p-3 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground">Conciliados</p>
+                      <p className="text-lg font-bold text-success">{conciliados.length}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrency(Math.abs(montoConciliado))}</p>
                     </div>
-                    <div className="bg-red-50 p-3 rounded-lg text-center">
-                      <p className="text-sm text-gray-500">No conciliados</p>
-                      <p className="text-lg font-bold text-red-600">{pendientes.length}</p>
-                      <p className="text-xs text-gray-500">{formatCurrency(Math.abs(montoPendiente))}</p>
+                    <div className="bg-destructive/10 p-3 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground">No conciliados</p>
+                      <p className="text-lg font-bold text-destructive">{pendientes.length}</p>
+                      <p className="text-xs text-muted-foreground">{formatCurrency(Math.abs(montoPendiente))}</p>
                     </div>
-                    <div className="bg-yellow-50 p-3 rounded-lg text-center">
-                      <p className="text-sm text-gray-500">No reconocidos</p>
-                      <p className="text-lg font-bold text-yellow-600">{noReconocidos.length}</p>
+                    <div className="bg-warning/10 p-3 rounded-lg text-center">
+                      <p className="text-sm text-muted-foreground">No reconocidos</p>
+                      <p className="text-lg font-bold text-warning">{noReconocidos.length}</p>
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-lg">
-                    <p className="text-sm text-gray-700">
+                  <div className="bg-muted p-3 rounded-lg">
+                    <p className="text-sm text-muted-foreground">
                       Diferencia: Saldo bancario <strong>{formatCurrency(summary?.saldo_bancario || 0)}</strong> - Conciliado{' '}
-                      <strong>{formatCurrency(montoConciliado)}</strong> = <strong className={diferencia >= 0 ? 'text-green-600' : 'text-red-600'}>{formatCurrency(diferencia)}</strong>
+                      <strong>{formatCurrency(montoConciliado)}</strong> = <strong className={diferencia >= 0 ? 'text-success' : 'text-destructive'}>{formatCurrency(diferencia)}</strong>
                     </p>
                   </div>
                 </div>
@@ -249,15 +249,15 @@ export default function ReconciliationPage() {
       >
         {selectedMovement && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Fecha: <strong>{formatDate(selectedMovement.fecha)}</strong></p>
-              <p className="text-sm text-gray-600">Tipo: <strong>{selectedMovement.tipo === 'DEPOSITO' ? 'Deposito' : 'Retiro'}</strong></p>
-              <p className="text-sm text-gray-600">Monto: <strong>{formatCurrency(selectedMovement.monto)}</strong></p>
-              <p className="text-sm text-gray-600">Referencia: <strong>{selectedMovement.referencia}</strong></p>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">Fecha: <strong>{formatDate(selectedMovement.fecha)}</strong></p>
+              <p className="text-sm text-muted-foreground">Tipo: <strong>{selectedMovement.tipo === 'DEPOSITO' ? 'Deposito' : 'Retiro'}</strong></p>
+              <p className="text-sm text-muted-foreground">Monto: <strong>{formatCurrency(selectedMovement.monto)}</strong></p>
+              <p className="text-sm text-muted-foreground">Referencia: <strong>{selectedMovement.referencia}</strong></p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Transaccion del sistema para vincular *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Transaccion del sistema para vincular *</label>
               <Select
                 options={[
                   { value: 'cliente', label: 'Pago de cliente' },
@@ -271,7 +271,7 @@ export default function ReconciliationPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Referencia de transaccion *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Referencia de transaccion *</label>
               <Input
                 value={vincularRef}
                 onChange={(e) => setVincularRef(e.target.value)}
@@ -280,8 +280,8 @@ export default function ReconciliationPage() {
             </div>
 
             {linkError && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-sm text-red-800">{linkError}</p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <p className="text-sm text-destructive">{linkError}</p>
               </div>
             )}
 

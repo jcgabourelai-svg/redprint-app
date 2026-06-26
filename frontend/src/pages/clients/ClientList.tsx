@@ -47,9 +47,9 @@ export default function ClientList() {
       sortable: true,
       render: (_value: string, row: Client) => (
         <div>
-          <p className="font-medium text-gray-900">{row.razon_social}</p>
-          <p className="text-xs text-gray-500">{row.nombre_contacto}</p>
-          <p className="text-xs text-gray-400">Tel: {row.telefono}</p>
+          <p className="font-medium text-foreground">{row.razon_social}</p>
+          <p className="text-xs text-muted-foreground">{row.nombre_contacto}</p>
+          <p className="text-xs text-muted-foreground">Tel: {row.telefono}</p>
         </div>
       ),
     },
@@ -66,7 +66,7 @@ export default function ClientList() {
       label: 'Saldo Pendiente',
       sortable: true,
       render: (value: number) => (
-        <span className={`font-medium ${(value ?? 0) > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`font-medium ${(value ?? 0) > 0 ? 'text-destructive' : 'text-success'}`}>
           {formatCurrency(value ?? 0)}
         </span>
       ),
@@ -87,27 +87,27 @@ export default function ClientList() {
       render: (_value: unknown, row: Client) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/clientes/${row.id}`)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Contratos"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/contratos?cliente=${row.id}`)
             }}
           >
-            <FileText className="h-4 w-4 text-gray-500" />
+            <FileText className="h-4 w-4 text-muted-foreground" />
           </button>
-          <button className="p-1 hover:bg-gray-100 rounded" title="Más opciones">
-            <MoreVertical className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Más opciones">
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -139,7 +139,7 @@ export default function ClientList() {
     return (
       <PageLayout title="Clientes" showSearch>
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando clientes...</p>
+          <p className="text-muted-foreground">Cargando clientes...</p>
         </div>
       </PageLayout>
     )
@@ -149,7 +149,7 @@ export default function ClientList() {
     return (
       <PageLayout title="Clientes" showSearch>
         <div className="flex items-center justify-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
         </div>
       </PageLayout>
     )
@@ -160,8 +160,8 @@ export default function ClientList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Clientes</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Clientes</h2>
+            <p className="text-sm text-muted-foreground">
               Gestión de clientes y contratos de renta
             </p>
           </div>
@@ -194,7 +194,7 @@ export default function ClientList() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Razón social / Nombre *
             </label>
             <Input
@@ -204,7 +204,7 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               RFC / Identificación fiscal
             </label>
             <Input
@@ -214,7 +214,7 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Nombre del contacto *
             </label>
             <Input
@@ -224,7 +224,7 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Teléfono *
             </label>
             <Input
@@ -234,7 +234,7 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Correo electrónico
             </label>
             <Input
@@ -245,11 +245,11 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Dirección de instalación *
             </label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={2}
               value={newClient.direccion_instalacion}
               onChange={(e) => setNewClient({ ...newClient, direccion_instalacion: e.target.value })}
@@ -257,11 +257,11 @@ export default function ClientList() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
               Notas
             </label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={2}
               value={newClient.notas}
               onChange={(e) => setNewClient({ ...newClient, notas: e.target.value })}
@@ -269,7 +269,7 @@ export default function ClientList() {
             />
           </div>
           {createError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded text-sm">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
               {createError}
             </div>
           )}

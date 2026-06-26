@@ -26,16 +26,16 @@ export default function ProgressBar({
   }
 
   const colorStyles = {
-    primary: 'bg-blue-500',
-    success: 'bg-green-500',
-    warning: 'bg-amber-500',
-    error: 'bg-red-500',
+    primary: 'bg-primary',
+    success: 'bg-success',
+    warning: 'bg-warning',
+    error: 'bg-destructive',
   }
 
   return (
     <div className={cn('w-full', className)}>
       <div
-        className="relative w-full overflow-hidden rounded-full bg-gray-200"
+        className="relative w-full overflow-hidden rounded-full bg-muted"
         role="progressbar"
         aria-valuenow={value}
         aria-valuemin={0}
@@ -51,7 +51,7 @@ export default function ProgressBar({
         />
       </div>
       {showLabel && (
-        <p className="mt-1 text-xs text-gray-600">
+        <p className="mt-1 text-xs text-muted-foreground">
           {value} de {max} ({percentage.toFixed(0)}%)
         </p>
       )}

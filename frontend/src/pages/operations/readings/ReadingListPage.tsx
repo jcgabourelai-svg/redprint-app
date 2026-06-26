@@ -45,7 +45,7 @@ export default function ReadingListPage() {
     return (
       <PageLayout title="Operaciones › Lecturas">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando lecturas...</p>
+          <p className="text-muted-foreground">Cargando lecturas...</p>
         </div>
       </PageLayout>
     )
@@ -55,7 +55,7 @@ export default function ReadingListPage() {
     return (
       <PageLayout title="Operaciones › Lecturas">
         <div className="flex items-center justify-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
         </div>
       </PageLayout>
     )
@@ -112,7 +112,7 @@ export default function ReadingListPage() {
       label: 'Acciones',
       render: (_value: unknown, row: Reading) => (
         <button
-          className="p-1 hover:bg-gray-100 rounded"
+          className="p-1 hover:bg-muted rounded"
           onClick={(e) => {
             e.stopPropagation()
             navigate(`/operaciones/visitas/${row.visita_id}`)
@@ -128,13 +128,13 @@ export default function ReadingListPage() {
     <PageLayout title="Operaciones › Lecturas">
       <div className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Lecturas</h2>
-          <p className="text-sm text-gray-500">Historial de lecturas de contador registradas</p>
+          <h2 className="text-2xl font-bold text-foreground">Lecturas</h2>
+          <p className="text-sm text-muted-foreground">Historial de lecturas de contador registradas</p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 items-end">
           <div className="w-full sm:w-48">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Socio capturista</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Socio capturista</label>
             <Select
               options={sociosOptions}
               value={socioFilter}
@@ -143,26 +143,26 @@ export default function ReadingListPage() {
             />
           </div>
           <div className="w-full sm:w-44">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Fecha inicio</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Fecha inicio</label>
             <input
               type="date"
               value={fechaInicio}
               onChange={(e) => setFechaInicio(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <div className="w-full sm:w-44">
-            <label className="block text-xs font-medium text-gray-500 mb-1">Fecha fin</label>
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Fecha fin</label>
             <input
               type="date"
               value={fechaFin}
               onChange={(e) => setFechaFin(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
           <button
             onClick={clearFilters}
-            className="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
           >
             Limpiar filtros
           </button>

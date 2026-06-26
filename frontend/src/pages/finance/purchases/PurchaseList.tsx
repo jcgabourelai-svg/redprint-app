@@ -78,10 +78,10 @@ export default function PurchaseList() {
       sortable: true,
       render: (_value: string, row: Purchase) => (
         <div>
-          <p className="font-medium text-gray-900">{row.id}</p>
-          <p className="text-xs text-gray-500">{formatDate(row.fecha_compra)}</p>
-          {row.fecha_vencimiento_pago && <p className="text-xs text-gray-400">Vence: {formatDate(row.fecha_vencimiento_pago)}</p>}
-          <p className="text-xs text-gray-400 mt-1 capitalize">{row.metodo_pago}</p>
+          <p className="font-medium text-foreground">{row.id}</p>
+          <p className="text-xs text-muted-foreground">{formatDate(row.fecha_compra)}</p>
+          {row.fecha_vencimiento_pago && <p className="text-xs text-muted-foreground">Vence: {formatDate(row.fecha_vencimiento_pago)}</p>}
+          <p className="text-xs text-muted-foreground mt-1 capitalize">{row.metodo_pago}</p>
         </div>
       ),
     },
@@ -92,9 +92,9 @@ export default function PurchaseList() {
       render: (_value: string, row: Purchase) => (
         <div>
           <p className="font-medium">{row.proveedor}</p>
-          <p className="text-xs text-gray-500">{row.concepto}</p>
+          <p className="text-xs text-muted-foreground">{row.concepto}</p>
           {row.articulos?.length > 0 && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               Artículos: {row.articulos.map(a => `${a.articulo_nombre} (${a.cantidad})`).join(', ')}
             </p>
           )}
@@ -114,7 +114,7 @@ export default function PurchaseList() {
       label: 'Saldo Pendiente',
       sortable: true,
       render: (value: number) => (
-        <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`font-medium ${value > 0 ? 'text-destructive' : 'text-success'}`}>
           {formatCurrency(value)}
         </span>
       ),
@@ -135,40 +135,40 @@ export default function PurchaseList() {
       render: (_value: unknown, row: Purchase) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/finanzas/compras/${row.id}`)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
           {row.estado === 'PENDIENTE' && (
             <>
               <button 
-                className="p-1 hover:bg-gray-100 rounded" 
+                className="p-1 hover:bg-muted rounded" 
                 title="Recibir"
                 onClick={() => receivePurchase.mutate(Number(row.id))}
                 disabled={receivePurchase.isPending}
               >
-                <Plus className="h-4 w-4 text-blue-500" />
+                <Plus className="h-4 w-4 text-primary" />
               </button>
               <button
-                className="p-1 hover:bg-gray-100 rounded"
+                className="p-1 hover:bg-muted rounded"
                 title="Registrar pago"
               >
-                <DollarSign className="h-4 w-4 text-green-500" />
+                <DollarSign className="h-4 w-4 text-success" />
               </button>
             </>
           )}
           <button 
-            className="p-1 hover:bg-gray-100 rounded" 
+            className="p-1 hover:bg-muted rounded" 
             title="Cancelar"
             onClick={() => cancelPurchase.mutate(Number(row.id))}
             disabled={cancelPurchase.isPending || row.estado !== 'pendiente'}
           >
-            <Trash2 className="h-4 w-4 text-red-500" />
+            <Trash2 className="h-4 w-4 text-destructive" />
           </button>
         </div>
       ),
@@ -182,8 +182,8 @@ export default function PurchaseList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Compras a Proveedores</h2>
-            <p className="text-sm text-gray-500">Registro de compras y afectación de inventario</p>
+            <h2 className="text-2xl font-bold text-foreground">Compras a Proveedores</h2>
+            <p className="text-sm text-muted-foreground">Registro de compras y afectación de inventario</p>
           </div>
           <Button onClick={() => setShowNewPurchase(true)}>
             <Plus className="mr-2 h-4 w-4" />
@@ -193,11 +193,11 @@ export default function PurchaseList() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando compras...</p>
+            <p className="text-muted-foreground">Cargando compras...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar compras: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar compras: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -205,11 +205,11 @@ export default function PurchaseList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <ShoppingBag className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <ShoppingBag className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Compras</p>
+                      <p className="text-sm text-muted-foreground">Total Compras</p>
                       <p className="text-lg font-bold">{purchases.length}</p>
                     </div>
                   </div>
@@ -218,11 +218,11 @@ export default function PurchaseList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-red-50 p-2">
-                      <ShoppingBag className="h-5 w-5 text-red-500" />
+                    <div className="rounded-lg bg-destructive/10 p-2">
+                      <ShoppingBag className="h-5 w-5 text-destructive" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Monto Total</p>
+                      <p className="text-sm text-muted-foreground">Monto Total</p>
                       <p className="text-lg font-bold">{formatCurrency(purchases.reduce((s, p) => s + (p.monto_total ?? 0), 0))}</p>
                     </div>
                   </div>
@@ -231,12 +231,12 @@ export default function PurchaseList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-yellow-50 p-2">
-                      <DollarSign className="h-5 w-5 text-yellow-500" />
+                    <div className="rounded-lg bg-warning/10 p-2">
+                      <DollarSign className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Pendiente por Pagar</p>
-                      <p className="text-lg font-bold text-red-600">{formatCurrency(purchases.reduce((s, p) => s + (p.saldo_pendiente ?? 0), 0))}</p>
+                      <p className="text-sm text-muted-foreground">Pendiente por Pagar</p>
+                      <p className="text-lg font-bold text-destructive">{formatCurrency(purchases.reduce((s, p) => s + (p.saldo_pendiente ?? 0), 0))}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -275,8 +275,8 @@ export default function PurchaseList() {
               onRowClick={(row) => navigate(`/finanzas/compras/${row.id}`)}
             />
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Total pendiente: <strong className="text-red-600">{formatCurrency(totalPendiente)}</strong></span>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Total pendiente: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>
             </div>
           </>
         )}
@@ -290,7 +290,7 @@ export default function PurchaseList() {
       >
         <div className="space-y-4 max-h-[70vh] overflow-y-auto">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Proveedor *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Proveedor *</label>
             <Select
               options={proveedores}
               value={purchaseForm.proveedor}
@@ -302,7 +302,7 @@ export default function PurchaseList() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de compra *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de compra *</label>
               <Input
                 type="date"
                 value={purchaseForm.fecha_compra}
@@ -310,7 +310,7 @@ export default function PurchaseList() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">No. Factura proveedor</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">No. Factura proveedor</label>
               <Input
                 value={purchaseForm.numero_factura_proveedor}
                 onChange={(e) => setPurchaseForm({ ...purchaseForm, numero_factura_proveedor: e.target.value })}
@@ -320,7 +320,7 @@ export default function PurchaseList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Concepto *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Concepto *</label>
             <Input
               value={purchaseForm.concepto}
               onChange={(e) => setPurchaseForm({ ...purchaseForm, concepto: e.target.value })}
@@ -329,7 +329,7 @@ export default function PurchaseList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Método de pago *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Método de pago *</label>
             <Select
               options={[
                 { value: 'contado', label: 'Contado' },
@@ -342,7 +342,7 @@ export default function PurchaseList() {
           </div>
 
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Artículos de la compra</h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-2">Artículos de la compra</h4>
             {purchaseForm.articulos.map((art, index) => (
               <div key={index} className="flex items-end gap-3 mb-3">
                 <div className="flex-1">
@@ -405,7 +405,7 @@ export default function PurchaseList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Costo de mano de obra ($)</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Costo de mano de obra ($)</label>
             <Input
               type="number"
               value={purchaseForm.mano_de_obra}
@@ -413,7 +413,7 @@ export default function PurchaseList() {
             />
           </div>
 
-          <div className="bg-gray-50 p-3 rounded-lg">
+          <div className="bg-muted p-3 rounded-lg">
             <div className="space-y-1 text-sm">
               <div className="flex justify-between"><span>Total artículos:</span><span>{formatCurrency(subtotalArticulos)}</span></div>
               <div className="flex justify-between"><span>Mano de obra:</span><span>{formatCurrency(purchaseForm.mano_de_obra)}</span></div>
@@ -424,7 +424,7 @@ export default function PurchaseList() {
 
           {(purchaseForm.metodo_pago === 'credito' || purchaseForm.metodo_pago === 'parcial') && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de vencimiento de pago</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de vencimiento de pago</label>
               <Input
                 type="date"
                 value={purchaseForm.fecha_vencimiento_pago}
@@ -434,7 +434,7 @@ export default function PurchaseList() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Socio que registra *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Socio que registra *</label>
             <Select
               options={[
                 { value: 'socio1', label: 'María López' },
@@ -448,9 +448,9 @@ export default function PurchaseList() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Notas</label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={2}
               value={purchaseForm.notas}
               onChange={(e) => setPurchaseForm({ ...purchaseForm, notas: e.target.value })}

@@ -25,47 +25,47 @@ export default function TopProfitabilityCard({
   className,
 }: TopProfitabilityCardProps) {
   return (
-    <div className={cn('rounded-lg border border-gray-200 bg-white shadow-sm', className)}>
-      <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
+    <div className={cn('rounded-lg border border-border bg-card shadow-sm', className)}>
+      <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        <h3 className="font-semibold text-foreground">{title}</h3>
         {viewReportText && onViewReportClick && (
           <button
             onClick={onViewReportClick}
-            className="text-sm font-medium text-blue-600 hover:text-blue-700"
+            className="text-sm font-medium text-primary hover:text-primary"
           >
             {viewReportText}
           </button>
         )}
       </div>
-      <div className="divide-y divide-gray-100">
+      <div className="divide-y divide-border">
         {printers.map((printer, index) => (
           <div
             key={printer.id}
-            className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50"
+            className="flex items-center gap-3 px-4 py-3 hover:bg-muted"
           >
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-gray-100">
-              <span className="text-sm font-semibold text-gray-600">{index + 1}</span>
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+              <span className="text-sm font-semibold text-muted-foreground">{index + 1}</span>
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <Printer className="h-4 w-4 text-gray-400" />
-                <p className="text-sm font-medium text-gray-900">{printer.name}</p>
+                <Printer className="h-4 w-4 text-muted-foreground" />
+                <p className="text-sm font-medium text-foreground">{printer.name}</p>
               </div>
-              <p className="text-xs text-gray-500">{printer.model}</p>
+              <p className="text-xs text-muted-foreground">{printer.model}</p>
             </div>
             <div className="text-right">
               <p className={cn(
                 'text-sm font-semibold',
-                printer.profitability >= 0 ? 'text-green-600' : 'text-red-600'
+                printer.profitability >= 0 ? 'text-success' : 'text-destructive'
               )}>
                 {printer.profitability >= 0 ? '+' : ''}${printer.profitability.toLocaleString('es-MX')}
               </p>
               {printer.trend && (
-                <div className="flex items-center justify-end gap-1 text-xs text-gray-500">
+                <div className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
                   {printer.trend === 'up' ? (
-                    <TrendingUp className="h-3 w-3 text-green-500" />
+                    <TrendingUp className="h-3 w-3 text-success" />
                   ) : (
-                    <TrendingDown className="h-3 w-3 text-red-500" />
+                    <TrendingDown className="h-3 w-3 text-destructive" />
                   )}
                   {printer.trend === 'up' ? 'Tendencia +' : 'Tendencia -'}
                 </div>

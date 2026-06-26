@@ -60,7 +60,7 @@ export default function VisitDetailPage() {
     return (
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
-          <p className="text-gray-500">ID de visita inválido</p>
+          <p className="text-muted-foreground">ID de visita inválido</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
             Volver al calendario
           </Button>
@@ -73,7 +73,7 @@ export default function VisitDetailPage() {
     return (
       <PageLayout title="Cargando visita...">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando información de la visita...</p>
+          <p className="text-muted-foreground">Cargando información de la visita...</p>
         </div>
       </PageLayout>
     )
@@ -83,7 +83,7 @@ export default function VisitDetailPage() {
     return (
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
           <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
             Volver al calendario
           </Button>
@@ -140,7 +140,7 @@ export default function VisitDetailPage() {
                 <CardTitle className="text-xl">
                   Visita a {visit.cliente_nombre}
                 </CardTitle>
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-muted-foreground mt-1">
                   {formatDate(visit.fecha_programada)} · {visit.hora_programada}
                   {visit.duracion_estimada && ` - Duración est.: ${visit.duracion_estimada}`}
                 </p>
@@ -154,37 +154,37 @@ export default function VisitDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm uppercase text-gray-500">Información General</CardTitle>
+            <CardTitle className="text-sm uppercase text-muted-foreground">Información General</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="flex items-start gap-3">
-                <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                <UserIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-xs text-gray-500">Cliente</p>
-                  <p className="text-sm font-medium text-gray-900">{visit.cliente_nombre}</p>
+                  <p className="text-xs text-muted-foreground">Cliente</p>
+                  <p className="text-sm font-medium text-foreground">{visit.cliente_nombre}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <FileText className="h-5 w-5 text-gray-400 mt-0.5" />
+                <FileText className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-xs text-gray-500">Tipo de visita</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-muted-foreground">Tipo de visita</p>
+                  <p className="text-sm font-medium text-foreground">
                     {tipoVisitaLabels[visit.tipo_visita]}
                   </p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <UserIcon className="h-5 w-5 text-gray-400 mt-0.5" />
+                <UserIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-xs text-gray-500">Socio asignado</p>
-                  <p className="text-sm font-medium text-gray-900">{visit.socio_asignado}</p>
+                  <p className="text-xs text-muted-foreground">Socio asignado</p>
+                  <p className="text-sm font-medium text-foreground">{visit.socio_asignado}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-gray-400 mt-0.5" />
+                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
-                  <p className="text-xs text-gray-500">Estado</p>
+                  <p className="text-xs text-muted-foreground">Estado</p>
                   <Badge variant={estadoVariant[visit.estado]}>
                     {estadoLabels[visit.estado]}
                   </Badge>
@@ -192,17 +192,17 @@ export default function VisitDetailPage() {
               </div>
               {visit.direccion_cliente && (
                 <div className="flex items-start gap-3 sm:col-span-2">
-                  <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                  <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
-                    <p className="text-xs text-gray-500">Dirección</p>
-                    <p className="text-sm font-medium text-gray-900">{visit.direccion_cliente}</p>
+                    <p className="text-xs text-muted-foreground">Dirección</p>
+                    <p className="text-sm font-medium text-foreground">{visit.direccion_cliente}</p>
                   </div>
                 </div>
               )}
               {visit.notas && (
-                <div className="sm:col-span-2 bg-gray-50 rounded-lg p-3">
-                  <p className="text-xs text-gray-500 mb-1">Notas</p>
-                  <p className="text-sm text-gray-700">{visit.notas}</p>
+                <div className="sm:col-span-2 bg-muted rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Notas</p>
+                  <p className="text-sm text-muted-foreground">{visit.notas}</p>
                 </div>
               )}
             </div>
@@ -211,20 +211,20 @@ export default function VisitDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm uppercase text-gray-500">
+            <CardTitle className="text-sm uppercase text-muted-foreground">
               Impresoras a visitar ({visit.impresoras.length})
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {visit.impresoras.map((imp) => (
-                <div key={imp.id} className="border border-gray-200 rounded-lg p-4">
+                <div key={imp.id} className="border border-border rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-foreground">
                         {imp.marca} {imp.modelo}
                       </p>
-                      <p className="text-xs text-gray-500 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         SERIE: {imp.numero_serie}
                       </p>
                     </div>
@@ -234,29 +234,29 @@ export default function VisitDetailPage() {
                   </div>
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
                     <div>
-                      <span className="text-gray-500">Última lectura:</span>{' '}
+                      <span className="text-muted-foreground">Última lectura:</span>{' '}
                       <span className="font-medium">{formatDate(imp.fecha_lectura_anterior)}</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Contador anterior:</span>{' '}
+                      <span className="text-muted-foreground">Contador anterior:</span>{' '}
                       <span className="font-medium">{imp.lectura_anterior.toLocaleString()} hojas</span>
                     </div>
                     <div>
-                      <span className="text-gray-500">Contrato:</span>{' '}
+                      <span className="text-muted-foreground">Contrato:</span>{' '}
                       <span className="font-medium">{imp.contrato_id}</span>
                     </div>
                   </div>
                   {imp.lectura_actual !== undefined && (
-                    <div className="mt-2 pt-2 border-t border-gray-100 text-sm">
+                    <div className="mt-2 pt-2 border-t border-border text-sm">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
-                          <span className="text-gray-500">Lectura actual:</span>{' '}
-                          <span className="font-medium text-green-600">
+                          <span className="text-muted-foreground">Lectura actual:</span>{' '}
+                          <span className="font-medium text-success">
                             {imp.lectura_actual.toLocaleString()} hojas
                           </span>
                         </div>
                         <div>
-                          <span className="text-gray-500">Páginas consumidas:</span>{' '}
+                          <span className="text-muted-foreground">Páginas consumidas:</span>{' '}
                           <span className="font-medium">
                             {imp.paginas_consumidas?.toLocaleString()} hojas
                           </span>
@@ -272,7 +272,7 @@ export default function VisitDetailPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm uppercase text-gray-500">Acciones</CardTitle>
+            <CardTitle className="text-sm uppercase text-muted-foreground">Acciones</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex flex-wrap gap-3">
@@ -306,8 +306,8 @@ export default function VisitDetailPage() {
                 </Button>
               )}
               {visit.estado === 'COMPLETADA' && (
-                <div className="text-sm text-gray-500 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
+                <div className="text-sm text-muted-foreground flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
                   Esta visita ya fue completada
                 </div>
               )}
@@ -324,19 +324,19 @@ export default function VisitDetailPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nueva fecha *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Nueva fecha *</label>
             <input
               type="date"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               value={rescheduleData.fecha_programada}
               onChange={(e) => setRescheduleData({ ...rescheduleData, fecha_programada: e.target.value })}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nueva hora *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Nueva hora *</label>
             <input
               type="time"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               value={rescheduleData.hora_programada}
               onChange={(e) => setRescheduleData({ ...rescheduleData, hora_programada: e.target.value })}
             />

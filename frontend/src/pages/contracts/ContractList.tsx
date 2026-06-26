@@ -34,7 +34,7 @@ export default function ContractList() {
     return (
       <PageLayout title="Contratos" showSearch>
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando contratos...</p>
+          <p className="text-muted-foreground">Cargando contratos...</p>
         </div>
       </PageLayout>
     )
@@ -44,7 +44,7 @@ export default function ContractList() {
     return (
       <PageLayout title="Contratos" showSearch>
         <div className="flex items-center justify-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
         </div>
       </PageLayout>
     )
@@ -57,8 +57,8 @@ export default function ContractList() {
       sortable: true,
       render: (_value: string, row: Contract) => (
         <div>
-          <p className="font-medium text-gray-900">{row.id}</p>
-          <p className="text-xs text-gray-500">{formatDate(row.fecha_inicio)}</p>
+          <p className="font-medium text-foreground">{row.id}</p>
+          <p className="text-xs text-muted-foreground">{formatDate(row.fecha_inicio)}</p>
         </div>
       ),
     },
@@ -68,8 +68,8 @@ export default function ContractList() {
       sortable: true,
       render: (_value: string, row: Contract) => (
         <div>
-          <p className="font-medium text-gray-900">{row.cliente_nombre}</p>
-          <p className="text-xs text-gray-500">{row.cliente_contacto}</p>
+          <p className="font-medium text-foreground">{row.cliente_nombre}</p>
+          <p className="text-xs text-muted-foreground">{row.cliente_contacto}</p>
         </div>
       ),
     },
@@ -81,7 +81,7 @@ export default function ContractList() {
         return (
           <div>
             <p className="font-medium">{impresoras.length}</p>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-muted-foreground">
               {impresoras.slice(0, 2).map((p) => p.impresora_id).join(', ')}
               {impresoras.length > 2 && '...'}
             </div>
@@ -112,17 +112,17 @@ export default function ContractList() {
       render: (_value: unknown, row: Contract) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/contratos/${row.id}`)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
-          <button className="p-1 hover:bg-gray-100 rounded" title="Más opciones">
-            <MoreVertical className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Más opciones">
+            <MoreVertical className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -134,8 +134,8 @@ export default function ContractList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Contratos</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Contratos</h2>
+            <p className="text-sm text-muted-foreground">
               Gestión de contratos de renta de impresoras
             </p>
           </div>
@@ -147,9 +147,9 @@ export default function ContractList() {
 
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Estado:</span>
+            <span className="text-sm text-muted-foreground">Estado:</span>
             <select
-              className="rounded-md border border-gray-300 py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="rounded-md border border-input py-1.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               value={tableProps.filterState.estado || ''}
               onChange={(e) => tableProps.onFilterChange({ ...tableProps.filterState, estado: e.target.value })}
             >

@@ -19,12 +19,12 @@ const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) 
   const baseStyles = 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'
 
   const variantClasses: Record<string, string> = {
-    primary: 'bg-blue-500 text-white',
-    success: 'bg-green-500 text-white',
-    warning: 'bg-amber-500 text-white',
-    error: 'bg-red-500 text-white',
-    info: 'bg-blue-500 text-white',
-    neutral: 'bg-gray-500 text-white',
+    primary: 'bg-primary text-primary-foreground',
+    success: 'bg-success text-success-foreground',
+    warning: 'bg-warning text-warning-foreground',
+    error: 'bg-destructive text-destructive-foreground',
+    info: 'bg-info text-info-foreground',
+    neutral: 'bg-muted-foreground text-background',
   }
 
   let inlineStyle: React.CSSProperties | undefined

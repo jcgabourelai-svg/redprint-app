@@ -16,36 +16,36 @@ export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: W
       <CardContent className="p-4">
         <div className="flex items-start justify-between mb-3">
           <div>
-            <h3 className="font-semibold text-gray-900">{warehouse.nombre}</h3>
-            <p className="text-xs text-gray-500">{warehouse.direccion}</p>
+            <h3 className="font-semibold text-foreground">{warehouse.nombre}</h3>
+            <p className="text-xs text-muted-foreground">{warehouse.direccion}</p>
           </div>
           <Badge variant={warehouse.activo ? 'success' : 'neutral'}>
             {warehouse.activo ? 'ACTIVO' : 'INACTIVO'}
           </Badge>
         </div>
 
-        <div className="space-y-2 text-sm text-gray-600 mb-3">
+        <div className="space-y-2 text-sm text-muted-foreground mb-3">
           <p>
-            <span className="font-medium text-gray-700">Responsable:</span>{' '}
+            <span className="font-medium text-muted-foreground">Responsable:</span>{' '}
             {warehouse.responsable?.nombre ?? warehouse.responsable?.correo ?? 'Sin asignar'}
           </p>
           {warehouse.responsable?.telefono && (
             <p>
-              <span className="font-medium text-gray-700">Tel:</span>{' '}
+              <span className="font-medium text-muted-foreground">Tel:</span>{' '}
               {warehouse.responsable.telefono}
             </p>
           )}
           <p>
-            <span className="font-medium text-gray-700">Impresoras:</span>{' '}
+            <span className="font-medium text-muted-foreground">Impresoras:</span>{' '}
             {warehouse.printers_count ?? 0}
           </p>
         </div>
 
-        <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+        <div className="flex items-center gap-2 pt-2 border-t border-border">
           {onView && (
             <button
               onClick={() => onView(warehouse.id)}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded"
               aria-label="Ver detalle"
             >
               <Eye className="h-3.5 w-3.5" />
@@ -55,7 +55,7 @@ export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: W
           {onEdit && (
             <button
               onClick={() => onEdit(warehouse.id)}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-gray-600 hover:bg-gray-50 rounded"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-muted-foreground hover:bg-muted rounded"
               aria-label="Editar"
             >
               <Pencil className="h-3.5 w-3.5" />
@@ -65,7 +65,7 @@ export default function WarehouseCard({ warehouse, onView, onEdit, onDelete }: W
           {onDelete && (
             <button
               onClick={() => onDelete(warehouse.id)}
-              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs text-destructive hover:bg-destructive/10 rounded"
               aria-label="Eliminar"
             >
               <Trash2 className="h-3.5 w-3.5" />

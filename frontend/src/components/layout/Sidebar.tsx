@@ -106,20 +106,20 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
 
       <aside
         className={cn(
-          'fixed left-0 top-0 z-50 h-full w-64 bg-white border-r border-gray-200 transition-transform duration-300 lg:translate-x-0',
+          'fixed left-0 top-0 z-50 h-full w-64 bg-card border-r border-border transition-transform duration-300 lg:translate-x-0',
           isOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
-        <div className="flex h-16 items-center justify-between border-b border-gray-200 px-4">
+        <div className="flex h-16 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded bg-blue-500">
-              <Package className="h-5 w-5 text-white" />
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-primary">
+              <Package className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-bold text-gray-900">RedPrint</span>
+            <span className="text-xl font-bold text-foreground">RedPrint</span>
           </div>
           <button
             onClick={onToggle}
-            className="rounded-md p-2 hover:bg-gray-100 lg:hidden"
+            className="rounded-md p-2 hover:bg-muted lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -141,15 +141,15 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       className={cn(
                         'flex w-full items-center justify-between rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         active
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground hover:bg-muted'
                       )}
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="h-5 w-5" />
                         <span>{item.label}</span>
                         {item.badge && (
-                          <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                          <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
                             {item.badge}
                           </span>
                         )}
@@ -164,14 +164,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                       className={cn(
                         'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                         active
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'text-gray-700 hover:bg-gray-100'
+                          ? 'bg-primary/10 text-primary'
+                          : 'text-foreground hover:bg-muted'
                       )}
                     >
                       <Icon className="h-5 w-5" />
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className="ml-auto rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">
+                        <span className="ml-auto rounded-full bg-destructive px-2 py-0.5 text-xs text-destructive-foreground">
                           {item.badge}
                         </span>
                       )}
@@ -187,14 +187,14 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
                             className={cn(
                               'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                               isActive(child.path)
-                                ? 'bg-blue-50 text-blue-700'
-                                : 'text-gray-700 hover:bg-gray-100'
+                                ? 'bg-primary/10 text-primary'
+                                : 'text-foreground hover:bg-muted'
                             )}
                           >
                             <child.icon className="h-4 w-4" />
                             <span>{child.label}</span>
                             {child.badge && (
-                              <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-xs text-white">
+                              <span className="ml-auto rounded-full bg-destructive px-1.5 py-0.5 text-xs text-destructive-foreground">
                                 {child.badge}
                               </span>
                             )}
@@ -209,23 +209,23 @@ export default function Sidebar({ isOpen, onToggle }: SidebarProps) {
           </ul>
         </nav>
 
-        <div className="border-t border-gray-200 p-4">
+        <div className="border-t border-border p-4">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-200">
-              <User className="h-5 w-5 text-gray-600" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <User className="h-5 w-5 text-muted-foreground" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-900">{user?.nombre ?? 'Usuario'}</p>
-              <p className="text-xs text-gray-500">
+              <p className="text-sm font-medium text-foreground">{user?.nombre ?? 'Usuario'}</p>
+              <p className="text-xs text-muted-foreground">
                 {user ? (user.rol_nombre ?? (user.es_sistema ? 'Administrador' : 'Usuario')) : ''}
               </p>
             </div>
             <button
-              className="rounded-md p-2 hover:bg-gray-100"
+              className="rounded-md p-2 hover:bg-muted"
               onClick={() => navigate('/sistema/configuracion')}
               title="Configuración del sistema"
             >
-              <Settings className="h-4 w-4 text-gray-500" />
+              <Settings className="h-4 w-4 text-muted-foreground" />
             </button>
           </div>
         </div>

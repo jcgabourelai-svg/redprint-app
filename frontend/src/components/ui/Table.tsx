@@ -211,7 +211,7 @@ export default function Table<T extends Record<string, any>>({
         <div className="mb-4 space-y-4">
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar..."
@@ -222,7 +222,7 @@ export default function Table<T extends Record<string, any>>({
                   else setSearchTerm(v)
                   setLocalPage(1)
                 }}
-                className="w-full rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-input bg-card py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 aria-label="Buscar en tabla"
               />
             </div>
@@ -235,7 +235,7 @@ export default function Table<T extends Record<string, any>>({
                 <Filter className="mr-2 h-4 w-4" />
                 Filtros
                 {activeFilterCount > 0 && (
-                  <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-blue-500 px-1 text-xs text-white">
+                  <span className="ml-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-xs text-primary-foreground">
                     {activeFilterCount}
                   </span>
                 )}
@@ -244,11 +244,11 @@ export default function Table<T extends Record<string, any>>({
           </div>
 
           {showFilters && filters && filters.length > 0 && (
-            <div className="rounded-lg border border-gray-200 bg-white p-4">
+            <div className="rounded-lg border border-border bg-card p-4">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {filters.map((filter) => (
                   <div key={filter.key}>
-                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                    <label className="block text-xs font-medium text-muted-foreground mb-1">
                       {filter.label}
                     </label>
                     {filter.type === 'text' ? (
@@ -257,7 +257,7 @@ export default function Table<T extends Record<string, any>>({
                         placeholder={filter.placeholder || ''}
                         value={activeFilters[filter.key] || ''}
                         onChange={(e) => setFilterValue(filter.key, e.target.value)}
-                        className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-md border border-input bg-card py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       />
                     ) : (
                       <select
@@ -266,7 +266,7 @@ export default function Table<T extends Record<string, any>>({
                           const value = e.target.value === 'all' ? '' : e.target.value
                           setFilterValue(filter.key, value)
                         }}
-                        className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full rounded-md border border-input bg-card py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                       >
                         <option value="all">Todos</option>
                         {(filter.options || []).map((option) => (
@@ -291,17 +291,17 @@ export default function Table<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-lg border border-gray-200">
-        <table className="w-full divide-y divide-gray-200 bg-white">
-          <thead className="bg-gray-50">
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full divide-y divide-border bg-card">
+          <thead className="bg-muted">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
                   onClick={() => handleSort(column)}
                   className={cn(
-                    'px-6 py-3 text-left text-xs font-semibold uppercase text-gray-500',
-                    column.sortable && sortable && 'cursor-pointer hover:bg-gray-100'
+                    'px-6 py-3 text-left text-xs font-semibold uppercase text-muted-foreground',
+                    column.sortable && sortable && 'cursor-pointer hover:bg-muted/70'
                   )}
                 >
                   <div className="flex items-center gap-2">
@@ -310,22 +310,22 @@ export default function Table<T extends Record<string, any>>({
                       const key = resolveSortKey(column)
                       if (activeSortColumn === key) {
                         return activeSortDirection === 'asc'
-                          ? <ArrowUp className="h-3 w-3 text-gray-700" />
-                          : <ArrowDown className="h-3 w-3 text-gray-700" />
+                          ? <ArrowUp className="h-3 w-3 text-foreground" />
+                          : <ArrowDown className="h-3 w-3 text-foreground" />
                       }
-                      return <ArrowUpDown className="h-3 w-3 text-gray-400" />
+                      return <ArrowUpDown className="h-3 w-3 text-muted-foreground" />
                     })()}
                   </div>
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-border">
             {paginatedData.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-6 py-12 text-center text-sm text-gray-500"
+                  className="px-6 py-12 text-center text-sm text-muted-foreground"
                 >
                   {emptyMessage}
                 </td>
@@ -336,12 +336,12 @@ export default function Table<T extends Record<string, any>>({
                   key={rowIndex}
                   onClick={() => onRowClick?.(row)}
                   className={cn(
-                    'transition-colors hover:bg-gray-50',
+                    'transition-colors hover:bg-muted',
                     onRowClick && 'cursor-pointer'
                   )}
                 >
                   {columns.map((column) => (
-                    <td key={column.key} className="px-6 py-4 text-sm text-gray-700">
+                    <td key={column.key} className="px-6 py-4 text-sm text-foreground">
                       {column.render
                         ? column.render(row[column.key], row)
                         : String(row[column.key] || '-')}
@@ -357,12 +357,12 @@ export default function Table<T extends Record<string, any>>({
       {paginatable && (
         <div className="mt-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-muted-foreground">
               Mostrando {firstItemIndex} a {lastItemIndex} de{' '}
               {totalCount}
             </div>
             <div className="flex items-center gap-2">
-              <label htmlFor="page-size-select" className="text-sm text-gray-600">
+              <label htmlFor="page-size-select" className="text-sm text-muted-foreground">
                 Filas por página
               </label>
               <select
@@ -374,7 +374,7 @@ export default function Table<T extends Record<string, any>>({
                   else setLocalPageSize(size)
                   setLocalPage(1)
                 }}
-                className="rounded-md border border-gray-300 py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="rounded-md border border-input bg-card py-1 px-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               >
                 {pageSizeOptions.map((opt) => (
                   <option key={opt} value={opt}>
@@ -395,7 +395,7 @@ export default function Table<T extends Record<string, any>>({
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="px-3 py-1 text-sm text-gray-600">
+              <span className="px-3 py-1 text-sm text-muted-foreground">
                 {effectiveCurrentPage} de {effectiveTotalPages}
               </span>
               <Button

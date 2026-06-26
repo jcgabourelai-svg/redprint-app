@@ -91,7 +91,7 @@ export default function CalendarPage() {
     return (
       <PageLayout title="Operaciones › Calendario de Visitas">
         <div className="flex items-center justify-center py-12">
-          <p className="text-gray-500">Cargando visitas...</p>
+          <p className="text-muted-foreground">Cargando visitas...</p>
         </div>
       </PageLayout>
     )
@@ -101,7 +101,7 @@ export default function CalendarPage() {
     return (
       <PageLayout title="Operaciones › Calendario de Visitas">
         <div className="flex items-center justify-center py-12">
-          <p className="text-red-500">{parseApiError(error)}</p>
+          <p className="text-destructive">{parseApiError(error)}</p>
         </div>
       </PageLayout>
     )
@@ -112,8 +112,8 @@ export default function CalendarPage() {
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Calendario de Visitas</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Calendario de Visitas</h2>
+            <p className="text-sm text-muted-foreground">
               Programación y seguimiento de visitas de campo
             </p>
           </div>
@@ -158,16 +158,16 @@ export default function CalendarPage() {
 
         <div className="lg:hidden space-y-4">
           {visitasDelMes.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
+            <div className="text-center py-12 text-muted-foreground">
               No hay visitas programadas con los filtros seleccionados
             </div>
           ) : (
             visitasDelMes.map((visit) => (
-              <div key={visit.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+              <div key={visit.id} className="border border-border rounded-lg p-4 bg-card">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-gray-400" />
-                    <span className="text-sm font-medium text-gray-600">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">
                       {formatDate(visit.fecha_programada)} - {visit.hora_programada}
                     </span>
                   </div>
@@ -175,12 +175,12 @@ export default function CalendarPage() {
                     {estadoLabels[visit.estado]}
                   </Badge>
                 </div>
-                <p className="font-medium text-gray-900 mb-1">{visit.cliente_nombre}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
+                <p className="font-medium text-foreground mb-1">{visit.cliente_nombre}</p>
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                   <UserIcon className="h-4 w-4" />
                   <span>{visit.socio_asignado}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-gray-500 mb-3">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
                   <Printer className="h-4 w-4" />
                   <span>{visit.impresoras?.length ?? 0} impresora(s)</span>
                 </div>
@@ -213,18 +213,18 @@ export default function CalendarPage() {
           <CardContent>
             <div className="space-y-3">
               {visitasDelMes.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8 text-muted-foreground">
                   No hay visitas programadas con los filtros seleccionados
                 </div>
               ) : (
                 visitasDelMes.map((visit) => (
                   <div
                     key={visit.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-3">
-                        <CalendarIcon className="h-4 w-4 text-gray-400" />
+                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                         <span className="text-sm font-medium">
                           {formatDate(visit.fecha_programada)}
                         </span>
@@ -233,8 +233,8 @@ export default function CalendarPage() {
                         {estadoLabels[visit.estado]}
                       </Badge>
                     </div>
-                    <p className="font-medium text-gray-900 mb-1">{visit.cliente_nombre}</p>
-                    <div className="flex items-center gap-4 text-sm text-gray-500 mb-2">
+                    <p className="font-medium text-foreground mb-1">{visit.cliente_nombre}</p>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
                       <span className="flex items-center gap-1">
                         <UserIcon className="h-3 w-3" />
                         {visit.socio_asignado}
@@ -249,7 +249,7 @@ export default function CalendarPage() {
                       </span>
                     </div>
                     {visit.impresoras?.length > 0 && (
-                      <p className="text-xs text-gray-400 mb-2">
+                      <p className="text-xs text-muted-foreground mb-2">
                         {visit.impresoras.map((imp) => imp.impresora_id).join(', ')}
                       </p>
                     )}
@@ -281,7 +281,7 @@ export default function CalendarPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cliente *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
             <Input
               value={newVisit.cliente_id}
               onChange={(e) => setNewVisit({ ...newVisit, cliente_id: e.target.value })}
@@ -289,7 +289,7 @@ export default function CalendarPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de visita *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Tipo de visita *</label>
             <Select
               options={Object.entries(tipoVisitaLabels).map(([value, label]) => ({ value, label }))}
               value={newVisit.tipo_visita}
@@ -299,7 +299,7 @@ export default function CalendarPage() {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha programada *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha programada *</label>
               <Input
                 type="date"
                 value={newVisit.fecha_programada}
@@ -307,7 +307,7 @@ export default function CalendarPage() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Hora programada *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Hora programada *</label>
               <Input
                 type="time"
                 value={newVisit.hora_programada}
@@ -316,7 +316,7 @@ export default function CalendarPage() {
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Socio asignado *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Socio asignado *</label>
             <Select
               options={socios.slice(1)}
               value={newVisit.socio_asignado}
@@ -325,9 +325,9 @@ export default function CalendarPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Notas</label>
             <textarea
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={3}
               value={newVisit.notas}
               onChange={(e) => setNewVisit({ ...newVisit, notas: e.target.value })}

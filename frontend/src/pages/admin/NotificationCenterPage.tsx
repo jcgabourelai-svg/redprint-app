@@ -10,11 +10,11 @@ import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/useNo
 import type { Notification } from '@/types/admin'
 
 const tipoConfig: Record<string, { icon: typeof Bell; color: string; bg: string; label: string }> = {
-  alerta: { icon: AlertTriangle, color: 'text-red-500', bg: 'bg-red-50', label: 'Alerta' },
-  warning: { icon: AlertTriangle, color: 'text-amber-500', bg: 'bg-amber-50', label: 'Advertencia' },
-  recordatorio: { icon: Calendar, color: 'text-blue-500', bg: 'bg-blue-50', label: 'Recordatorio' },
-  info: { icon: Info, color: 'text-emerald-500', bg: 'bg-emerald-50', label: 'Informacion' },
-  exito: { icon: CheckCircle, color: 'text-green-500', bg: 'bg-green-50', label: 'Exito' },
+  alerta: { icon: AlertTriangle, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Alerta' },
+  warning: { icon: AlertTriangle, color: 'text-warning', bg: 'bg-warning/10', label: 'Advertencia' },
+  recordatorio: { icon: Calendar, color: 'text-primary', bg: 'bg-primary/10', label: 'Recordatorio' },
+  info: { icon: Info, color: 'text-success', bg: 'bg-success/10', label: 'Informacion' },
+  exito: { icon: CheckCircle, color: 'text-success', bg: 'bg-success/10', label: 'Exito' },
 }
 
 export default function NotificationCenterPage() {
@@ -87,16 +87,16 @@ export default function NotificationCenterPage() {
   return (
     <PageLayout title="Notificaciones" showSearch>
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Sistema</span>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Centro de Notificaciones</span>
+          <span className="text-foreground font-medium">Centro de Notificaciones</span>
         </div>
 
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-blue-500" />
+              <Bell className="h-5 w-5 text-primary" />
               <span className="font-medium">{unreadCount} notificaciones nuevas</span>
             </div>
           </div>
@@ -121,11 +121,11 @@ export default function NotificationCenterPage() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando notificaciones...</p>
+            <p className="text-muted-foreground">Cargando notificaciones...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar notificaciones: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar notificaciones: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -169,8 +169,8 @@ export default function NotificationCenterPage() {
 
             <div className="space-y-3">
               {filtered.length === 0 && (
-                <div className="text-center py-12 text-gray-500">
-                  <Bell className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                <div className="text-center py-12 text-muted-foreground">
+                  <Bell className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                   <p>No hay notificaciones con estos filtros</p>
                 </div>
               )}
@@ -181,14 +181,14 @@ export default function NotificationCenterPage() {
                 return (
                   <div
                     key={notif.id}
-                    className={`bg-white border rounded-lg p-4 transition-colors ${!notif.leida ? 'border-l-4 border-l-blue-500' : ''}`}
+                    className={`bg-card border rounded-lg p-4 transition-colors ${!notif.leida ? 'border-l-4 border-l-blue-500' : ''}`}
                   >
                     <div className="flex items-start gap-3">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(notif.id)}
                         onChange={() => toggleSelect(notif.id)}
-                        className="mt-1 rounded border-gray-300"
+                        className="mt-1 rounded border-input"
                       />
                       <div className={`mt-0.5 rounded-full p-2 ${config.bg}`}>
                         <IconComp className={`h-4 w-4 ${config.color}`} />
@@ -207,32 +207,32 @@ export default function NotificationCenterPage() {
                               {config.label}
                             </Badge>
                             {!notif.leida && (
-                              <span className="text-xs font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                              <span className="text-xs font-medium text-primary bg-primary/10 px-2 py-0.5 rounded-full">
                                 Nueva
                               </span>
                             )}
                           </div>
                           <div className="flex items-center gap-1 shrink-0">
-                            <button className="p-1 hover:bg-gray-100 rounded" title="Ver detalle" onClick={() => openDetail(notif)}>
-                              <Eye className="h-4 w-4 text-gray-500" />
+                            <button className="p-1 hover:bg-muted rounded" title="Ver detalle" onClick={() => openDetail(notif)}>
+                              <Eye className="h-4 w-4 text-muted-foreground" />
                             </button>
                             {!notif.leida && (
-                              <button className="p-1 hover:bg-gray-100 rounded" title="Marcar como leida" onClick={() => handleMarkAsRead(notif.id)}>
-                                <Check className="h-4 w-4 text-blue-500" />
+                              <button className="p-1 hover:bg-muted rounded" title="Marcar como leida" onClick={() => handleMarkAsRead(notif.id)}>
+                                <Check className="h-4 w-4 text-primary" />
                               </button>
                             )}
-                            <button className="p-1 hover:bg-gray-100 rounded" title="Eliminar" onClick={() => deleteNotification(notif.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
+                            <button className="p-1 hover:bg-muted rounded" title="Eliminar" onClick={() => deleteNotification(notif.id)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
                             </button>
                           </div>
                         </div>
-                        <p className={`text-sm mt-1 ${!notif.leida ? 'font-medium text-gray-900' : 'text-gray-600'}`}>
+                        <p className={`text-sm mt-1 ${!notif.leida ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
                           {notif.mensaje}
                         </p>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className="text-xs text-gray-400">{notif.fecha} {notif.hora}</span>
+                          <span className="text-xs text-muted-foreground">{notif.fecha} {notif.hora}</span>
                           {notif.accion && (
-                            <button className="text-xs text-blue-600 hover:text-blue-800 font-medium">
+                            <button className="text-xs text-primary hover:text-primary font-medium">
                               {notif.accion.texto}
                             </button>
                           )}
@@ -244,14 +244,14 @@ export default function NotificationCenterPage() {
               })}
             </div>
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Mostrando {filtered.length} de {notifications.length} notificaciones</span>
               <div className="flex gap-1">
-                <button className="px-3 py-1 border rounded hover:bg-gray-50">{'<'}</button>
-                <button className="px-3 py-1 border rounded bg-blue-500 text-white">1</button>
-                <button className="px-3 py-1 border rounded hover:bg-gray-50">2</button>
-                <button className="px-3 py-1 border rounded hover:bg-gray-50">3</button>
-                <button className="px-3 py-1 border rounded hover:bg-gray-50">{'>'}</button>
+                <button className="px-3 py-1 border rounded hover:bg-muted">{'<'}</button>
+                <button className="px-3 py-1 border rounded bg-primary text-white">1</button>
+                <button className="px-3 py-1 border rounded hover:bg-muted">2</button>
+                <button className="px-3 py-1 border rounded hover:bg-muted">3</button>
+                <button className="px-3 py-1 border rounded hover:bg-muted">{'>'}</button>
               </div>
             </div>
           </>
@@ -270,13 +270,13 @@ export default function NotificationCenterPage() {
               const config = tipoConfig[selectedNotification.tipo]
               const IconComp = config.icon
               return (
-                <div className="flex items-start gap-3 bg-gray-50 p-4 rounded-lg">
+                <div className="flex items-start gap-3 bg-muted p-4 rounded-lg">
                   <div className={`rounded-full p-2 ${config.bg}`}>
                     <IconComp className={`h-5 w-5 ${config.color}`} />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-900">{selectedNotification.mensaje}</p>
-                    <p className="text-sm text-gray-500 mt-1">
+                    <p className="font-medium text-foreground">{selectedNotification.mensaje}</p>
+                    <p className="text-sm text-muted-foreground mt-1">
                       {selectedNotification.fecha} {selectedNotification.hora}
                     </p>
                   </div>
@@ -284,9 +284,9 @@ export default function NotificationCenterPage() {
               )
             })()}
 
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <h4 className="font-medium text-gray-900">Informacion</h4>
-              <p className="text-sm text-gray-600">Tipo: <Badge
+            <div className="bg-muted p-4 rounded-lg space-y-2">
+              <h4 className="font-medium text-foreground">Informacion</h4>
+              <p className="text-sm text-muted-foreground">Tipo: <Badge
                 variant={
                   selectedNotification.tipo === 'alerta' ? 'error' :
                   selectedNotification.tipo === 'warning' ? 'warning' :
@@ -296,25 +296,25 @@ export default function NotificationCenterPage() {
               >
                 {tipoConfig[selectedNotification.tipo].label}
               </Badge></p>
-              <p className="text-sm text-gray-600">Estado: <Badge variant={selectedNotification.leida ? 'success' : 'warning'}>{selectedNotification.leida ? 'Leida' : 'No leida'}</Badge></p>
+              <p className="text-sm text-muted-foreground">Estado: <Badge variant={selectedNotification.leida ? 'success' : 'warning'}>{selectedNotification.leida ? 'Leida' : 'No leida'}</Badge></p>
               {selectedNotification.categoria && (
-                <p className="text-sm text-gray-600">Categoria: <strong>{selectedNotification.categoria}</strong></p>
+                <p className="text-sm text-muted-foreground">Categoria: <strong>{selectedNotification.categoria}</strong></p>
               )}
             </div>
 
             {selectedNotification.accion && (
               <div>
-                <h4 className="font-medium text-gray-900 mb-2">Acciones</h4>
+                <h4 className="font-medium text-foreground mb-2">Acciones</h4>
                 <Button variant="outline" size="sm">
                   {selectedNotification.accion.texto}
                 </Button>
               </div>
             )}
 
-            <div className="bg-gray-50 p-4 rounded-lg space-y-1">
-              <h4 className="font-medium text-gray-900 mb-1">Historial</h4>
-              <p className="text-sm text-gray-600">Creada: {selectedNotification.fecha} {selectedNotification.hora} por el sistema</p>
-              <p className="text-sm text-gray-600">Estado actual: {selectedNotification.leida ? 'Leida' : 'No leida'}</p>
+            <div className="bg-muted p-4 rounded-lg space-y-1">
+              <h4 className="font-medium text-foreground mb-1">Historial</h4>
+              <p className="text-sm text-muted-foreground">Creada: {selectedNotification.fecha} {selectedNotification.hora} por el sistema</p>
+              <p className="text-sm text-muted-foreground">Estado actual: {selectedNotification.leida ? 'Leida' : 'No leida'}</p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">

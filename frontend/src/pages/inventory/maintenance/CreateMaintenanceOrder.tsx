@@ -83,17 +83,17 @@ export default function CreateMaintenanceOrder() {
         <Card>
           <CardContent className="p-6">
             {error && (
-              <div className="mb-4 p-3 text-sm text-red-700 bg-red-50 rounded-md">
+              <div className="mb-4 p-3 text-sm text-destructive bg-destructive/10 rounded-md">
                 {error}
               </div>
             )}
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">
+            <h3 className="text-lg font-semibold text-foreground mb-6">
               Nueva Orden de Mantenimiento
             </h3>
 
             <div className="space-y-4 max-w-lg">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Impresora *
                 </label>
                 <Select
@@ -106,7 +106,7 @@ export default function CreateMaintenanceOrder() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Tipo de Servicio *
                 </label>
                 <Select
@@ -117,7 +117,7 @@ export default function CreateMaintenanceOrder() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Fecha Programada *
                 </label>
                 <Input
@@ -128,20 +128,20 @@ export default function CreateMaintenanceOrder() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Descripción del Servicio *
                 </label>
                 <textarea
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
                   rows={3}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
                   placeholder="Describe el servicio de mantenimiento..."
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
                   Costo de Mano de Obra ($)
                 </label>
                 <Input
@@ -178,20 +178,20 @@ export default function CreateMaintenanceOrder() {
         title="Confirmar Creación"
       >
         <div className="space-y-3">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             ¿Estás seguro de que deseas crear esta orden de mantenimiento?
           </p>
           <div className="text-sm space-y-1">
             <p>
-              <span className="text-gray-500">Impresora:</span>{' '}
+              <span className="text-muted-foreground">Impresora:</span>{' '}
               {selectedPrinter?.label}
             </p>
             <p>
-              <span className="text-gray-500">Tipo:</span>{' '}
+              <span className="text-muted-foreground">Tipo:</span>{' '}
               {tipo === 'preventivo' ? 'Preventivo' : 'Correctivo'}
             </p>
           </div>
-          <div className="bg-amber-50 rounded p-3 text-xs text-amber-700 space-y-1">
+          <div className="bg-warning/10 rounded p-3 text-xs text-warning space-y-1">
             <p>• Creará la orden en estado PENDIENTE</p>
             {tipo === 'correctivo' && (
               <p>• La impresora cambiará a estado EN MANTENIMIENTO</p>
@@ -213,13 +213,13 @@ export default function CreateMaintenanceOrder() {
       >
         <div className="text-center space-y-4">
           <div className="flex justify-center">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-              <Check className="h-8 w-8 text-green-600" />
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-success/10">
+              <Check className="h-8 w-8 text-success" />
             </div>
           </div>
           <div>
             <p className="font-medium">Orden #{createdOrderId} creada</p>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               {selectedPrinter?.label} —{' '}
               {tipo === 'preventivo' ? 'Mantenimiento preventivo' : 'Mantenimiento correctivo'}
             </p>

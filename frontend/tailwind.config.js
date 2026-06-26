@@ -51,20 +51,20 @@ export default {
           foreground: 'hsl(var(--card-foreground))',
         },
         success: {
-          DEFAULT: '#10B981',
-          foreground: '#FFFFFF',
+          DEFAULT: 'hsl(var(--success))',
+          foreground: 'hsl(var(--success-foreground))',
         },
         warning: {
-          DEFAULT: '#F59E0B',
-          foreground: '#FFFFFF',
+          DEFAULT: 'hsl(var(--warning))',
+          foreground: 'hsl(var(--warning-foreground))',
         },
         error: {
-          DEFAULT: '#EF4444',
-          foreground: '#FFFFFF',
+          DEFAULT: 'hsl(var(--error))',
+          foreground: 'hsl(var(--error-foreground))',
         },
         info: {
-          DEFAULT: '#3B82F6',
-          foreground: '#FFFFFF',
+          DEFAULT: 'hsl(var(--info))',
+          foreground: 'hsl(var(--info-foreground))',
         },
       },
       borderRadius: {

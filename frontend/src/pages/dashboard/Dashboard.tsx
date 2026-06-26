@@ -22,7 +22,7 @@ export default function Dashboard() {
     return (
       <PageLayout title="Dashboard" showSearch>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
         </div>
       </PageLayout>
     )
@@ -32,7 +32,7 @@ export default function Dashboard() {
     return (
       <PageLayout title="Dashboard" showSearch>
         <div className="flex items-center justify-center h-64">
-          <p className="text-red-600">Error al cargar el dashboard</p>
+          <p className="text-destructive">Error al cargar el dashboard</p>
         </div>
       </PageLayout>
     )
@@ -107,7 +107,7 @@ export default function Dashboard() {
         title: task.cliente_nombre,
         subtitle: `${formatCurrency(task.saldo_pendiente)} - ${task.responsable}`,
         time: `Vence: ${task.fecha_vencimiento}`,
-        icon: <FileText className="h-4 w-4 text-red-500" />,
+        icon: <FileText className="h-4 w-4 text-destructive" />,
         status: 'high' as const,
         action: 'Registrar pago',
       }))
@@ -119,7 +119,7 @@ export default function Dashboard() {
         title: visita.cliente_nombre,
         subtitle: `${visita.responsable} - ${visita.num_impresoras} impresoras`,
         time: visita.hora,
-        icon: <Calendar className="h-4 w-4 text-blue-500" />,
+        icon: <Calendar className="h-4 w-4 text-primary" />,
         action: 'Marcar como completada',
       }))
     : []
@@ -170,7 +170,7 @@ export default function Dashboard() {
           <div className="grid gap-6 lg:grid-cols-2">
             {alerts.length > 0 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Alertas</h3>
+                <h3 className="text-lg font-semibold text-foreground">Alertas</h3>
                 {alerts.map((alert, index) => (
                   <AlertCard key={index} {...alert} />
                 ))}

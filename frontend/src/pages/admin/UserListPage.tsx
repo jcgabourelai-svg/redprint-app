@@ -169,8 +169,8 @@ export default function UserListPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestion de Usuarios</h2>
-          <p className="text-sm text-gray-500">Administra usuarios y roles del sistema</p>
+          <h2 className="text-2xl font-bold text-foreground">Gestion de Usuarios</h2>
+          <p className="text-sm text-muted-foreground">Administra usuarios y roles del sistema</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" />
@@ -180,11 +180,11 @@ export default function UserListPage() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Cargando usuarios...</p>
+          <p className="text-muted-foreground">Cargando usuarios...</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Error al cargar usuarios: {String(error)}</p>
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <p className="text-destructive">Error al cargar usuarios: {String(error)}</p>
         </div>
       ) : (
         <>
@@ -192,11 +192,11 @@ export default function UserListPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-blue-50 p-2">
-                    <Users className="h-5 w-5 text-blue-500" />
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Total Usuarios</p>
+                    <p className="text-sm text-muted-foreground">Total Usuarios</p>
                     <p className="text-lg font-bold">{users.length}</p>
                   </div>
                 </div>
@@ -205,11 +205,11 @@ export default function UserListPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-green-50 p-2">
-                    <ShieldCheck className="h-5 w-5 text-green-500" />
+                  <div className="rounded-lg bg-success/10 p-2">
+                    <ShieldCheck className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Activos</p>
+                    <p className="text-sm text-muted-foreground">Activos</p>
                     <p className="text-lg font-bold">{activoCount}</p>
                   </div>
                 </div>
@@ -218,11 +218,11 @@ export default function UserListPage() {
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-purple-50 p-2">
-                    <Shield className="h-5 w-5 text-purple-500" />
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Shield className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Roles</p>
+                    <p className="text-sm text-muted-foreground">Roles</p>
                     <p className="text-lg font-bold">{rolesCount} configurados</p>
                   </div>
                 </div>
@@ -230,44 +230,44 @@ export default function UserListPage() {
             </Card>
           </div>
 
-          <div className="bg-white rounded-lg border overflow-hidden">
+          <div className="bg-card rounded-lg border overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-gray-50 border-b">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Nombre</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Correo</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Rol</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Ultimo Acceso</th>
-                    <th className="text-center py-3 px-4 font-medium text-gray-600">Acciones</th>
+                  <tr className="bg-muted border-b">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nombre</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Correo</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Rol</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Ultimo Acceso</th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-gray-50">
+                    <tr key={user.id} className="border-b hover:bg-muted">
                       <td className="py-3 px-4 font-medium">{user.nombre}</td>
-                      <td className="py-3 px-4 text-gray-600">{user.email}</td>
+                      <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                       <td className="py-3 px-4 text-center">{renderRoleBadge(user)}</td>
                       <td className="py-3 px-4 text-center">
                         <Badge variant={user.activo ? 'success' : 'error'}>
                           {user.activo ? 'Activo' : 'Inactivo'}
                         </Badge>
                       </td>
-                      <td className="py-3 px-4 text-center text-gray-600 text-xs">{user.ultimo_acceso || 'Nunca'}</td>
+                      <td className="py-3 px-4 text-center text-muted-foreground text-xs">{user.ultimo_acceso || 'Nunca'}</td>
                       <td className="py-3 px-4 text-center">
                         <div className="flex items-center justify-center gap-1">
-                          <button className="p-1 hover:bg-gray-100 rounded" title="Ver detalle" onClick={() => { setSelectedUser(user); setShowDetailModal(true) }}>
-                            <Eye className="h-4 w-4 text-gray-500" />
+                          <button className="p-1 hover:bg-muted rounded" title="Ver detalle" onClick={() => { setSelectedUser(user); setShowDetailModal(true) }}>
+                            <Eye className="h-4 w-4 text-muted-foreground" />
                           </button>
-                          <button className="p-1 hover:bg-gray-100 rounded" title="Editar" onClick={() => openEdit(user)}>
-                            <Pencil className="h-4 w-4 text-blue-500" />
+                          <button className="p-1 hover:bg-muted rounded" title="Editar" onClick={() => openEdit(user)}>
+                            <Pencil className="h-4 w-4 text-primary" />
                           </button>
-                          <button className="p-1 hover:bg-gray-100 rounded" title="Resetear contrasena" onClick={() => openPassword(user)}>
-                            <Shield className="h-4 w-4 text-amber-500" />
+                          <button className="p-1 hover:bg-muted rounded" title="Resetear contrasena" onClick={() => openPassword(user)}>
+                            <Shield className="h-4 w-4 text-warning" />
                           </button>
-                          <button className="p-1 hover:bg-gray-100 rounded" title="Eliminar" onClick={() => { setDeletingUser(user); setShowDeleteModal(true) }}>
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                          <button className="p-1 hover:bg-muted rounded" title="Eliminar" onClick={() => { setDeletingUser(user); setShowDeleteModal(true) }}>
+                            <Trash2 className="h-4 w-4 text-destructive" />
                           </button>
                         </div>
                       </td>
@@ -278,7 +278,7 @@ export default function UserListPage() {
             </div>
           </div>
 
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-muted-foreground">
             Total: {users.length} usuarios
           </div>
         </>
@@ -289,10 +289,10 @@ export default function UserListPage() {
   return (
     <PageLayout title="Administracion" showSearch>
       <div className="space-y-6">
-        <div className="flex items-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <span>Sistema</span>
           <span>/</span>
-          <span className="text-gray-900 font-medium">Usuarios y Roles</span>
+          <span className="text-foreground font-medium">Usuarios y Roles</span>
         </div>
 
         <Tabs
@@ -312,7 +312,7 @@ export default function UserListPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Nombre completo *</label>
             <Input
               value={formData.nombre}
               onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
@@ -321,7 +321,7 @@ export default function UserListPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Correo electronico *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Correo electronico *</label>
             <Input
               type="email"
               value={formData.email}
@@ -333,7 +333,7 @@ export default function UserListPage() {
           {!editingUser && (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Contrasena *</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Contrasena *</label>
                 <Input
                   type="password"
                   value={formData.password}
@@ -343,7 +343,7 @@ export default function UserListPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar contrasena *</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Confirmar contrasena *</label>
                 <Input
                   type="password"
                   value={formData.confirmarPassword}
@@ -355,7 +355,7 @@ export default function UserListPage() {
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rol *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Rol *</label>
             <Select
               options={roleOptions}
               value={formData.rol_id}
@@ -365,7 +365,7 @@ export default function UserListPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Estado *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Estado *</label>
             <Select
               options={[
                 { value: 'true', label: 'Activo' },
@@ -377,8 +377,8 @@ export default function UserListPage() {
           </div>
 
           {formError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{formError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{formError}</p>
             </div>
           )}
 
@@ -401,18 +401,18 @@ export default function UserListPage() {
           size="lg"
         >
           <div className="space-y-4">
-            <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-              <p className="text-sm text-gray-600">Nombre: <strong>{selectedUser.nombre}</strong></p>
-              <p className="text-sm text-gray-600">Correo: <strong>{selectedUser.email}</strong></p>
-              <p className="text-sm text-gray-600">Rol: {renderRoleBadge(selectedUser)}</p>
-              <p className="text-sm text-gray-600">
+            <div className="bg-muted p-4 rounded-lg space-y-2">
+              <p className="text-sm text-muted-foreground">Nombre: <strong>{selectedUser.nombre}</strong></p>
+              <p className="text-sm text-muted-foreground">Correo: <strong>{selectedUser.email}</strong></p>
+              <p className="text-sm text-muted-foreground">Rol: {renderRoleBadge(selectedUser)}</p>
+              <p className="text-sm text-muted-foreground">
                 Estado:{' '}
                 <Badge variant={selectedUser.activo ? 'success' : 'error'}>
                   {selectedUser.activo ? 'Activo' : 'Inactivo'}
                 </Badge>
               </p>
-              <p className="text-sm text-gray-600">Creado: <strong>{formatDate(selectedUser.fecha_creacion)}</strong></p>
-              <p className="text-sm text-gray-600">Ultimo acceso: <strong>{selectedUser.ultimo_acceso || 'Nunca'}</strong></p>
+              <p className="text-sm text-muted-foreground">Creado: <strong>{formatDate(selectedUser.fecha_creacion)}</strong></p>
+              <p className="text-sm text-muted-foreground">Ultimo acceso: <strong>{selectedUser.ultimo_acceso || 'Nunca'}</strong></p>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
@@ -431,12 +431,12 @@ export default function UserListPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Desea resetear la contrasena del usuario <strong>{passwordUser?.nombre}</strong>?
             Esta accion enviara un correo para que el usuario establezca una nueva contrasena.
           </p>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nueva contrasena temporal *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Nueva contrasena temporal *</label>
             <Input
               type="password"
               value={passwordForm.password}
@@ -445,7 +445,7 @@ export default function UserListPage() {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Confirmar contrasena *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Confirmar contrasena *</label>
             <Input
               type="password"
               value={passwordForm.confirmarPassword}
@@ -455,8 +455,8 @@ export default function UserListPage() {
           </div>
 
           {passwordError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{passwordError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{passwordError}</p>
             </div>
           )}
 
@@ -481,7 +481,7 @@ export default function UserListPage() {
         size="sm"
       >
         <div className="space-y-4">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Estas seguro de que deseas eliminar al usuario <strong>{deletingUser?.nombre}</strong>?
             Esta accion no se puede deshacer.
           </p>
@@ -573,8 +573,8 @@ function RolesTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Gestion de Roles</h2>
-          <p className="text-sm text-gray-500">Define que opciones de menu puede ver cada rol</p>
+          <h2 className="text-2xl font-bold text-foreground">Gestion de Roles</h2>
+          <p className="text-sm text-muted-foreground">Define que opciones de menu puede ver cada rol</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" />
@@ -584,30 +584,30 @@ function RolesTab() {
 
       {isLoading ? (
         <div className="text-center py-12">
-          <p className="text-gray-500">Cargando roles...</p>
+          <p className="text-muted-foreground">Cargando roles...</p>
         </div>
       ) : error ? (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-800">Error al cargar roles: {String(error)}</p>
+        <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+          <p className="text-destructive">Error al cargar roles: {String(error)}</p>
         </div>
       ) : (
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-card rounded-lg border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-gray-50 border-b">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Rol</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">Tipo</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">Permisos</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">Acciones</th>
+                <tr className="bg-muted border-b">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Rol</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Permisos</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {roles.map((role) => (
-                  <tr key={role.id} className="border-b hover:bg-gray-50">
+                  <tr key={role.id} className="border-b hover:bg-muted">
                     <td className="py-3 px-4">
                       <p className="font-medium">{role.nombre}</p>
-                      {role.descripcion && <p className="text-xs text-gray-500">{role.descripcion}</p>}
+                      {role.descripcion && <p className="text-xs text-muted-foreground">{role.descripcion}</p>}
                     </td>
                     <td className="py-3 px-4 text-center">
                       {role.es_sistema ? (
@@ -619,26 +619,26 @@ function RolesTab() {
                         <Badge variant="neutral">Personalizado</Badge>
                       )}
                     </td>
-                    <td className="py-3 px-4 text-center text-gray-600">
+                    <td className="py-3 px-4 text-center text-muted-foreground">
                       {role.es_sistema ? 'Todos (bypass)' : `${role.permisos_count ?? role.permisos.length}`}
                     </td>
                     <td className="py-3 px-4 text-center">
                       <div className="flex items-center justify-center gap-1">
                         <button
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-muted rounded"
                           title={role.es_sistema ? 'Rol sistema (no editable)' : 'Editar'}
                           onClick={() => openEdit(role)}
                           disabled={role.es_sistema}
                         >
-                          <Pencil className={role.es_sistema ? 'h-4 w-4 text-gray-300' : 'h-4 w-4 text-blue-500'} />
+                          <Pencil className={role.es_sistema ? 'h-4 w-4 text-muted-foreground' : 'h-4 w-4 text-primary'} />
                         </button>
                         <button
-                          className="p-1 hover:bg-gray-100 rounded"
+                          className="p-1 hover:bg-muted rounded"
                           title={role.es_sistema ? 'Rol sistema (no eliminable)' : 'Eliminar'}
                           onClick={() => setDeleteTarget(role)}
                           disabled={role.es_sistema}
                         >
-                          <Trash2 className={role.es_sistema ? 'h-4 w-4 text-gray-300' : 'h-4 w-4 text-red-500'} />
+                          <Trash2 className={role.es_sistema ? 'h-4 w-4 text-muted-foreground' : 'h-4 w-4 text-destructive'} />
                         </button>
                       </div>
                     </td>
@@ -658,16 +658,16 @@ function RolesTab() {
       >
         <div className="space-y-4">
           {editingRole?.es_sistema && (
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
-              <Lock className="h-4 w-4 text-amber-600 mt-0.5" />
-              <p className="text-sm text-amber-800">
+            <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
+              <Lock className="h-4 w-4 text-warning mt-0.5" />
+              <p className="text-sm text-warning">
                 Este es un rol sistema. Sus permisos no se pueden modificar (tiene bypass total). Solo puedes editar el nombre.
               </p>
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del rol *</label>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Nombre del rol *</label>
             <Input
               value={roleName}
               onChange={(e) => setRoleName(e.target.value)}
@@ -677,26 +677,26 @@ function RolesTab() {
 
           {!editingRole?.es_sistema && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Permisos (opciones de menu)</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-2">Permisos (opciones de menu)</label>
               <div className="space-y-4 max-h-80 overflow-y-auto border rounded-lg p-3">
                 {moduloEntries.map(([modulo, permisos]) => (
                   <div key={modulo}>
-                    <p className="text-xs font-semibold uppercase text-gray-500 mb-2">{MODULO_LABELS[modulo] ?? modulo}</p>
+                    <p className="text-xs font-semibold uppercase text-muted-foreground mb-2">{MODULO_LABELS[modulo] ?? modulo}</p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {permisos.map((p) => {
                         const checked = selectedPermisos.has(p.clave)
                         return (
                           <label
                             key={p.clave}
-                            className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 cursor-pointer hover:bg-gray-50"
+                            className="flex items-center gap-2 rounded-md border border-border px-3 py-2 cursor-pointer hover:bg-muted"
                           >
                             <input
                               type="checkbox"
                               checked={checked}
                               onChange={() => togglePermiso(p.clave)}
-                              className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                              className="h-4 w-4 rounded border-input text-primary focus:ring-ring"
                             />
-                            <span className="text-sm text-gray-700">{p.etiqueta}</span>
+                            <span className="text-sm text-muted-foreground">{p.etiqueta}</span>
                           </label>
                         )
                       })}
@@ -708,8 +708,8 @@ function RolesTab() {
           )}
 
           {formError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{formError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{formError}</p>
             </div>
           )}
 
@@ -732,11 +732,11 @@ function RolesTab() {
       >
         <div className="space-y-4">
           {formError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-sm text-red-800">{formError}</p>
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{formError}</p>
             </div>
           )}
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Estas seguro de que deseas eliminar el rol <strong>{deleteTarget?.nombre}</strong>?
           </p>
           <div className="flex justify-end gap-3">

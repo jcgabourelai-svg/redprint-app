@@ -55,25 +55,25 @@ export default function Header({
   })()
 
   return (
-    <header className="sticky top-0 z-40 border-b border-gray-200 bg-white">
+    <header className="sticky top-0 z-40 border-b border-border bg-card">
       <div className="flex h-16 items-center justify-between px-4 lg:px-6">
         <button
           onClick={onMenuClick}
-          className="rounded-md p-2 hover:bg-gray-100 lg:hidden"
+          className="rounded-md p-2 hover:bg-muted lg:hidden"
         >
-          <Menu className="h-6 w-6 text-gray-600" />
+          <Menu className="h-6 w-6 text-muted-foreground" />
         </button>
 
-        <h1 className="text-lg font-semibold text-gray-900">{pageTitle}</h1>
+        <h1 className="text-lg font-semibold text-foreground">{pageTitle}</h1>
 
         <div className="flex items-center gap-4">
           {showSearch && (
             <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Buscar..."
-                className="w-64 rounded-md border border-gray-300 py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-64 rounded-md border border-input bg-card py-2 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
           )}
@@ -81,33 +81,33 @@ export default function Header({
           <div className="relative">
             <button
               onClick={() => setShowNotifications(!showNotifications)}
-              className="relative rounded-md p-2 hover:bg-gray-100"
+              className="relative rounded-md p-2 hover:bg-muted"
             >
-              <Bell className="h-5 w-5 text-gray-600" />
-              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white">
+              <Bell className="h-5 w-5 text-muted-foreground" />
+              <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-xs text-destructive-foreground">
                 3
               </span>
             </button>
 
             {showNotifications && (
-              <div className="absolute right-0 mt-2 w-80 rounded-md border border-gray-200 bg-white shadow-lg">
-                <div className="border-b border-gray-200 px-4 py-3">
+              <div className="absolute right-0 mt-2 w-80 rounded-md border border-border bg-popover shadow-lg">
+                <div className="border-b border-border px-4 py-3">
                   <h3 className="font-semibold">Notificaciones</h3>
                 </div>
                 <div className="max-h-96 overflow-y-auto">
-                  <div className="flex gap-3 border-b border-gray-100 p-4 hover:bg-gray-50">
-                    <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-red-500" />
+                  <div className="flex gap-3 border-b border-border p-4 hover:bg-muted">
+                    <div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-destructive" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         Factura vencida
                       </p>
-                      <p className="text-xs text-gray-500">
+                      <p className="text-xs text-muted-foreground">
                         Empresa A tiene una factura vencida de $12,500
                       </p>
                     </div>
                   </div>
                 </div>
-                <div className="border-t border-gray-200 p-3">
+                <div className="border-t border-border p-3">
                   <Button variant="ghost" size="sm" className="w-full">
                     Ver todas las notificaciones
                   </Button>
@@ -119,40 +119,40 @@ export default function Header({
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-3 rounded-md p-1 hover:bg-gray-100"
+              className="flex items-center gap-3 rounded-md p-1 hover:bg-muted"
             >
               <div className="hidden sm:block text-right">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-foreground">
                   {user?.nombre ?? 'Usuario'}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   {user ? (user.rol_nombre ?? (user.es_sistema ? 'Administrador' : 'Usuario')) : ''}
                 </p>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
                 {user?.nombre ? (
-                  <span className="text-sm font-semibold text-blue-600">
+                  <span className="text-sm font-semibold text-primary">
                     {user.nombre.charAt(0).toUpperCase()}
                   </span>
                 ) : (
-                  <User className="h-5 w-5 text-blue-600" />
+                  <User className="h-5 w-5 text-primary" />
                 )}
               </div>
             </button>
 
             {showUserMenu && (
-              <div className="absolute right-0 mt-2 w-56 rounded-md border border-gray-200 bg-white shadow-lg">
-                <div className="border-b border-gray-200 px-4 py-3">
-                  <p className="text-sm font-medium text-gray-900">
+              <div className="absolute right-0 mt-2 w-56 rounded-md border border-border bg-popover shadow-lg">
+                <div className="border-b border-border px-4 py-3">
+                  <p className="text-sm font-medium text-foreground">
                     {user?.nombre ?? 'Usuario'}
                   </p>
-                  <p className="truncate text-xs text-gray-500">{user?.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user?.email}</p>
                 </div>
                 <div className="p-2">
                   <button
                     onClick={handleLogout}
                     disabled={loggingOut}
-                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-50"
                   >
                     <LogOut className="h-4 w-4" />
                     Cerrar sesión

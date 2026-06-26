@@ -13,15 +13,15 @@ export default function WarehouseStats({ warehouse }: WarehouseStatsProps) {
       label: 'Total Impresoras',
       value: total.toString(),
       icon: Package,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
+      color: 'text-primary',
+      bg: 'bg-primary/10',
     },
     {
       label: 'Estado',
       value: warehouse.activo ? 'ACTIVO' : 'INACTIVO',
       icon: WarehouseIcon,
-      color: warehouse.activo ? 'text-green-600' : 'text-gray-600',
-      bg: warehouse.activo ? 'bg-green-50' : 'bg-gray-50',
+      color: warehouse.activo ? 'text-success' : 'text-muted-foreground',
+      bg: warehouse.activo ? 'bg-success/10' : 'bg-muted',
     },
   ]
 
@@ -35,7 +35,7 @@ export default function WarehouseStats({ warehouse }: WarehouseStatsProps) {
                 <stat.icon className={`h-5 w-5 ${stat.color}`} />
               </div>
               <div>
-                <p className="text-xs text-gray-500">{stat.label}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
                 <p className={`text-lg font-semibold ${stat.color}`}>{stat.value}</p>
               </div>
             </div>

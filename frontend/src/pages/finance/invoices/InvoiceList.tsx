@@ -38,9 +38,9 @@ export default function InvoiceList() {
       sortable: true,
       render: (_value: string, row: Invoice) => (
         <div>
-          <p className="font-medium text-gray-900">{row.numero}</p>
-          <p className="text-xs text-gray-500">Emisión: {formatDate(row.fecha_emision)}</p>
-          <p className="text-xs text-gray-400">Vence: {formatDate(row.fecha_vencimiento)}</p>
+          <p className="font-medium text-foreground">{row.numero}</p>
+          <p className="text-xs text-muted-foreground">Emisión: {formatDate(row.fecha_emision)}</p>
+          <p className="text-xs text-muted-foreground">Vence: {formatDate(row.fecha_vencimiento)}</p>
         </div>
       ),
     },
@@ -62,7 +62,7 @@ export default function InvoiceList() {
       label: 'Saldo Pendiente',
       sortable: true,
       render: (value: number) => (
-        <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`font-medium ${value > 0 ? 'text-destructive' : 'text-success'}`}>
           {formatCurrency(value)}
         </span>
       ),
@@ -83,18 +83,18 @@ export default function InvoiceList() {
       render: (_value: unknown, row: Invoice) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver detalle"
             onClick={(e) => {
               e.stopPropagation()
               navigate(`/finanzas/facturas/${row.id}`)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
           {row.saldo_pendiente > 0 && (
             <button
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded"
               title="Registrar pago"
               onClick={(e) => {
                 e.stopPropagation()
@@ -103,11 +103,11 @@ export default function InvoiceList() {
                 setShowPaymentModal(true)
               }}
             >
-              <DollarSign className="h-4 w-4 text-green-500" />
+              <DollarSign className="h-4 w-4 text-success" />
             </button>
           )}
-          <button className="p-1 hover:bg-gray-100 rounded" title="Eliminar">
-            <Trash2 className="h-4 w-4 text-gray-500" />
+          <button className="p-1 hover:bg-muted rounded" title="Eliminar">
+            <Trash2 className="h-4 w-4 text-muted-foreground" />
           </button>
         </div>
       ),
@@ -119,8 +119,8 @@ export default function InvoiceList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Cuentas por Cobrar</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Cuentas por Cobrar</h2>
+            <p className="text-sm text-muted-foreground">
               Facturas emitidas y seguimiento de pagos
             </p>
           </div>
@@ -132,11 +132,11 @@ export default function InvoiceList() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando facturas...</p>
+            <p className="text-muted-foreground">Cargando facturas...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar facturas: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar facturas: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -144,11 +144,11 @@ export default function InvoiceList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <FileText className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Facturas</p>
+                      <p className="text-sm text-muted-foreground">Total Facturas</p>
                       <p className="text-lg font-bold">{invoices.length}</p>
                     </div>
                   </div>
@@ -157,12 +157,12 @@ export default function InvoiceList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-red-50 p-2">
-                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    <div className="rounded-lg bg-destructive/10 p-2">
+                      <AlertCircle className="h-5 w-5 text-destructive" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Vencidas</p>
-                      <p className="text-lg font-bold text-red-600">{invoices.filter(i => i.estado === 'VENCIDA').length}</p>
+                      <p className="text-sm text-muted-foreground">Vencidas</p>
+                      <p className="text-lg font-bold text-destructive">{invoices.filter(i => i.estado === 'VENCIDA').length}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -170,11 +170,11 @@ export default function InvoiceList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-yellow-50 p-2">
-                      <DollarSign className="h-5 w-5 text-yellow-500" />
+                    <div className="rounded-lg bg-warning/10 p-2">
+                      <DollarSign className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Pendientes</p>
+                      <p className="text-sm text-muted-foreground">Pendientes</p>
                       <p className="text-lg font-bold">{invoices.filter(i => i.estado === 'PENDIENTE' || i.estado === 'PARCIALMENTE_PAGADA').length}</p>
                     </div>
                   </div>
@@ -183,12 +183,12 @@ export default function InvoiceList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-green-50 p-2">
-                      <DollarSign className="h-5 w-5 text-green-500" />
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <DollarSign className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Saldo Pendiente</p>
-                      <p className="text-lg font-bold text-red-600">{formatCurrency(totalPendiente)}</p>
+                      <p className="text-sm text-muted-foreground">Saldo Pendiente</p>
+                      <p className="text-lg font-bold text-destructive">{formatCurrency(totalPendiente)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -226,8 +226,8 @@ export default function InvoiceList() {
               emptyMessage="No hay facturas registradas"
             />
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Total pendiente: <strong className="text-red-600">{formatCurrency(totalPendiente)}</strong></span>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Total pendiente: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>
             </div>
           </>
         )}
@@ -241,15 +241,15 @@ export default function InvoiceList() {
       >
         {selectedInvoice && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Factura: <strong>{selectedInvoice.numero}</strong></p>
-              <p className="text-sm text-gray-600">Cliente: <strong>{selectedInvoice.cliente_nombre}</strong></p>
-              <p className="text-sm text-gray-600">Monto total: <strong>{formatCurrency(selectedInvoice.monto_total)}</strong></p>
-              <p className="text-sm text-gray-600">Saldo pendiente: <strong className="text-red-600">{formatCurrency(selectedInvoice.saldo_pendiente)}</strong></p>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">Factura: <strong>{selectedInvoice.numero}</strong></p>
+              <p className="text-sm text-muted-foreground">Cliente: <strong>{selectedInvoice.cliente_nombre}</strong></p>
+              <p className="text-sm text-muted-foreground">Monto total: <strong>{formatCurrency(selectedInvoice.monto_total)}</strong></p>
+              <p className="text-sm text-muted-foreground">Saldo pendiente: <strong className="text-destructive">{formatCurrency(selectedInvoice.saldo_pendiente)}</strong></p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha del pago *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha del pago *</label>
               <Input
                 type="date"
                 value={paymentForm.fecha}
@@ -258,7 +258,7 @@ export default function InvoiceList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Monto ($) *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Monto ($) *</label>
               <Input
                 type="number"
                 value={paymentForm.monto}
@@ -268,7 +268,7 @@ export default function InvoiceList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Método de pago *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Método de pago *</label>
               <Select
                 options={[
                   { value: 'EFECTIVO', label: 'Efectivo' },
@@ -281,7 +281,7 @@ export default function InvoiceList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Socio que registra *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Socio que registra *</label>
               <Select
                 options={[
                   { value: 'socio1', label: 'María López' },

@@ -21,10 +21,10 @@ function calcularDiasVencidos(fechaVencimiento: string): number {
 }
 
 function getDiasVencidosLabel(dias: number): { text: string; className: string } {
-  if (dias <= 0) return { text: 'Vigente', className: 'text-green-600' }
-  if (dias <= 15) return { text: `${dias} días`, className: 'text-yellow-600' }
-  if (dias <= 30) return { text: `${dias} días`, className: 'text-orange-600' }
-  return { text: `${dias} días`, className: 'text-red-600' }
+  if (dias <= 0) return { text: 'Vigente', className: 'text-success' }
+  if (dias <= 15) return { text: `${dias} días`, className: 'text-warning' }
+  if (dias <= 30) return { text: `${dias} días`, className: 'text-warning' }
+  return { text: `${dias} días`, className: 'text-destructive' }
 }
 
 export default function ReceivablesList() {
@@ -55,11 +55,11 @@ export default function ReceivablesList() {
       sortable: true,
       render: (_value: string, row: Invoice) => (
         <div>
-          <p className="font-medium text-gray-900">{row.numero}</p>
-          <p className="text-xs text-gray-500">Emisión: {formatDate(row.fecha_emision)}</p>
-          <p className="text-xs text-gray-400">Vence: {formatDate(row.fecha_vencimiento)}</p>
+          <p className="font-medium text-foreground">{row.numero}</p>
+          <p className="text-xs text-muted-foreground">Emisión: {formatDate(row.fecha_emision)}</p>
+          <p className="text-xs text-muted-foreground">Vence: {formatDate(row.fecha_vencimiento)}</p>
           {row.contrato_id && (
-            <p className="text-xs text-gray-400 mt-1">Contrato: {row.contrato_id}</p>
+            <p className="text-xs text-muted-foreground mt-1">Contrato: {row.contrato_id}</p>
           )}
         </div>
       ),
@@ -71,7 +71,7 @@ export default function ReceivablesList() {
       render: (_value: string, row: Invoice) => (
         <div>
           <p className="font-medium">{row.cliente_nombre}</p>
-          <p className="text-xs text-gray-500">{row.cliente_id}</p>
+          <p className="text-xs text-muted-foreground">{row.cliente_id}</p>
         </div>
       ),
     },
@@ -88,7 +88,7 @@ export default function ReceivablesList() {
       label: 'Saldo Pendiente',
       sortable: true,
       render: (value: number) => (
-        <span className={`font-medium ${value > 0 ? 'text-red-600' : 'text-green-600'}`}>
+        <span className={`font-medium ${value > 0 ? 'text-destructive' : 'text-success'}`}>
           {formatCurrency(value)}
         </span>
       ),
@@ -99,7 +99,7 @@ export default function ReceivablesList() {
       sortable: true,
       render: (value: string, row: Invoice) => {
         if (row.estado === 'PAGADA') {
-          return <span className="text-sm text-gray-400">—</span>
+          return <span className="text-sm text-muted-foreground">—</span>
         }
         const dias = calcularDiasVencidos(value)
         const { text, className } = getDiasVencidosLabel(dias)
@@ -126,7 +126,7 @@ export default function ReceivablesList() {
       render: (_value: unknown, row: Invoice) => (
         <div className="flex items-center gap-1">
           <button
-            className="p-1 hover:bg-gray-100 rounded"
+            className="p-1 hover:bg-muted rounded"
             title="Ver historial de pagos"
             onClick={(e) => {
               e.stopPropagation()
@@ -134,11 +134,11 @@ export default function ReceivablesList() {
               setShowHistoryModal(true)
             }}
           >
-            <Eye className="h-4 w-4 text-gray-500" />
+            <Eye className="h-4 w-4 text-muted-foreground" />
           </button>
           {row.saldo_pendiente > 0 && (
             <button
-              className="p-1 hover:bg-gray-100 rounded"
+              className="p-1 hover:bg-muted rounded"
               title="Registrar cobro"
               onClick={(e) => {
                 e.stopPropagation()
@@ -154,7 +154,7 @@ export default function ReceivablesList() {
                 setShowPaymentModal(true)
               }}
             >
-              <DollarSign className="h-4 w-4 text-green-500" />
+              <DollarSign className="h-4 w-4 text-success" />
             </button>
           )}
         </div>
@@ -169,8 +169,8 @@ export default function ReceivablesList() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Cuentas por Cobrar</h2>
-            <p className="text-sm text-gray-500">
+            <h2 className="text-2xl font-bold text-foreground">Cuentas por Cobrar</h2>
+            <p className="text-sm text-muted-foreground">
               Facturas emitidas y seguimiento de cobros a clientes
             </p>
           </div>
@@ -178,11 +178,11 @@ export default function ReceivablesList() {
 
         {isLoading ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">Cargando facturas...</p>
+            <p className="text-muted-foreground">Cargando facturas...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">Error al cargar facturas: {String(error)}</p>
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+            <p className="text-destructive">Error al cargar facturas: {String(error)}</p>
           </div>
         ) : (
           <>
@@ -190,11 +190,11 @@ export default function ReceivablesList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-blue-50 p-2">
-                      <FileText className="h-5 w-5 text-blue-500" />
+                    <div className="rounded-lg bg-primary/10 p-2">
+                      <FileText className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total Facturado</p>
+                      <p className="text-sm text-muted-foreground">Total Facturado</p>
                       <p className="text-lg font-bold">{formatCurrency(totalFacturado)}</p>
                     </div>
                   </div>
@@ -203,12 +203,12 @@ export default function ReceivablesList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-red-50 p-2">
-                      <AlertCircle className="h-5 w-5 text-red-500" />
+                    <div className="rounded-lg bg-destructive/10 p-2">
+                      <AlertCircle className="h-5 w-5 text-destructive" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Vencidas</p>
-                      <p className="text-lg font-bold text-red-600">
+                      <p className="text-sm text-muted-foreground">Vencidas</p>
+                      <p className="text-lg font-bold text-destructive">
                         {invoices.filter(inv => inv.estado === 'VENCIDA').length}
                       </p>
                     </div>
@@ -218,11 +218,11 @@ export default function ReceivablesList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-yellow-50 p-2">
-                      <Clock className="h-5 w-5 text-yellow-500" />
+                    <div className="rounded-lg bg-warning/10 p-2">
+                      <Clock className="h-5 w-5 text-warning" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Pendientes de Cobro</p>
+                      <p className="text-sm text-muted-foreground">Pendientes de Cobro</p>
                       <p className="text-lg font-bold">
                         {invoices.filter(inv => inv.estado === 'PENDIENTE' || inv.estado === 'PARCIALMENTE_PAGADA').length}
                       </p>
@@ -233,12 +233,12 @@ export default function ReceivablesList() {
               <Card>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="rounded-lg bg-green-50 p-2">
-                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    <div className="rounded-lg bg-success/10 p-2">
+                      <CheckCircle className="h-5 w-5 text-success" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Total por Cobrar</p>
-                      <p className="text-lg font-bold text-red-600">{formatCurrency(totalPendiente)}</p>
+                      <p className="text-sm text-muted-foreground">Total por Cobrar</p>
+                      <p className="text-lg font-bold text-destructive">{formatCurrency(totalPendiente)}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -278,8 +278,8 @@ export default function ReceivablesList() {
               emptyMessage="No hay cuentas por cobrar"
             />
 
-            <div className="flex items-center justify-between text-sm text-gray-600">
-              <span>Total por cobrar: <strong className="text-red-600">{formatCurrency(totalPendiente)}</strong></span>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <span>Total por cobrar: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>
             </div>
           </>
         )}
@@ -293,20 +293,20 @@ export default function ReceivablesList() {
       >
         {selectedInvoice && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
-              <p className="text-sm text-gray-600">Factura: <strong>{selectedInvoice.numero}</strong></p>
-              <p className="text-sm text-gray-600">Cliente: <strong>{selectedInvoice.cliente_nombre}</strong></p>
-              <p className="text-sm text-gray-600">Monto total: <strong>{formatCurrency(selectedInvoice.monto_total)}</strong></p>
-              <p className="text-sm text-gray-600">
-                Saldo pendiente: <strong className="text-red-600">{formatCurrency(selectedInvoice.saldo_pendiente)}</strong>
+            <div className="bg-muted p-3 rounded-lg">
+              <p className="text-sm text-muted-foreground">Factura: <strong>{selectedInvoice.numero}</strong></p>
+              <p className="text-sm text-muted-foreground">Cliente: <strong>{selectedInvoice.cliente_nombre}</strong></p>
+              <p className="text-sm text-muted-foreground">Monto total: <strong>{formatCurrency(selectedInvoice.monto_total)}</strong></p>
+              <p className="text-sm text-muted-foreground">
+                Saldo pendiente: <strong className="text-destructive">{formatCurrency(selectedInvoice.saldo_pendiente)}</strong>
               </p>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 Vencimiento: <strong>{formatDate(selectedInvoice.fecha_vencimiento)}</strong>
               </p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha del cobro *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha del cobro *</label>
               <Input
                 type="date"
                 value={paymentForm.fecha}
@@ -315,7 +315,7 @@ export default function ReceivablesList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Monto ($) *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Monto ($) *</label>
               <Input
                 type="number"
                 value={paymentForm.monto}
@@ -325,7 +325,7 @@ export default function ReceivablesList() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Método de pago *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Método de pago *</label>
               <Select
                 options={[
                   { value: 'EFECTIVO', label: 'Efectivo' },
@@ -339,7 +339,7 @@ export default function ReceivablesList() {
 
             {(paymentForm.metodo === 'TRANSFERENCIA' || paymentForm.metodo === 'DEPOSITO') && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Cuenta bancaria de destino</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Cuenta bancaria de destino</label>
                 <Select
                   options={[
                     { value: 'cuenta-1', label: 'Cuenta principal - BBVA' },
@@ -354,7 +354,7 @@ export default function ReceivablesList() {
 
             {(paymentForm.metodo === 'TRANSFERENCIA' || paymentForm.metodo === 'DEPOSITO') && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Referencia</label>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Referencia</label>
                 <Input
                   type="text"
                   value={paymentForm.referencia}
@@ -365,7 +365,7 @@ export default function ReceivablesList() {
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Socio que registra *</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Socio que registra *</label>
               <Select
                 options={[
                   { value: 'socio1', label: 'María López' },
@@ -394,13 +394,13 @@ export default function ReceivablesList() {
       >
         {historyInvoice && (
           <div className="space-y-4">
-            <div className="bg-gray-50 p-3 rounded-lg">
+            <div className="bg-muted p-3 rounded-lg">
               <div className="grid grid-cols-2 gap-2">
-                <p className="text-sm text-gray-600">Factura: <strong>{historyInvoice.numero}</strong></p>
-                <p className="text-sm text-gray-600">Cliente: <strong>{historyInvoice.cliente_nombre}</strong></p>
-                <p className="text-sm text-gray-600">Monto total: <strong>{formatCurrency(historyInvoice.monto_total)}</strong></p>
-                <p className="text-sm text-gray-600">
-                  Saldo pendiente: <strong className="text-red-600">{formatCurrency(historyInvoice.saldo_pendiente)}</strong>
+                <p className="text-sm text-muted-foreground">Factura: <strong>{historyInvoice.numero}</strong></p>
+                <p className="text-sm text-muted-foreground">Cliente: <strong>{historyInvoice.cliente_nombre}</strong></p>
+                <p className="text-sm text-muted-foreground">Monto total: <strong>{formatCurrency(historyInvoice.monto_total)}</strong></p>
+                <p className="text-sm text-muted-foreground">
+                  Saldo pendiente: <strong className="text-destructive">{formatCurrency(historyInvoice.saldo_pendiente)}</strong>
                 </p>
               </div>
             </div>
