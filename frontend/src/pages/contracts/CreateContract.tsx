@@ -99,9 +99,9 @@ export default function CreateContract() {
       frecuencia_visitas: frecuencia,
       tarifa_base: parseFloat(tarifa_base),
       paginas_incluidas: parseInt(paginas_incluidas),
-      costo_por_pagina_excedente: parseFloat(costo_por_pagina_excedente),
+      costo_pag_excedente: parseFloat(costo_por_pagina_excedente),
       impresoras: selectedPrinters.map((printerId) => ({
-        impresora_id: printerId,
+        id: printerId,
         lectura_inicial: parseInt(lecturas_iniciales[printerId]) || 0,
       })),
     }
