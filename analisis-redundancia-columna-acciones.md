@@ -13,8 +13,8 @@
 
 | # | Módulo | Fila clickeable | Col. Acciones | Vista Detalle | Veredicto |
 |---|--------|:---:|---|:---:|---|
-| 1 | **Almacenes** | ✅ → detalle | `👁 Ver`, `✏️ Editar`, `🗑 Eliminar` | ✅ (Editar + Eliminar) | **Quitar columna** — `Ver` y `Editar` van al mismo destino |
-| 2 | **Impresoras** | ✅ → detalle | `⋮` **muerto** | ✅ (Editar / Eliminar / Dar de baja) | **Quitar columna** — botón sin handler |
+| 1 | **Almacenes** | ✅ → detalle | ~~`👁 Ver`, `✏️ Editar`, `🗑 Eliminar`~~ | ✅ (Editar + Eliminar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
+| 2 | **Impresoras** | ✅ → detalle | ~~`⋮` **muerto**~~ | ✅ (Editar / Eliminar / Dar de baja) | ✅ **Hecho** — columna muerta quitada; fila clickeable → detalle |
 | 3 | **Movimientos** | ❌ | `👁 Ver` **muerto**, `🗑 Eliminar` **muerto** | ❌ NO existe | **Reducir/Implementar** — columna inertre, sin detalle |
 | 4 | **Mantenimiento** | ✅ → detalle | `👁 Ver` (= click fila) | ✅ (Editar / Completar / Cancelar / Eliminar) | **Quitar columna** — `Eye` duplica la fila |
 | 5 | **Artículos** | ✅ → detalle | `⋮` **muerto** | ✅ (Dar de baja) | **Quitar columna** — botón sin handler |
@@ -110,7 +110,12 @@ const handleDelete = (id) => setShowDeleteModal(id)                   // → mod
 - Redundante con fila: `👁 Ver` y `✏️ Editar` (los 3 llevan al mismo destino).
 - Redundante con detalle: `🗑 Eliminar` (el detalle ya lo tiene).
 - Únicos: **ninguno**.
-- **👉 QUITAR columna Acciones.** Dejar fila clickeable → detalle.
+- **✅ HECHO.** Columna Acciones quitada de `WarehouseTable.tsx` (eliminados
+  `Eye`, `Pencil`, `Trash2` y sus props `onEdit`/`onDelete`). La fila (tabla) y
+  la tarjeta (`WarehouseCard`, móvil) ahora son clickeables → detalle. Se
+  eliminaron del `WarehouseList.tsx` el handler `handleEdit`, el `handleDelete`,
+  el `confirmDelete`, el modal de borrado y el hook `useDeleteWarehouse` (todo
+  cubierto por la vista de detalle).
 
 ---
 
@@ -129,7 +134,9 @@ const handleDelete = (id) => setShowDeleteModal(id)                   // → mod
 **Veredicto:**
 - Redundante: la columna entera (el único botón no hace nada).
 - Únicos: ninguno.
-- **👉 QUITAR columna Acciones.** Todo se alcanza vía fila → detalle.
+- **✅ HECHO.** Columna `acciones` eliminada de `PrinterList.tsx` junto con el
+  import `MoreVertical`. La fila ya era clickeable → detalle, que cubre Editar /
+  Eliminar / Dar de baja.
 
 ---
 
@@ -371,16 +378,16 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 > El detalle ya cubre todo. Dejar la fila clickeable y eliminar la columna.
 > Aprovechar para quitar el `e.stopPropagation()` sobrante.
 
-| Módulo | Archivo Lista | Acciones a eliminar |
-|--------|---------------|---------------------|
-| Almacenes | `WarehouseTable.tsx` | `Eye`, `Pencil`, `Trash2` |
-| Impresoras | `PrinterList.tsx` | `⋮` (muerto) |
-| Mantenimiento | `MaintenanceList.tsx` | `Eye` |
-| Artículos | `ArticleList.tsx` | `⋮` (muerto) |
-| Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` |
-| Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` |
-| Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) |
-| Lecturas | `ReadingListPage.tsx` | `Eye` |
+| Módulo | Archivo Lista | Acciones a eliminar | Estado |
+|--------|---------------|---------------------|:---:|
+| Almacenes | `WarehouseTable.tsx` | `Eye`, `Pencil`, `Trash2` | ✅ |
+| Impresoras | `PrinterList.tsx` | `⋮` (muerto) | ✅ |
+| Mantenimiento | `MaintenanceList.tsx` | `Eye` | ⬜ |
+| Artículos | `ArticleList.tsx` | `⋮` (muerto) | ⬜ |
+| Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` | ⬜ |
+| Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ⬜ |
+| Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) | ⬜ |
+| Lecturas | `ReadingListPage.tsx` | `Eye` | ⬜ |
 
 ### 🟡 Grupo B — Mantener columna pero fixear/implementar handlers (5 módulos)
 
@@ -410,20 +417,20 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 
 ### 5.1 Botones "muertos" (sin `onClick`) — ~13
 
-| Archivo | Botón | Línea |
-|---------|-------|-------|
-| `PrinterList.tsx` | `⋮` MoreVertical | `:106-110` |
-| `ArticleList.tsx` | `⋮` MoreVertical | `:286-290` |
-| `MovementList.tsx` | `Eye`, `Trash2` | `:181-186` |
-| `PurchaseList.tsx` | `$` Registrar pago | `:157-162` |
-| `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` |
-| `InvoiceList.tsx` | `Trash2` Eliminar | `:109-111` |
-| `ClientList.tsx` | `⋮` Más opciones | `:109-111` |
-| `ContractList.tsx` | `⋮` Más opciones | `:124-126` |
-| `ArticleDetail.tsx` | `Editar` | `:84-87` |
-| `ClientDetail.tsx` | `Editar`, `Eliminar` | `:96-103` |
-| `ContractDetail.tsx` | `Editar`, `Asignar`, `Liberar` | `:97-100, 229-232, 272-274` |
-| `VisitDetailPage.tsx` | `Editar`, `Imprimir`, `Cancelar visita` | `:125-132, 303-306` |
+| Archivo | Botón | Línea | Estado |
+|---------|-------|-------|:---:|
+| ~~`PrinterList.tsx`~~ | ~~`⋮` MoreVertical~~ | ~~`:106-110`~~ | ✅ |
+| `ArticleList.tsx` | `⋮` MoreVertical | `:286-290` | ⬜ |
+| `MovementList.tsx` | `Eye`, `Trash2` | `:181-186` | ⬜ |
+| `PurchaseList.tsx` | `$` Registrar pago | `:157-162` | ⬜ |
+| `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` | ⬜ |
+| `InvoiceList.tsx` | `Trash2` Eliminar | `:109-111` | ⬜ |
+| `ClientList.tsx` | `⋮` Más opciones | `:109-111` | ⬜ |
+| `ContractList.tsx` | `⋮` Más opciones | `:124-126` | ⬜ |
+| `ArticleDetail.tsx` | `Editar` | `:84-87` | ⬜ |
+| `ClientDetail.tsx` | `Editar`, `Eliminar` | `:96-103` | ⬜ |
+| `ContractDetail.tsx` | `Editar`, `Asignar`, `Liberar` | `:97-100, 229-232, 272-274` | ⬜ |
+| `VisitDetailPage.tsx` | `Editar`, `Imprimir`, `Cancelar visita` | `:125-132, 303-306` | ⬜ |
 
 ### 5.2 Bugs funcionales
 

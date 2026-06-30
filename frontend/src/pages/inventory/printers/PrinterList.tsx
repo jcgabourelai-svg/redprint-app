@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Printer as PrinterIcon, Plus, MoreVertical } from 'lucide-react'
+import { Printer as PrinterIcon, Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table, { type FilterConfig } from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
@@ -98,15 +98,6 @@ export default function PrinterList() {
       sortable: true,
       render: (value: number) => (
         <span className="tabular-nums">{(value ?? 0).toLocaleString('es-MX')}</span>
-      ),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: (_value: unknown, _row: any) => (
-        <button className="p-1 hover:bg-muted rounded">
-          <MoreVertical className="h-4 w-4" />
-        </button>
       ),
     },
   ]

@@ -7,7 +7,7 @@ import Modal from '@/components/ui/Modal'
 import WarehouseTable from '@/components/warehouse/WarehouseTable'
 import WarehouseCard from '@/components/warehouse/WarehouseCard'
 import WarehouseForm from '@/components/warehouse/WarehouseForm'
-import { useWarehouses, useCreateWarehouse, useDeleteWarehouse } from '@/hooks/useWarehouses'
+import { useWarehouses, useCreateWarehouse } from '@/hooks/useWarehouses'
 import { useIsAdmin } from '@/contexts/AuthContext'
 
 
@@ -19,14 +19,11 @@ export default function WarehouseList() {
   const [responsableFilter, setResponsableFilter] = useState<string>('all')
   const [showFilters, setShowFilters] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null)
-  const [deleteError, setDeleteError] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const pageSize = 25
 
   const { data, isLoading, error } = useWarehouses({ page: currentPage, per_page: pageSize })
   const createMutation = useCreateWarehouse()
-  const deleteMutation = useDeleteWarehouse()
 
   const warehouses = data?.data || []
 
@@ -75,29 +72,6 @@ export default function WarehouseList() {
     (id: string) => navigate(`/inventario/almacenes/${id}`),
     [navigate]
   )
-
-  const handleEdit = useCallback(
-    (id: string) => navigate(`/inventario/almacenes/${id}`),
-    [navigate]
-  )
-
-  const handleDelete = useCallback(
-    (id: string) => setShowDeleteModal(id),
-    []
-  )
-
-  const confirmDelete = useCallback(() => {
-    if (!showDeleteModal) return
-    setDeleteError('')
-    deleteMutation.mutate(showDeleteModal, {
-      onSuccess: () => setShowDeleteModal(null),
-      onError: (err: any) => {
-        setDeleteError(
-          err?.response?.data?.message || 'No se pudo eliminar el almacén'
-        )
-      },
-    })
-  }, [showDeleteModal, deleteMutation])
 
   const handleCreate = useCallback(
     (data: WarehouseFormData) => {
@@ -269,8 +243,6 @@ export default function WarehouseList() {
               <WarehouseTable
                 warehouses={paginated}
                 onView={handleView}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
               />
             </div>
             <div className="md:hidden space-y-4">
@@ -279,8 +251,6 @@ export default function WarehouseList() {
                   key={w.id}
                   warehouse={w}
                   onView={handleView}
-                  onEdit={handleEdit}
-                  onDelete={handleDelete}
                 />
               ))}
             </div>
@@ -328,30 +298,6 @@ export default function WarehouseList() {
           onSubmit={handleCreate}
           onCancel={() => setShowCreateModal(false)}
         />
-      </Modal>
-
-      <Modal
-        isOpen={!!showDeleteModal}
-        onClose={() => setShowDeleteModal(null)}
-        title="Eliminar Almacén"
-        size="sm"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">
-            ¿Estás seguro de que deseas eliminar este almacén? Esta acción no se puede deshacer.
-          </p>
-          {deleteError && (
-            <p className="text-sm text-destructive">{deleteError}</p>
-          )}
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" size="sm" onClick={() => setShowDeleteModal(null)} disabled={deleteMutation.isPending}>
-              Cancelar
-            </Button>
-            <Button variant="danger" size="sm" onClick={confirmDelete} disabled={deleteMutation.isPending}>
-              {deleteMutation.isPending ? 'Eliminando...' : 'Eliminar'}
-            </Button>
-          </div>
-        </div>
       </Modal>
     </PageLayout>
   )

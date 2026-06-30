@@ -1,22 +1,17 @@
-import { Eye, Pencil, Trash2 } from 'lucide-react'
 import Table from '@/components/ui/Table'
 import Badge from '@/components/ui/Badge'
 import type { Warehouse } from '@/types/warehouse'
 
 export interface WarehouseTableProps {
   warehouses: Warehouse[]
-  onEdit?: (id: string) => void
   onView?: (id: string) => void
-  onDelete?: (id: string) => void
   loading?: boolean
   emptyMessage?: string
 }
 
 export default function WarehouseTable({
   warehouses,
-  onEdit,
   onView,
-  onDelete,
   emptyMessage = 'No hay almacenes registrados',
 }: WarehouseTableProps) {
   const columns = [
@@ -65,41 +60,6 @@ export default function WarehouseTable({
         <Badge variant={value ? 'success' : 'neutral'}>
           {value ? 'ACTIVO' : 'INACTIVO'}
         </Badge>
-      ),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: (_value: unknown, row: Warehouse) => (
-        <div className="flex items-center gap-1">
-          {onView && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onView(row.id) }}
-              className="p-1 hover:bg-muted rounded"
-              aria-label="Ver detalle"
-            >
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
-          {onEdit && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onEdit(row.id) }}
-              className="p-1 hover:bg-muted rounded"
-              aria-label="Editar"
-            >
-              <Pencil className="h-4 w-4 text-muted-foreground" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              onClick={(e) => { e.stopPropagation(); onDelete(row.id) }}
-              className="p-1 hover:bg-destructive/10 rounded"
-              aria-label="Eliminar"
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </button>
-          )}
-        </div>
       ),
     },
   ]
