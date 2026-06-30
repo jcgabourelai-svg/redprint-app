@@ -16,7 +16,7 @@
 | 1 | **Almacenes** | ✅ → detalle | ~~`👁 Ver`, `✏️ Editar`, `🗑 Eliminar`~~ | ✅ (Editar + Eliminar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
 | 2 | **Impresoras** | ✅ → detalle | ~~`⋮` **muerto**~~ | ✅ (Editar / Eliminar / Dar de baja) | ✅ **Hecho** — columna muerta quitada; fila clickeable → detalle |
 | 3 | **Movimientos** | ✅ → modal | ~~`👁 Ver` **muerto**, `🗑 Eliminar` **muerto**~~ | ✅ (modal solo-lectura) | ✅ **Hecho** — lista reconstruida al esquema real del API, columna "Acciones" muerta quitada, fila clickeable → modal de solo lectura, "Nuevo Movimiento" eliminado (sin backend). a11y de teclado pospuesta (§5.3). |
-| 4 | **Mantenimiento** | ✅ → detalle | `👁 Ver` (= click fila) | ✅ (Editar / Completar / Cancelar / Eliminar) | **Quitar columna** — `Eye` duplica la fila |
+| 4 | **Mantenimiento** | ✅ → detalle | ~~`👁 Ver` (= click fila)~~ | ✅ (Editar / Completar / Cancelar / Eliminar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
 | 5 | **Artículos** | ✅ → detalle | `⋮` **muerto** | ✅ (Dar de baja) | **Quitar columna** — botón sin handler |
 | 6 | **Compras** | ✅ → detalle | `👁 Ver`(dup), `+ Recibir`(dup), `$ Pago`(**muerto**), `🗑 Cancelar`(dup+bug) | ✅ (Recibir / Cancelar) | **Quitar columna** — todo duplica o está roto |
 | 7 | **Cuentas por Cobrar** | ❌ | `👁 Historial`(modal), `$ Cobro`(modal, no persiste) | ❌ NO existe | **Mantener** — única vía (cablear API) |
@@ -32,8 +32,8 @@
 
 - **5 módulos** deben **quitar la columna Acciones** y dejar la fila clickeable:
   Almacenes ✅, Impresoras ✅ (ambos ya hechos) y Movimientos ✅ (hecho — fila
-  clickeable → modal de solo lectura, sin columna); más Mantenimiento, Artículos,
-  Compras, Clientes, Contratos y Lecturas (pendientes). *(Movimientos es un caso
+  clickeable → modal de solo lectura, sin columna); Mantenimiento ✅ (hecho); más
+  Artículos, Compras, Clientes, Contratos y Lecturas (pendientes). *(Movimientos es un caso
   especial: no tiene ruta de detalle, pero se resolvió con un modal en vez de columna.)*
 - **4 módulos** deben **mantener una columna de acciones** porque **no existe**
   vista de detalle y la fila no es clickeable: Cuentas por Cobrar, Pagos,
@@ -207,7 +207,10 @@ no había ruta `POST/store` (solo `index` + `show`).
 **Veredicto:**
 - Redundante con fila: `👁 Ver` (idéntico destino).
 - Únicos: ninguno.
-- **👉 QUITAR columna Acciones.** El detalle cubre todo.
+- **✅ HECHO.** Columna `acciones` eliminada de `MaintenanceList.tsx` (eliminados el
+  botón `Eye` y su `e.stopPropagation()`), junto con el import `Eye` que quedó sin
+  uso. La fila clickeable ya cubre el acceso al detalle (Editar / Completar /
+  Cancelar / Eliminar).
 
 ---
 
@@ -414,7 +417,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 |--------|---------------|---------------------|:---:|
 | Almacenes | `WarehouseTable.tsx` | `Eye`, `Pencil`, `Trash2` | ✅ |
 | Impresoras | `PrinterList.tsx` | `⋮` (muerto) | ✅ |
-| Mantenimiento | `MaintenanceList.tsx` | `Eye` | ⬜ |
+| Mantenimiento | `MaintenanceList.tsx` | `Eye` | ✅ |
 | Artículos | `ArticleList.tsx` | `⋮` (muerto) | ⬜ |
 | Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` | ⬜ |
 | Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ⬜ |

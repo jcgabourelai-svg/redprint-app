@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Plus, Eye } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
@@ -74,24 +74,6 @@ export default function MaintenanceList() {
       label: 'Costo',
       sortable: true,
       render: (value: number) => formatCurrency(value),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: (_value: unknown, row: any) => (
-        <div className="flex items-center gap-1">
-          <button
-            className="p-1 hover:bg-muted rounded"
-            title="Ver detalle"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/inventario/mantenimiento/${row.id}`)
-            }}
-          >
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
-      ),
     },
   ]
 
