@@ -84,7 +84,7 @@ export default function CaptureReadingPage() {
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
           <p className="text-muted-foreground">ID de visita inválido</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/visitas')}>
             Volver al calendario
           </Button>
         </div>
@@ -107,7 +107,7 @@ export default function CaptureReadingPage() {
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
           <p className="text-destructive">{parseApiError(error)}</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/visitas')}>
             Volver al calendario
           </Button>
         </div>
@@ -410,7 +410,7 @@ export default function CaptureReadingPage() {
               variant="secondary"
               onClick={() => {
                 setShowSavedModal(false)
-                navigate('/operaciones/calendario')
+                navigate('/operaciones/visitas')
               }}
             >
               Cerrar

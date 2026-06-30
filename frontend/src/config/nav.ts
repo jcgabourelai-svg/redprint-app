@@ -72,7 +72,7 @@ export const navItems: NavItem[] = [
     icon: Calendar,
     path: '/operaciones',
     children: [
-      { id: 'calendario', label: 'Calendario', icon: Calendar, path: '/operaciones/calendario', permiso: 'operaciones.calendario' },
+      { id: 'calendario', label: 'Visitas', icon: Calendar, path: '/operaciones/visitas', permiso: 'operaciones.calendario' },
       { id: 'lecturas', label: 'Lecturas', icon: FileText, path: '/operaciones/lecturas', permiso: 'operaciones.lecturas' },
     ],
   },

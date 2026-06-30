@@ -61,7 +61,8 @@ function App() {
           <Route path="contratos" element={<RequirePermission permiso="contratos"><ContractList /></RequirePermission>} />
           <Route path="contratos/crear" element={<RequirePermission permiso="contratos"><CreateContract /></RequirePermission>} />
           <Route path="contratos/:id" element={<RequirePermission permiso="contratos"><ContractDetail /></RequirePermission>} />
-          <Route path="operaciones/calendario" element={<RequirePermission permiso="operaciones.calendario"><CalendarPage /></RequirePermission>} />
+          <Route path="operaciones/calendario" element={<Navigate to="/operaciones/visitas" replace />} />
+          <Route path="operaciones/visitas" element={<RequirePermission permiso="operaciones.calendario"><CalendarPage /></RequirePermission>} />
           <Route path="operaciones/visitas/:id" element={<RequirePermission permiso="operaciones.calendario"><VisitDetailPage /></RequirePermission>} />
           <Route path="operaciones/lecturas" element={<RequirePermission permiso="operaciones.lecturas"><ReadingListPage /></RequirePermission>} />
           <Route path="operaciones/lecturas/:visitaId" element={<RequirePermission permiso="operaciones.lecturas"><CaptureReadingPage /></RequirePermission>} />

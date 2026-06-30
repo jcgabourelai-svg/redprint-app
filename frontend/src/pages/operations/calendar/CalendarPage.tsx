@@ -1,14 +1,15 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Filter, Eye, ClipboardList, Clock, User as UserIcon, Printer } from 'lucide-react'
+import { Plus, Eye, ClipboardList, Calendar as CalendarIcon, List } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Calendar from '@/components/ui/Calendar'
+import Table from '@/components/ui/Table'
+import type { Column } from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import type { CalendarEvent } from '@/components/ui/Calendar'
 import type { Visit, VisitType, VisitStatus } from '@/types/operations'
 import { useVisits } from '@/hooks/useVisits'
@@ -51,10 +52,21 @@ const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'ne
   CANCELADA: 'neutral',
 }
 
+type VisitView = 'calendario' | 'lista'
+
+const VIEW_KEY = 'redprint.visitas-view'
+
+function getInitialView(): VisitView {
+  const saved = localStorage.getItem(VIEW_KEY)
+  if (saved === 'calendario' || saved === 'lista') return saved
+  return window.matchMedia('(min-width: 1024px)').matches ? 'calendario' : 'lista'
+}
+
 export default function CalendarPage() {
   const navigate = useNavigate()
   const [socioFilter, setSocioFilter] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
+  const [view, setView] = useState<VisitView>(getInitialView)
   const [showNewVisitModal, setShowNewVisitModal] = useState(false)
   const [newVisit, setNewVisit] = useState({
     cliente_id: '',
@@ -67,6 +79,10 @@ export default function CalendarPage() {
 
   const { data: visitsData, isLoading, error } = useVisits()
   const visits = visitsData?.data || []
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_KEY, view)
+  }, [view])
 
   const filteredVisits = useMemo(() => {
     return visits.filter((v) => {
@@ -85,11 +101,79 @@ export default function CalendarPage() {
     time: v.hora_programada,
   }))
 
-  const visitasDelMes = filteredVisits
+  const columns: Column<Visit>[] = [
+    {
+      key: 'fecha_programada',
+      label: 'Fecha',
+      sortable: true,
+      render: (value) => (value ? formatDate(value) : '-'),
+    },
+    {
+      key: 'cliente_nombre',
+      label: 'Cliente',
+      render: (value) => value || '-',
+    },
+    {
+      key: 'socio_asignado',
+      label: 'Socio',
+      render: (value) => value || '-',
+    },
+    {
+      key: 'hora_programada',
+      label: 'Hora',
+      render: (value) => value || '-',
+    },
+    {
+      key: 'impresoras',
+      label: '# Impresoras',
+      render: (_value, row) => row.impresoras?.length ?? 0,
+    },
+    {
+      key: 'estado',
+      label: 'Estado',
+      render: (value) => (
+        <Badge variant={estadoVariant[value as VisitStatus]}>
+          {estadoLabels[value as VisitStatus]}
+        </Badge>
+      ),
+    },
+    {
+      key: 'acciones',
+      label: 'Acciones',
+      render: (_value, row) => (
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              navigate(`/operaciones/visitas/${row.id}`)
+            }}
+          >
+            <Eye className="mr-1 h-3 w-3" />
+            Ver
+          </Button>
+          {row.estado === 'PENDIENTE' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation()
+                navigate(`/operaciones/lecturas/${row.id}`)
+              }}
+            >
+              <ClipboardList className="mr-1 h-3 w-3" />
+              Capturar lecturas
+            </Button>
+          )}
+        </div>
+      ),
+    },
+  ]
 
   if (isLoading) {
     return (
-      <PageLayout title="Operaciones › Calendario de Visitas">
+      <PageLayout title="Operaciones › Visitas">
         <div className="flex items-center justify-center py-12">
           <p className="text-muted-foreground">Cargando visitas...</p>
         </div>
@@ -99,7 +183,7 @@ export default function CalendarPage() {
 
   if (error) {
     return (
-      <PageLayout title="Operaciones › Calendario de Visitas">
+      <PageLayout title="Operaciones › Visitas">
         <div className="flex items-center justify-center py-12">
           <p className="text-destructive">{parseApiError(error)}</p>
         </div>
@@ -108,19 +192,39 @@ export default function CalendarPage() {
   }
 
   return (
-    <PageLayout title="Operaciones › Calendario de Visitas">
+    <PageLayout title="Operaciones › Visitas">
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Calendario de Visitas</h2>
+            <h2 className="text-2xl font-bold text-foreground">Visitas</h2>
             <p className="text-sm text-muted-foreground">
               Programación y seguimiento de visitas de campo
             </p>
           </div>
-          <Button onClick={() => setShowNewVisitModal(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva visita
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md border border-border overflow-hidden">
+              <Button
+                variant={view === 'calendario' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setView('calendario')}
+              >
+                <CalendarIcon className="mr-1.5 h-4 w-4" />
+                Calendario
+              </Button>
+              <Button
+                variant={view === 'lista' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setView('lista')}
+              >
+                <List className="mr-1.5 h-4 w-4" />
+                Lista
+              </Button>
+            </div>
+            <Button onClick={() => setShowNewVisitModal(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nueva visita
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -142,7 +246,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="hidden lg:block">
+        {view === 'calendario' ? (
           <Calendar
             events={calendarEvents}
             onEventClick={(event) => navigate(`/operaciones/visitas/${event.id}`)}
@@ -154,123 +258,17 @@ export default function CalendarPage() {
               }
             }}
           />
-        </div>
-
-        <div className="lg:hidden space-y-4">
-          {visitasDelMes.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              No hay visitas programadas con los filtros seleccionados
-            </div>
-          ) : (
-            visitasDelMes.map((visit) => (
-              <div key={visit.id} className="border border-border rounded-lg p-4 bg-card">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">
-                      {formatDate(visit.fecha_programada)} - {visit.hora_programada}
-                    </span>
-                  </div>
-                  <Badge variant={estadoVariant[visit.estado]}>
-                    {estadoLabels[visit.estado]}
-                  </Badge>
-                </div>
-                <p className="font-medium text-foreground mb-1">{visit.cliente_nombre}</p>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                  <UserIcon className="h-4 w-4" />
-                  <span>{visit.socio_asignado}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-3">
-                  <Printer className="h-4 w-4" />
-                  <span>{visit.impresoras?.length ?? 0} impresora(s)</span>
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => navigate(`/operaciones/visitas/${visit.id}`)}>
-                    <Eye className="mr-1 h-3 w-3" />
-                    Ver
-                  </Button>
-                  {visit.estado === 'PENDIENTE' && (
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/operaciones/lecturas/${visit.id}`)}>
-                      <ClipboardList className="mr-1 h-3 w-3" />
-                      Capturar lecturas
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <Card className="hidden lg:block">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Visitas del mes ({visitasDelMes.length})</CardTitle>
-              <Button variant="ghost" size="sm">
-                Ver todas
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {visitasDelMes.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  No hay visitas programadas con los filtros seleccionados
-                </div>
-              ) : (
-                visitasDelMes.map((visit) => (
-                  <div
-                    key={visit.id}
-                    className="border border-border rounded-lg p-4 hover:bg-muted transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm font-medium">
-                          {formatDate(visit.fecha_programada)}
-                        </span>
-                      </div>
-                      <Badge variant={estadoVariant[visit.estado]}>
-                        {estadoLabels[visit.estado]}
-                      </Badge>
-                    </div>
-                    <p className="font-medium text-foreground mb-1">{visit.cliente_nombre}</p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground mb-2">
-                      <span className="flex items-center gap-1">
-                        <UserIcon className="h-3 w-3" />
-                        {visit.socio_asignado}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {visit.hora_programada}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Printer className="h-3 w-3" />
-                        {visit.impresoras?.length ?? 0} impresora(s)
-                      </span>
-                    </div>
-                    {visit.impresoras?.length > 0 && (
-                      <p className="text-xs text-muted-foreground mb-2">
-                        {visit.impresoras.map((imp) => imp.impresora_id).join(', ')}
-                      </p>
-                    )}
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => navigate(`/operaciones/visitas/${visit.id}`)}>
-                        <Eye className="mr-1 h-3 w-3" />
-                        Ver
-                      </Button>
-                      {visit.estado === 'PENDIENTE' && (
-                        <Button variant="outline" size="sm" onClick={() => navigate(`/operaciones/lecturas/${visit.id}`)}>
-                          <ClipboardList className="mr-1 h-3 w-3" />
-                          Capturar lecturas
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-        </Card>
+        ) : (
+          <Table
+            data={filteredVisits}
+            columns={columns}
+            searchable
+            sortable
+            paginatable
+            emptyMessage="No hay visitas con los filtros seleccionados"
+            onRowClick={(v) => navigate(`/operaciones/visitas/${v.id}`)}
+          />
+        )}
       </div>
 
       <Modal
@@ -345,16 +343,5 @@ export default function CalendarPage() {
         </div>
       </Modal>
     </PageLayout>
-  )
-}
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-      <line x1="16" x2="16" y1="2" y2="6" />
-      <line x1="8" x2="8" y1="2" y2="6" />
-      <line x1="3" x2="21" y1="10" y2="10" />
-    </svg>
   )
 }

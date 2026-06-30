@@ -61,7 +61,7 @@ export default function VisitDetailPage() {
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
           <p className="text-muted-foreground">ID de visita inválido</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/visitas')}>
             Volver al calendario
           </Button>
         </div>
@@ -84,7 +84,7 @@ export default function VisitDetailPage() {
       <PageLayout title="Visita no encontrada">
         <div className="text-center py-12">
           <p className="text-destructive">{parseApiError(error)}</p>
-          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/calendario')}>
+          <Button variant="ghost" className="mt-4" onClick={() => navigate('/operaciones/visitas')}>
             Volver al calendario
           </Button>
         </div>
@@ -95,7 +95,7 @@ export default function VisitDetailPage() {
   const handleCompleteVisit = () => {
     completeVisit.mutate({ id: idNum, notas: '' }, {
       onSuccess: () => {
-        navigate('/operaciones/calendario')
+        navigate('/operaciones/visitas')
       },
     })
   }
@@ -117,7 +117,7 @@ export default function VisitDetailPage() {
     <PageLayout title={`Operaciones › Visita ${visit.id}`}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="sm" onClick={() => navigate('/operaciones/calendario')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate('/operaciones/visitas')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
