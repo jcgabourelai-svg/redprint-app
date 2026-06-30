@@ -1,21 +1,33 @@
 import type { MovementType } from './enums'
 
-export type MovementReason = 'compra' | 'devolucion' | 'ajuste' | 'traslado' | 'consumo' | 'mantenimiento' | 'venta' | 'perdida'
-export type MovementStatus = 'completado' | 'pendiente' | 'cancelado'
+export type { MovementType }
+
+export interface InventoryMovementArticle {
+  id: number
+  nombre: string
+  modelo_sku?: string | null
+  marca?: string | null
+  stock_actual?: number | null
+}
+
+export interface InventoryMovementSocio {
+  id: number
+  nombre: string
+  correo?: string | null
+}
 
 export interface InventoryMovement {
-  id: string
-  tipo: MovementType
-  articulo_id: string
-  articulo_nombre: string
-  almacen_id: string
-  almacen_nombre: string
+  id: number
+  articulo_id: number
+  article: InventoryMovementArticle | null
+  tipo_movimiento: MovementType
   cantidad: number
+  stock_anterior: number
+  stock_posterior: number
+  referencia_tipo: string | null
+  referencia_id: number | null
+  justificacion: string | null
   fecha: string
-  motivo: MovementReason
-  estado: MovementStatus
-  responsable: string
-  referencia?: string
-  notas?: string
-  costo_unitario?: number
+  socio: InventoryMovementSocio | null
+  fecha_creacion: string
 }

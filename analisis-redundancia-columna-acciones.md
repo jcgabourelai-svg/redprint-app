@@ -15,7 +15,7 @@
 |---|--------|:---:|---|:---:|---|
 | 1 | **Almacenes** | ✅ → detalle | ~~`👁 Ver`, `✏️ Editar`, `🗑 Eliminar`~~ | ✅ (Editar + Eliminar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
 | 2 | **Impresoras** | ✅ → detalle | ~~`⋮` **muerto**~~ | ✅ (Editar / Eliminar / Dar de baja) | ✅ **Hecho** — columna muerta quitada; fila clickeable → detalle |
-| 3 | **Movimientos** | ❌ | `👁 Ver` **muerto**, `🗑 Eliminar` **muerto** | ❌ NO existe | **Reducir/Implementar** — columna inertre, sin detalle |
+| 3 | **Movimientos** | ✅ → modal | ~~`👁 Ver` **muerto**, `🗑 Eliminar` **muerto**~~ | ✅ (modal solo-lectura) | ✅ **Hecho** — lista reconstruida al esquema real del API, columna "Acciones" muerta quitada, fila clickeable → modal de solo lectura, "Nuevo Movimiento" eliminado (sin backend). a11y de teclado pospuesta (§5.3). |
 | 4 | **Mantenimiento** | ✅ → detalle | `👁 Ver` (= click fila) | ✅ (Editar / Completar / Cancelar / Eliminar) | **Quitar columna** — `Eye` duplica la fila |
 | 5 | **Artículos** | ✅ → detalle | `⋮` **muerto** | ✅ (Dar de baja) | **Quitar columna** — botón sin handler |
 | 6 | **Compras** | ✅ → detalle | `👁 Ver`(dup), `+ Recibir`(dup), `$ Pago`(**muerto**), `🗑 Cancelar`(dup+bug) | ✅ (Recibir / Cancelar) | **Quitar columna** — todo duplica o está roto |
@@ -30,13 +30,15 @@
 
 **Conclusión general:**
 
-- **8 módulos** deben **quitar la columna Acciones** y dejar la fila clickeable
-  (el detalle ya cubre todo): Almacenes, Impresoras, Mantenimiento, Artículos,
-  Compras, Clientes, Contratos, Lecturas.
-- **5 módulos** deben **mantener una columna de acciones** porque **no existe**
+- **5 módulos** deben **quitar la columna Acciones** y dejar la fila clickeable:
+  Almacenes ✅, Impresoras ✅ (ambos ya hechos) y Movimientos ✅ (hecho — fila
+  clickeable → modal de solo lectura, sin columna); más Mantenimiento, Artículos,
+  Compras, Clientes, Contratos y Lecturas (pendientes). *(Movimientos es un caso
+  especial: no tiene ruta de detalle, pero se resolvió con un modal en vez de columna.)*
+- **4 módulos** deben **mantener una columna de acciones** porque **no existe**
   vista de detalle y la fila no es clickeable: Cuentas por Cobrar, Pagos,
-  Facturas, Movimientos, Usuarios. En estos, la columna es la **única vía** de
-  interacción — pero varios tienen **handlers rotos/muertos** que hay que fixear.
+  Facturas, Usuarios. En estos, la columna es la **única vía** de interacción —
+  pero varios tienen **handlers rotos/muertos** que hay que fixear.
 - **1 módulo** (Visitas) no aplica: se presenta como calendario, no como tabla.
 
 > **Hallazgo crítico colateral:** además de la redundancia, hay **~13 botones
@@ -143,19 +145,49 @@ const handleDelete = (id) => setShowDeleteModal(id)                   // → mod
 ### 3.3 Movimientos (Movimientos de inventario)
 
 - **Lista:** `pages/inventory/movements/MovementList.tsx`
-- **Detalle:** ❌ **NO existe** (sin ruta `movimientos/:id` en `App.tsx:58`).
+- **Detalle:** ❌ **NO existe** (sin ruta `movimientos/:id` en `App.tsx`). → Se
+  resolvió con un **modal de solo lectura** reutilizando el item de la lista (sin
+  llamar `show`).
 
-**Fila clickeable:** ❌ (el `<Table>` no recibe `onRowClick`).
+**Hallazgo real (más grave que "2 botones muertos"):** el módulo estaba **roto de
+raíz**. La lista mapeaba campos que **no existen** en el payload del API
+(`articulo_nombre`, `almacen_nombre`, `almacen_id`, `tipo`, `estado`, `motivo`,
+`responsable`, `costo_unitario`) → celdas vacías. El backend **no tiene** columna
+ni relación `almacen`, ni `estado`, ni `motivo` (un movimiento es un registro de
+auditoría **inmutable**; `tipo_movimiento` ya define entrada/salida/ajuste). Las
+stats `entradasMes`/`salidasMes` filtraban por `m.tipo` (undefined) → **siempre
+0**. La columna "Acciones" tenía `Eye`/`Trash2` **sin `onClick`** (muertos) y no
+existe `DELETE`. El modal "Registrar Movimiento" recolectaba campos sin backend y
+no había ruta `POST/store` (solo `index` + `show`).
 
-**Columna Acciones** (`MovementList.tsx:181-186`): `👁 Ver detalle` y `🗑 Eliminar`
-— **ambos sin `onClick`** (decorativos/muertos).
+**Fila clickeable:** ✅ ahora `onRowClick → setSelected(row)` → modal de detalle.
+
+**Columna Acciones:** ❌ **eliminada** (era 100% muerta).
+
+**Solución implementada:**
+- `types/inventory-movement.ts` reescrito al `InventoryMovementResource` real
+  (`article`, `socio`, `tipo_movimiento`, `stock_anterior`/`stock_posterior`,
+  `referencia_tipo`/`referencia_id`, `justificacion`, `fecha`, `fecha_creacion`).
+- Columnas reconstruidas: ID, Artículo (`article.nombre` + `#articulo_id`), Tipo
+  (`Badge` ENTRADA→success/SALIDA→warning/AJUSTE→info), Cantidad (coloreada por
+  tipo), Stock (`anterior → posterior` + delta), Origen (label + link navegable a
+  `compras/:id`/`mantenimiento/:id` si hay `referencia_id`), Responsable
+  (`socio.nombre`), Fecha.
+- Fila clickeable → **modal de solo lectura** con todos los campos + delta de
+  stock resaltado + origen con link navegable.
+- Stats: "Total Movimientos" ahora usa `tableProps.totalItems` (global); Entradas/
+  Salidas filtran por `tipo_movimiento` (ya ≠ 0), con caption aclarando que reflejan
+  solo la página actual.
+- **Eliminado** el botón + modal "Nuevo Movimiento" (sin endpoint; los movimientos
+  los generan compras/mantenimiento/ajustes vía `InventoryService`). Eliminados los
+  imports/hooks que solo usaba ese modal (`Plus`, `Eye`, `Trash2`, `Input`,
+  `useWarehouses`, `useArticles`, `useUsers`, `motivosEntrada`/`Salida`/`motivoLabels`).
 
 **Veredicto:**
-- Redundante: N/A (no hay fila ni detalle).
-- Únicos: nominalmente `Ver` y `Eliminar`, pero **rotos**.
-- **👉 REDUCIR/IMPLEMENTAR.** O se implementan los handlers (modal de detalle /
-  confirmación de borrado inline) o se **quita la columna muerta**.
-  *(Bug paralelo: el modal "Registrar Movimiento" solo cierra, no llama API.)*
+- **✅ HECHO.** Módulo reconstruido al esquema real del API. Sin columna de
+  acciones (era toda muerta); fila clickeable → modal de solo lectura.
+- a11y de teclado de la fila clickeable **pospuesta** (deuda transversal §5.3):
+  no se tocó `components/ui/Table.tsx`.
 
 ---
 
@@ -399,7 +431,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | Cuentas por Cobrar | `ReceivablesList.tsx` | Conectar "Registrar Cobro" a la API; poblar modal de historial |
 | Pagos | `PaymentList.tsx` | Cablear `Eye` → modal `selectedPayment`/`showPaymentModal` (o quitarlo) |
 | Facturas | `InvoiceList.tsx` | Crear `InvoiceDetail`/ruta **o** quitar `Eye`; quitar `Trash2` muerto; conectar pago a API |
-| Movimientos | `MovementList.tsx` | Implementar handlers `Eye`/`Trash2` **o** quitar columna muerta |
+| ~~Movimientos~~ | ~~`MovementList.tsx`~~ | ~~Implementar handlers `Eye`/`Trash2` **o** quitar columna muerta~~ ✅ **Hecho**: módulo reconstruido al API real; columna muerta quitada; fila clickeable → modal de solo lectura; "Nuevo Movimiento" eliminado (sin backend) |
 | Usuarios | `UserListPage.tsx` | Mantener los 4 botones; fix `handleDelete` (usar `useDeleteUser`, no estado local) |
 
 ### ⚪ Grupo C — No aplica (1 módulo)
@@ -421,7 +453,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 |---------|-------|-------|:---:|
 | ~~`PrinterList.tsx`~~ | ~~`⋮` MoreVertical~~ | ~~`:106-110`~~ | ✅ |
 | `ArticleList.tsx` | `⋮` MoreVertical | `:286-290` | ⬜ |
-| `MovementList.tsx` | `Eye`, `Trash2` | `:181-186` | ⬜ |
+| ~~`MovementList.tsx`~~ | ~~`Eye`, `Trash2`~~ | ~~`:181-186`~~ | ✅ |
 | `PurchaseList.tsx` | `$` Registrar pago | `:157-162` | ⬜ |
 | `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` | ⬜ |
 | `InvoiceList.tsx` | `Trash2` Eliminar | `:109-111` | ⬜ |
@@ -443,7 +475,12 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
   cierran**, no llaman a la API (no persisten).
 - **`UserListPage.tsx`**: `handleDelete` es **local-only** (`setUsers(filter)`);
   no llama a `useDeleteUser` → el usuario "revive" al recargar.
-- **`MovementList.tsx`**: el modal "Registrar Movimiento" solo cierra (sin mutación).
+- ~~**`MovementList.tsx`**: el modal "Registrar Movimiento" solo cierra (sin mutación).~~
+  ✅ **Resuelto**: el modal "Registrar Movimiento" se **eliminó** (no se cableó a
+  una API porque **no existe endpoint de creación** — los movimientos los generan
+  compras/mantenimiento/ajustes vía `InventoryService`; el dominio es auditoría
+  inmutable). Se eliminaron con él los imports/hooks que solo usaba
+  (`useWarehouses`, `useArticles`, `useUsers`, `Input`, etc.).
 
 ### 5.3 Accesibilidad (transversal al patrón)
 
@@ -456,6 +493,14 @@ El componente base `components/ui/Table.tsx` aplica `onRowClick` sobre un `<tr>`
 
 Si en algún módulo del Grupo B se opta por "columna de botones reales", ese
 problema de a11y desaparece automáticamente (por eso a veces es la opción más sana).
+
+> **Nota (post-implementación Movimientos):** `MovementList.tsx` ahora es otro
+> módulo "fila clickeable sin columna" (abre un modal de solo lectura en vez de ir
+> a una ruta de detalle). Hereda por tanto esta misma **deuda de a11y de teclado**:
+> el `<tr>` no es focueable con Tab y el modal no se abre con Enter/Space. Al igual
+> que con el Grupo A, **no se tocó** `components/ui/Table.tsx` (compartido por todos
+> los módulos); la solución transversal (`tabIndex`/`onKeyDown` en la fila o celda
+> `<a>`/`<button>`) queda pendiente para una pasada dedicada a a11y.
 
 ---
 
