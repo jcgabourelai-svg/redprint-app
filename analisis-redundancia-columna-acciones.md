@@ -23,7 +23,7 @@
 | 8 | **Pagos (por pagar)** | ❌ | `👁 Ver` **muerto** (modal existe pero inalcanzable) | ❌ NO existe | **Reducir/Implementar** — cablear modal o quitar |
 | 9 | **Facturas** | ❌ | `👁 Ver`(**ruta rota→/**), `$ Pago`(modal, no persiste), `🗑 Eliminar`(**muerto**) | ❌ NO existe | **Mantener + fix** — crear detalle o quitar `Eye` |
 | 10 | **Clientes** | ✅ → detalle | ~~`👁 Ver`(dup), `📄 Contratos`(atajo), `⋮` **muerto**~~ | ✅ (Editar/Eliminar* sin implementar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
-| 11 | **Contratos** | ✅ → detalle | `👁 Ver`(dup), `⋮` **muerto** | ✅ (Editar/Asignar/Liberar* sin implementar) | **Quitar columna** — `Eye` duplica la fila |
+| 11 | **Contratos** | ✅ → detalle | ~~`👁 Ver`(dup), `⋮` **muerto**~~ | ✅ (Editar/Asignar/Liberar* sin implementar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
 | 12 | **Usuarios (admin)** | ❌ | `👁 Ver`, `✏️ Editar`, `🛡 Reset pass`, `🗑 Eliminar` | ❌ NO existe (solo modal) | **Mantener** — única vía de acceso |
 | 13 | **Lecturas** | ✅ → visita | `👁 Ver` (= click fila) | ❌ (va a Visita) | **Quitar columna** — `Eye` duplica la fila |
 | 14 | **Visitas** | N/A | N/A (es calendario, no tabla) | ✅ | **No aplica** |
@@ -33,8 +33,8 @@
 - **5 módulos** deben **quitar la columna Acciones** y dejar la fila clickeable:
   Almacenes ✅, Impresoras ✅ (ambos ya hechos) y Movimientos ✅ (hecho — fila
   clickeable → modal de solo lectura, sin columna); Mantenimiento ✅ (hecho);
-  Artículos ✅ (hecho — columna muerta quitada); más Compras, Clientes, Contratos
-  y Lecturas (pendientes). *(Movimientos es un caso
+  Artículos ✅ (hecho — columna muerta quitada); Clientes ✅ (hecho); Contratos ✅
+  (hecho); más Compras y Lecturas (pendientes). *(Movimientos es un caso
   especial: no tiene ruta de detalle, pero se resolvió con un modal en vez de columna.)*
 - **4 módulos** deben **mantener una columna de acciones** porque **no existe**
   vista de detalle y la fila no es clickeable: Cuentas por Cobrar, Pagos,
@@ -358,7 +358,11 @@ ver/crear contrato. *`Editar` y `Eliminar` existen pero sin `onClick`.*
 **Veredicto:**
 - Redundante con fila: `👁 Ver`.
 - Únicos: ninguno.
-- **👉 QUITAR columna Acciones.**
+- **✅ HECHO.** Columna `acciones` eliminada de `ContractList.tsx` (eliminados el
+  botón `Eye` con su `e.stopPropagation()` y el `MoreVertical` muerto), junto con
+  los imports `Eye`, `MoreVertical` y `FileText` (este último ya no se usaba) que
+  quedaron sin uso. La fila clickeable ya cubre el acceso al detalle. *(Quedan
+  pendientes el `Editar`/`Asignar`/`Liberar` del detalle, sin `onClick`.)*
 
 ---
 
@@ -428,7 +432,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | Artículos | `ArticleList.tsx` | `⋮` (muerto) | ✅ |
 | Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` | ⬜ |
 | Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ✅ |
-| Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) | ⬜ |
+| Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) | ✅ |
 | Lecturas | `ReadingListPage.tsx` | `Eye` | ⬜ |
 
 ### 🟡 Grupo B — Mantener columna pero fixear/implementar handlers (5 módulos)
@@ -468,7 +472,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` | ⬜ |
 | `InvoiceList.tsx` | `Trash2` Eliminar | `:109-111` | ⬜ |
 | `ClientList.tsx` | `⋮` Más opciones | `:109-111` | ✅ |
-| `ContractList.tsx` | `⋮` Más opciones | `:124-126` | ⬜ |
+| `ContractList.tsx` | `⋮` Más opciones | `:124-126` | ✅ |
 | `ArticleDetail.tsx` | `Editar` | `:84-87` | ⬜ |
 | `ClientDetail.tsx` | `Editar`, `Eliminar` | `:96-103` | ⬜ |
 | `ContractDetail.tsx` | `Editar`, `Asignar`, `Liberar` | `:97-100, 229-232, 272-274` | ⬜ |

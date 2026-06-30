@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { FileText, Plus, MoreVertical, Eye } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
@@ -7,7 +7,7 @@ import Badge from '@/components/ui/Badge'
 import type { Contract, ContractStatus } from '@/types/contract'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
-import { formatCurrency, formatDate } from '@/lib/formatters'
+import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
 const estadoLabels: Record<ContractStatus, string> = {
@@ -104,27 +104,6 @@ export default function ContractList() {
         <Badge variant="contract_status" color={value}>
           {estadoLabels[value]}
         </Badge>
-      ),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: (_value: unknown, row: Contract) => (
-        <div className="flex items-center gap-1">
-          <button
-            className="p-1 hover:bg-muted rounded"
-            title="Ver detalle"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/contratos/${row.id}`)
-            }}
-          >
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <button className="p-1 hover:bg-muted rounded" title="Más opciones">
-            <MoreVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
       ),
     },
   ]
