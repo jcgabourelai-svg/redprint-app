@@ -17,7 +17,7 @@
 | 2 | **Impresoras** | ✅ → detalle | ~~`⋮` **muerto**~~ | ✅ (Editar / Eliminar / Dar de baja) | ✅ **Hecho** — columna muerta quitada; fila clickeable → detalle |
 | 3 | **Movimientos** | ✅ → modal | ~~`👁 Ver` **muerto**, `🗑 Eliminar` **muerto**~~ | ✅ (modal solo-lectura) | ✅ **Hecho** — lista reconstruida al esquema real del API, columna "Acciones" muerta quitada, fila clickeable → modal de solo lectura, "Nuevo Movimiento" eliminado (sin backend). a11y de teclado pospuesta (§5.3). |
 | 4 | **Mantenimiento** | ✅ → detalle | ~~`👁 Ver` (= click fila)~~ | ✅ (Editar / Completar / Cancelar / Eliminar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
-| 5 | **Artículos** | ✅ → detalle | `⋮` **muerto** | ✅ (Dar de baja) | **Quitar columna** — botón sin handler |
+| 5 | **Artículos** | ✅ → detalle | ~~`⋮` **muerto**~~ | ✅ (Dar de baja) | ✅ **Hecho** — columna muerta quitada; fila clickeable → detalle |
 | 6 | **Compras** | ✅ → detalle | `👁 Ver`(dup), `+ Recibir`(dup), `$ Pago`(**muerto**), `🗑 Cancelar`(dup+bug) | ✅ (Recibir / Cancelar) | **Quitar columna** — todo duplica o está roto |
 | 7 | **Cuentas por Cobrar** | ❌ | `👁 Historial`(modal), `$ Cobro`(modal, no persiste) | ❌ NO existe | **Mantener** — única vía (cablear API) |
 | 8 | **Pagos (por pagar)** | ❌ | `👁 Ver` **muerto** (modal existe pero inalcanzable) | ❌ NO existe | **Reducir/Implementar** — cablear modal o quitar |
@@ -32,8 +32,9 @@
 
 - **5 módulos** deben **quitar la columna Acciones** y dejar la fila clickeable:
   Almacenes ✅, Impresoras ✅ (ambos ya hechos) y Movimientos ✅ (hecho — fila
-  clickeable → modal de solo lectura, sin columna); Mantenimiento ✅ (hecho); más
-  Artículos, Compras, Clientes, Contratos y Lecturas (pendientes). *(Movimientos es un caso
+  clickeable → modal de solo lectura, sin columna); Mantenimiento ✅ (hecho);
+  Artículos ✅ (hecho — columna muerta quitada); más Compras, Clientes, Contratos
+  y Lecturas (pendientes). *(Movimientos es un caso
   especial: no tiene ruta de detalle, pero se resolvió con un modal en vez de columna.)*
 - **4 módulos** deben **mantener una columna de acciones** porque **no existe**
   vista de detalle y la fila no es clickeable: Cuentas por Cobrar, Pagos,
@@ -221,15 +222,17 @@ no había ruta `POST/store` (solo `index` + `show`).
 
 **Fila clickeable:** ✅ → `navigate(/inventario/articulos/${article.id})` (`ArticleList.tsx:338`).
 
-**Columna Acciones:** `⋮` (MoreVertical) **sin `onClick`** (`ArticleList.tsx:286-290`). Muerto.
+**Columna Acciones:** ~~`⋮` (MoreVertical) **sin `onClick`** (`ArticleList.tsx:286-290`). Muerto.~~
 
 **Acciones del detalle** (`ArticleDetail.tsx`): `Dar de Baja` (funciona, `isAdmin`).
 *`Editar` existe pero también está sin `onClick`.*
 
 **Veredicto:**
-- Redundante: toda la columna (botón muerto).
+- Redundante: ~~toda la columna (botón muerto)~~.
 - Únicos: ninguno.
-- **👉 QUITAR columna Acciones.**
+- **✅ HECHO.** Columna `acciones` eliminada de `ArticleList.tsx` junto con el
+  import `MoreVertical`. La fila ya era clickeable → detalle, que cubre
+  `Dar de Baja`. *(Queda pendiente el `Editar` del detalle, sin `onClick`.)*
 
 ---
 
@@ -418,7 +421,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | Almacenes | `WarehouseTable.tsx` | `Eye`, `Pencil`, `Trash2` | ✅ |
 | Impresoras | `PrinterList.tsx` | `⋮` (muerto) | ✅ |
 | Mantenimiento | `MaintenanceList.tsx` | `Eye` | ✅ |
-| Artículos | `ArticleList.tsx` | `⋮` (muerto) | ⬜ |
+| Artículos | `ArticleList.tsx` | `⋮` (muerto) | ✅ |
 | Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` | ⬜ |
 | Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ⬜ |
 | Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) | ⬜ |
@@ -455,7 +458,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | Archivo | Botón | Línea | Estado |
 |---------|-------|-------|:---:|
 | ~~`PrinterList.tsx`~~ | ~~`⋮` MoreVertical~~ | ~~`:106-110`~~ | ✅ |
-| `ArticleList.tsx` | `⋮` MoreVertical | `:286-290` | ⬜ |
+| ~~`ArticleList.tsx`~~ | ~~`⋮` MoreVertical~~ | ~~`:286-290`~~ | ✅ |
 | ~~`MovementList.tsx`~~ | ~~`Eye`, `Trash2`~~ | ~~`:181-186`~~ | ✅ |
 | `PurchaseList.tsx` | `$` Registrar pago | `:157-162` | ⬜ |
 | `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` | ⬜ |
