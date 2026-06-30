@@ -57,6 +57,7 @@ export default function CreateContract() {
   const [fecha_fin, setFechaFin] = useState('')
   const [dias_gracia, setDiasGracia] = useState('15')
   const [frecuencia, setFrecuencia] = useState<VisitFrequency>('MENSUAL')
+  const [dia_visita, setDiaVisita] = useState('')
 
   const [selectedPrinters, setSelectedPrinters] = useState<string[]>([])
   const [lecturas_iniciales, setLecturasIniciales] = useState<Record<string, string>>({})
@@ -97,6 +98,7 @@ export default function CreateContract() {
       fecha_fin: fecha_fin || null,
       dias_gracia: parseInt(dias_gracia),
       frecuencia_visitas: frecuencia,
+      dia_visita: dia_visita ? parseInt(dia_visita) : null,
       tarifa_base: parseFloat(tarifa_base),
       paginas_incluidas: parseInt(paginas_incluidas),
       costo_pag_excedente: parseFloat(costo_por_pagina_excedente),
@@ -230,6 +232,25 @@ export default function CreateContract() {
                     onChange={(v) => setFrecuencia(v as VisitFrequency)}
                   />
                 </div>
+                {frecuencia === 'MENSUAL' && (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
+                      Día de visita del mes (opcional)
+                    </label>
+                    <Select
+                      options={[
+                        { value: '', label: 'Derivar desde fecha de inicio' },
+                        ...Array.from({ length: 31 }, (_, i) => ({
+                          value: String(i + 1),
+                          label: String(i + 1),
+                        })),
+                      ]}
+                      value={dia_visita}
+                      onChange={setDiaVisita}
+                      placeholder="Día del mes (1-31)"
+                    />
+                  </div>
+                )}
               </div>
             )}
 

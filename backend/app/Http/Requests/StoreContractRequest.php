@@ -23,6 +23,7 @@ class StoreContractRequest extends FormRequest
             'dias_gracia' => 'nullable|integer|min:0',
             'frecuencia_visitas' => 'required|string|in:MENSUAL,QUINCENAL,SEMANAL,CUSTOM',
             'dias_adelanto' => 'nullable|integer|min:1',
+            'dia_visita' => 'nullable|integer|between:1,31',
             'impresoras' => 'nullable|array',
             'impresoras.*.id' => 'required_with:impresoras|exists:printers,id',
             'impresoras.*.lectura_inicial' => 'nullable|integer|min:0',

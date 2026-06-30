@@ -18,15 +18,21 @@ export interface Visit {
   id: string
   cliente_id: string
   cliente_nombre: string
+  contrato_id?: string
   tipo_visita: VisitType
   fecha_programada: string
-  hora_programada: string
-  socio_asignado: string
+  socio_id?: string
+  socio_nombre?: string
+  hora_programada?: string
   estado: VisitStatus
   notas?: string
-  impresoras: VisitPrinter[]
+  impresoras?: VisitPrinter[]
   direccion_cliente?: string
   duracion_estimada?: string
+  client?: unknown
+  contract?: unknown
+  socio?: unknown
+  readings?: unknown[]
 }
 
 export interface Reading {

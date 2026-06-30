@@ -27,6 +27,7 @@ class Contract extends Model
         'dias_gracia',
         'frecuencia_visitas',
         'dias_adelanto',
+        'dia_visita',
         'estado',
         'creado_por',
         'fecha_creacion',
@@ -45,6 +46,7 @@ class Contract extends Model
             'dias_gracia' => 'integer',
             'frecuencia_visitas' => VisitFrequency::class,
             'dias_adelanto' => 'integer',
+            'dia_visita' => 'integer',
             'estado' => ContractStatus::class,
             'fecha_creacion' => 'datetime',
         ];

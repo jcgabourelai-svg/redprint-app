@@ -14,7 +14,8 @@ use Illuminate\Support\Facades\DB;
 class ContractService
 {
     public function __construct(
-        private CodeGeneratorService $codeGenerator
+        private CodeGeneratorService $codeGenerator,
+        private VisitSchedulerService $visitScheduler
     ) {}
 
     public function create(array $data, User $creator): Contract
@@ -34,7 +35,13 @@ class ContractService
                 $this->assignPrinter($contract, $printerData['id'], $printerData['lectura_inicial'] ?? 0, $creator);
             }
 
-            return $contract->fresh(['client', 'printers']);
+            $contract = $contract->fresh(['client', 'printers']);
+
+            // Genera la 1ra visita recurrente (rolling) sin esperar al cron,
+            // dentro de la misma transaccion para garantizar atomicidad.
+            $this->visitScheduler->generateNextCycle($contract, $creator->id);
+
+            return $contract;
         });
     }
 
@@ -67,6 +74,8 @@ class ContractService
         return DB::transaction(function () use ($contract, $warehouseId, $user) {
             $contract->update(['estado' => ContractStatus::FINALIZADO]);
 
+            $this->visitScheduler->cancelFutureVisits($contract);
+
             foreach ($contract->activePrinters as $printer) {
                 $this->releasePrinter($contract, $printer, $warehouseId, $user);
             }
@@ -79,6 +88,8 @@ class ContractService
     {
         return DB::transaction(function () use ($contract, $warehouseId, $user) {
             $contract->update(['estado' => ContractStatus::CANCELADO]);
+
+            $this->visitScheduler->cancelFutureVisits($contract);
 
             foreach ($contract->activePrinters as $printer) {
                 $this->releasePrinter($contract, $printer, $warehouseId, $user);

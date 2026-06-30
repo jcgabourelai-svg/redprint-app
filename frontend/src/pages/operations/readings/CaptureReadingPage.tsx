@@ -141,7 +141,7 @@ export default function CaptureReadingPage() {
         lectura_actual: calc.lectura_actual,
         fecha: new Date().toISOString().split('T')[0],
         hora: new Date().toTimeString().split(' ')[0].substring(0, 5),
-        socio_capturista: visit.socio_asignado,
+        socio_capturista: visit.socio_nombre,
         excepcion: readingState?.anomalia ? readingState.justificacion : undefined,
       })
     })
@@ -176,7 +176,7 @@ export default function CaptureReadingPage() {
               </div>
               <div className="text-right text-sm text-muted-foreground">
                 <p className="flex items-center gap-1">
-                  {visit.socio_asignado}
+                  {visit.socio_nombre}
                 </p>
                 <p>{visit.hora_programada}</p>
               </div>

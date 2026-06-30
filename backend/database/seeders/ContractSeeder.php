@@ -15,7 +15,7 @@ class ContractSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
         $clients = Client::all();
         $printers = Printer::all();
 

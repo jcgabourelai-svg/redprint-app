@@ -8,4 +8,5 @@ enum VisitStatus: string
     case COMPLETADA = 'COMPLETADA';
     case REPROGRAMADA = 'REPROGRAMADA';
     case CANCELADA = 'CANCELADA';
+    case OMITIDA = 'OMITIDA';
 }

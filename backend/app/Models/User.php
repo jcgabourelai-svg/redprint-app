@@ -39,6 +39,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function scopeAdministradores($query)
+    {
+        return $query->whereHas('role', fn ($q) => $q->where('slug', 'administrador'));
+    }
+
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'rol_id');

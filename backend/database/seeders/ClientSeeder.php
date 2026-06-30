@@ -10,7 +10,7 @@ class ClientSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
 
         $clients = [
             ['razon_social' => 'Despacho Juridico Torres y Asociados', 'rfc' => 'DJT123456AB1', 'nombre_contacto' => 'Lic. Torres', 'telefono' => '555-4001', 'correo' => 'contacto@torresabogados.com', 'direccion_instalacion' => 'Paseo de la Reforma 250, Col. Juarez, CDMX'],

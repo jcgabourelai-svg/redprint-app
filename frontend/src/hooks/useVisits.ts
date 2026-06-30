@@ -50,3 +50,37 @@ export function useRescheduleVisit() {
     },
   })
 }
+
+export function useUpdateVisit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api.put(`/visits/${id}`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['visits'] })
+      qc.invalidateQueries({ queryKey: ['visits', id] })
+    },
+  })
+}
+
+export function useDeleteVisit() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number) => api.delete(`/visits/${id}`).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['visits'] })
+    },
+  })
+}
+
+export interface Socio {
+  id: number
+  nombre: string
+}
+
+export function useSocios() {
+  return useQuery<Socio[]>({
+    queryKey: ['visits', 'socios'],
+    queryFn: () => api.get('/visits/socios').then(r => r.data),
+  })
+}

@@ -11,7 +11,7 @@ class BankAccountSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
 
         $accounts = [
             ['banco' => 'BBVA', 'tipo_cuenta' => 'CHEQUES', 'numero_cuenta' => '1234567890123456', 'moneda' => 'MXN', 'saldo_inicial' => 100000.00, 'descripcion' => 'Cuenta operativa principal'],

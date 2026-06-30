@@ -34,6 +34,7 @@ class ContractResource extends JsonResource
             'dias_gracia' => $this->dias_gracia,
             'frecuencia_visitas' => $this->when($this->frecuencia_visitas, $this->frecuencia_visitas?->value),
             'dias_adelanto' => $this->dias_adelanto,
+            'dia_visita' => $this->dia_visita,
             'estado' => $this->when($this->estado, $this->estado?->value),
             'ingresos' => $impresoras !== null ? $estimadoTotal : $this->ingresos,
             'costos' => $impresoras !== null ? round($estimadoTotal - $rentabilidadTotal, 2) : $this->costos,

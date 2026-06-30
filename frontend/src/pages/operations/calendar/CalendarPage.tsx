@@ -12,16 +12,10 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import type { CalendarEvent } from '@/components/ui/Calendar'
 import type { Visit, VisitType, VisitStatus } from '@/types/operations'
-import { useVisits } from '@/hooks/useVisits'
+import { useVisits, useCreateVisit, useSocios } from '@/hooks/useVisits'
+import { useClients } from '@/hooks/useClients'
 import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
-
-const socios = [
-  { value: '', label: 'Todos' },
-  { value: 'Maria Lopez', label: 'María López' },
-  { value: 'Carlos Gomez', label: 'Carlos Gómez' },
-  { value: 'Juan Perez', label: 'Juan Pérez' },
-]
 
 const estadosFiltro = [
   { value: '', label: 'Todos' },
@@ -29,6 +23,7 @@ const estadosFiltro = [
   { value: 'COMPLETADA', label: 'Completada' },
   { value: 'REPROGRAMADA', label: 'Reprogramada' },
   { value: 'CANCELADA', label: 'Cancelada' },
+  { value: 'OMITIDA', label: 'Omitida' },
 ]
 
 const tipoVisitaLabels: Record<VisitType, string> = {
@@ -43,6 +38,7 @@ const estadoLabels: Record<VisitStatus, string> = {
   COMPLETADA: 'Completada',
   REPROGRAMADA: 'Reprogramada',
   CANCELADA: 'Cancelada',
+  OMITIDA: 'Omitida',
 }
 
 const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'neutral'> = {
@@ -50,6 +46,7 @@ const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'ne
   COMPLETADA: 'success',
   REPROGRAMADA: 'warning',
   CANCELADA: 'neutral',
+  OMITIDA: 'neutral',
 }
 
 type VisitView = 'calendario' | 'lista'
@@ -68,17 +65,32 @@ export default function CalendarPage() {
   const [estadoFilter, setEstadoFilter] = useState('')
   const [view, setView] = useState<VisitView>(getInitialView)
   const [showNewVisitModal, setShowNewVisitModal] = useState(false)
+  const [createError, setCreateError] = useState('')
   const [newVisit, setNewVisit] = useState({
     cliente_id: '',
     tipo_visita: 'LECTURA' as VisitType,
     fecha_programada: '',
-    hora_programada: '',
-    socio_asignado: '',
+    socio_id: '',
     notas: '',
   })
 
   const { data: visitsData, isLoading, error } = useVisits()
   const visits = visitsData?.data || []
+  const createVisit = useCreateVisit()
+  const { data: sociosData } = useSocios()
+  const { data: clientsData } = useClients()
+
+  const socios = sociosData || []
+  const clients = clientsData?.data || []
+
+  const socioOptions = [
+    { value: '', label: 'Todos' },
+    ...socios.map((s) => ({ value: String(s.id), label: s.nombre })),
+  ]
+  const clientOptions = clients.map((c) => ({
+    value: String(c.id),
+    label: c.razon_social,
+  }))
 
   useEffect(() => {
     localStorage.setItem(VIEW_KEY, view)
@@ -86,7 +98,7 @@ export default function CalendarPage() {
 
   const filteredVisits = useMemo(() => {
     return visits.filter((v) => {
-      if (socioFilter && v.socio_asignado !== socioFilter) return false
+      if (socioFilter && String(v.socio_id ?? '') !== socioFilter) return false
       if (estadoFilter && v.estado !== estadoFilter) return false
       return true
     })
@@ -95,7 +107,7 @@ export default function CalendarPage() {
   const calendarEvents: CalendarEvent[] = filteredVisits.map((v) => ({
     id: v.id,
     date: new Date(v.fecha_programada + 'T12:00:00'),
-    title: `${v.cliente_nombre} - ${v.hora_programada}`,
+    title: v.cliente_nombre || 'Visita',
     type: v.tipo_visita.toLowerCase(),
     status: v.estado.toLowerCase(),
     time: v.hora_programada,
@@ -114,14 +126,9 @@ export default function CalendarPage() {
       render: (value) => value || '-',
     },
     {
-      key: 'socio_asignado',
+      key: 'socio_nombre',
       label: 'Socio',
-      render: (value) => value || '-',
-    },
-    {
-      key: 'hora_programada',
-      label: 'Hora',
-      render: (value) => value || '-',
+      render: (_value, row) => row.socio_nombre || '-',
     },
     {
       key: 'impresoras',
@@ -230,7 +237,7 @@ export default function CalendarPage() {
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="w-full sm:w-48">
             <Select
-              options={socios}
+              options={socioOptions}
               value={socioFilter}
               onChange={setSocioFilter}
               placeholder="Filtrar socio"
@@ -280,10 +287,12 @@ export default function CalendarPage() {
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
-            <Input
+            <Select
+              options={clientOptions}
               value={newVisit.cliente_id}
-              onChange={(e) => setNewVisit({ ...newVisit, cliente_id: e.target.value })}
-              placeholder="ID del cliente"
+              onChange={(v) => setNewVisit({ ...newVisit, cliente_id: v })}
+              placeholder="Seleccionar cliente"
+              searchable
             />
           </div>
           <div>
@@ -295,30 +304,20 @@ export default function CalendarPage() {
               placeholder="Seleccionar tipo"
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha programada *</label>
-              <Input
-                type="date"
-                value={newVisit.fecha_programada}
-                onChange={(e) => setNewVisit({ ...newVisit, fecha_programada: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Hora programada *</label>
-              <Input
-                type="time"
-                value={newVisit.hora_programada}
-                onChange={(e) => setNewVisit({ ...newVisit, hora_programada: e.target.value })}
-              />
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha programada *</label>
+            <Input
+              type="date"
+              value={newVisit.fecha_programada}
+              onChange={(e) => setNewVisit({ ...newVisit, fecha_programada: e.target.value })}
+            />
           </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Socio asignado *</label>
             <Select
-              options={socios.slice(1)}
-              value={newVisit.socio_asignado}
-              onChange={(v) => setNewVisit({ ...newVisit, socio_asignado: v })}
+              options={socioOptions.slice(1)}
+              value={newVisit.socio_id}
+              onChange={(v) => setNewVisit({ ...newVisit, socio_id: v })}
               placeholder="Seleccionar socio"
             />
           </div>
@@ -332,12 +331,49 @@ export default function CalendarPage() {
               placeholder="Observaciones adicionales"
             />
           </div>
+          {createError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {createError}
+            </div>
+          )}
           <div className="flex justify-end gap-3 pt-4 border-t">
             <Button variant="secondary" onClick={() => setShowNewVisitModal(false)}>
               Cancelar
             </Button>
-            <Button onClick={() => setShowNewVisitModal(false)}>
-              Guardar
+            <Button
+              onClick={() => {
+                setCreateError('')
+                createVisit.mutate(
+                  {
+                    cliente_id: parseInt(newVisit.cliente_id),
+                    tipo_visita: newVisit.tipo_visita,
+                    fecha_programada: newVisit.fecha_programada,
+                    socio_id: parseInt(newVisit.socio_id),
+                    notas: newVisit.notas || null,
+                  },
+                  {
+                    onSuccess: () => {
+                      setShowNewVisitModal(false)
+                      setNewVisit({
+                        cliente_id: '',
+                        tipo_visita: 'LECTURA',
+                        fecha_programada: '',
+                        socio_id: '',
+                        notas: '',
+                      })
+                    },
+                    onError: (err) => setCreateError(parseApiError(err)),
+                  }
+                )
+              }}
+              disabled={
+                createVisit.isPending ||
+                !newVisit.cliente_id ||
+                !newVisit.fecha_programada ||
+                !newVisit.socio_id
+              }
+            >
+              {createVisit.isPending ? 'Guardando...' : 'Guardar'}
             </Button>
           </div>
         </div>

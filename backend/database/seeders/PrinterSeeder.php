@@ -12,7 +12,7 @@ class PrinterSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
         $warehouses = Warehouse::all();
 
         $brands = ['HP', 'Canon', 'Epson', 'Brother', 'Samsung'];

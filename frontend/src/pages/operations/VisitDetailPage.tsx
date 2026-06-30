@@ -17,7 +17,7 @@ import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { useVisit, useCompleteVisit, useRescheduleVisit } from '@/hooks/useVisits'
+import { useVisit, useCompleteVisit, useRescheduleVisit, useUpdateVisit, useDeleteVisit, useSocios } from '@/hooks/useVisits'
 import type { VisitStatus } from '@/types/operations'
 import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
@@ -35,6 +35,7 @@ const estadoLabels: Record<VisitStatus, string> = {
   COMPLETADA: 'Completada',
   REPROGRAMADA: 'Reprogramada',
   CANCELADA: 'Cancelada',
+  OMITIDA: 'Omitida',
 }
 
 const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'neutral'> = {
@@ -42,6 +43,7 @@ const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'ne
   COMPLETADA: 'success',
   REPROGRAMADA: 'warning',
   CANCELADA: 'neutral',
+  OMITIDA: 'neutral',
 }
 
 export default function VisitDetailPage() {
@@ -50,11 +52,19 @@ export default function VisitDetailPage() {
   const idNum = parseInt(id || '0')
   
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
-  const [rescheduleData, setRescheduleData] = useState({ fecha_programada: '', hora_programada: '' })
-  
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [rescheduleData, setRescheduleData] = useState({ fecha_programada: '' })
+  const [editData, setEditData] = useState({ fecha_programada: '', socio_id: '', notas: '' })
+  const [formError, setFormError] = useState('')
+
   const { data: visit, isLoading, error } = useVisit(idNum)
   const completeVisit = useCompleteVisit()
   const rescheduleVisit = useRescheduleVisit()
+  const updateVisit = useUpdateVisit()
+  const deleteVisit = useDeleteVisit()
+  const { data: sociosData } = useSocios()
+  const socios = sociosData || []
 
   if (!idNum) {
     return (
@@ -101,10 +111,10 @@ export default function VisitDetailPage() {
   }
 
   const handleRescheduleVisit = () => {
-    if (!rescheduleData.fecha_programada || !rescheduleData.hora_programada) return
-    
+    if (!rescheduleData.fecha_programada) return
+
     rescheduleVisit.mutate(
-      { id: idNum, fecha_programada: rescheduleData.fecha_programada, hora_programada: rescheduleData.hora_programada },
+      { id: idNum, fecha_programada: rescheduleData.fecha_programada },
       {
         onSuccess: () => {
           setShowRescheduleModal(false)
@@ -112,6 +122,39 @@ export default function VisitDetailPage() {
       }
     )
   }
+
+  const openEdit = () => {
+    setEditData({
+      fecha_programada: visit.fecha_programada || '',
+      socio_id: visit.socio_id ? String(visit.socio_id) : '',
+      notas: visit.notas || '',
+    })
+    setFormError('')
+    setShowEditModal(true)
+  }
+
+  const handleUpdateVisit = () => {
+    setFormError('')
+    updateVisit.mutate(
+      {
+        id: idNum,
+        fecha_programada: editData.fecha_programada || undefined,
+        socio_id: editData.socio_id ? parseInt(editData.socio_id) : undefined,
+        notas: editData.notas ?? null,
+      },
+      {
+        onSuccess: () => setShowEditModal(false),
+        onError: (err) => setFormError(parseApiError(err)),
+      }
+    )
+  }
+
+  const handleDeleteVisit = () => {
+    deleteVisit.mutate(idNum, {
+      onSuccess: () => navigate('/operaciones/visitas'),
+    })
+  }
+
 
   return (
     <PageLayout title={`Operaciones › Visita ${visit.id}`}>
@@ -122,7 +165,7 @@ export default function VisitDetailPage() {
             Volver
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={openEdit} disabled={visit.estado === 'COMPLETADA'}>
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </Button>
@@ -141,7 +184,8 @@ export default function VisitDetailPage() {
                   Visita a {visit.cliente_nombre}
                 </CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {formatDate(visit.fecha_programada)} · {visit.hora_programada}
+                  {formatDate(visit.fecha_programada)}
+                  {visit.hora_programada ? ` · ${visit.hora_programada}` : ''}
                   {visit.duracion_estimada && ` - Duración est.: ${visit.duracion_estimada}`}
                 </p>
               </div>
@@ -178,7 +222,7 @@ export default function VisitDetailPage() {
                 <UserIcon className="h-5 w-5 text-muted-foreground mt-0.5" />
                 <div>
                   <p className="text-xs text-muted-foreground">Socio asignado</p>
-                  <p className="text-sm font-medium text-foreground">{visit.socio_asignado}</p>
+                  <p className="text-sm font-medium text-foreground">{visit.socio_nombre || '-'}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
@@ -209,6 +253,7 @@ export default function VisitDetailPage() {
           </CardContent>
         </Card>
 
+        {visit.impresoras && visit.impresoras.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm uppercase text-muted-foreground">
@@ -269,6 +314,7 @@ export default function VisitDetailPage() {
             </div>
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -299,10 +345,14 @@ export default function VisitDetailPage() {
                   </Button>
                 </>
               )}
-              {visit.estado !== 'CANCELADA' && visit.estado !== 'COMPLETADA' && (
-                <Button variant="danger">
+              {visit.estado !== 'CANCELADA' && visit.estado !== 'COMPLETADA' && visit.estado !== 'OMITIDA' && (
+                <Button
+                  variant="danger"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={deleteVisit.isPending}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
-                  Cancelar visita
+                  {deleteVisit.isPending ? 'Cancelando...' : 'Cancelar visita'}
                 </Button>
               )}
               {visit.estado === 'COMPLETADA' && (
@@ -332,24 +382,90 @@ export default function VisitDetailPage() {
               onChange={(e) => setRescheduleData({ ...rescheduleData, fecha_programada: e.target.value })}
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">Nueva hora *</label>
-            <input
-              type="time"
-              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              value={rescheduleData.hora_programada}
-              onChange={(e) => setRescheduleData({ ...rescheduleData, hora_programada: e.target.value })}
-            />
-          </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="secondary" onClick={() => setShowRescheduleModal(false)}>
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleRescheduleVisit}
-              disabled={!rescheduleData.fecha_programada || !rescheduleData.hora_programada || rescheduleVisit.isPending}
+              disabled={!rescheduleData.fecha_programada || rescheduleVisit.isPending}
             >
               {rescheduleVisit.isPending ? 'Reprogramando...' : 'Reprogramar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Visita"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha programada</label>
+            <input
+              type="date"
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              value={editData.fecha_programada}
+              onChange={(e) => setEditData({ ...editData, fecha_programada: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Socio asignado</label>
+            <select
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              value={editData.socio_id}
+              onChange={(e) => setEditData({ ...editData, socio_id: e.target.value })}
+            >
+              <option value="">Sin asignar</option>
+              {socios.map((s) => (
+                <option key={s.id} value={String(s.id)}>{s.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Notas</label>
+            <textarea
+              className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              rows={3}
+              value={editData.notas}
+              onChange={(e) => setEditData({ ...editData, notas: e.target.value })}
+            />
+          </div>
+          {formError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {formError}
+            </div>
+          )}
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowEditModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleUpdateVisit} disabled={updateVisit.isPending}>
+              {updateVisit.isPending ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Cancelar visita"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            ¿Seguro que deseas cancelar/eliminar esta visita? Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowDeleteConfirm(false)}>
+              No, volver
+            </Button>
+            <Button variant="danger" onClick={handleDeleteVisit} disabled={deleteVisit.isPending}>
+              {deleteVisit.isPending ? 'Cancelando...' : 'Sí, cancelar visita'}
             </Button>
           </div>
         </div>

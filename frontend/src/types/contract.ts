@@ -28,6 +28,7 @@ export interface Contract {
   costo_por_pagina_excedente: number
   dias_gracia: number
   frecuencia_visitas: VisitFrequency
+  dia_visita?: number | null
   estado: ContractStatus
   impresoras: PrinterAssignment[]
   codigo_negocio?: string

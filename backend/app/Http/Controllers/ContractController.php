@@ -55,6 +55,7 @@ class ContractController extends Controller
             'dias_gracia' => 'sometimes|integer|min:0',
             'frecuencia_visitas' => 'sometimes|string',
             'dias_adelanto' => 'sometimes|integer|min:1',
+            'dia_visita' => 'sometimes|integer|between:1,31|nullable',
             'fecha_fin' => 'sometimes|date|nullable',
         ]);
 

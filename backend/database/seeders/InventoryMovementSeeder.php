@@ -13,7 +13,7 @@ class InventoryMovementSeeder extends Seeder
     public function run(): void
     {
         $articles = Article::all();
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
 
         foreach ($articles as $article) {
             $initialQty = rand(5, 25);

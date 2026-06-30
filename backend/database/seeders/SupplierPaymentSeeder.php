@@ -12,7 +12,7 @@ class SupplierPaymentSeeder extends Seeder
     public function run(): void
     {
         $purchases = Purchase::with('payments')->get();
-        $users = User::where('rol', 'ADMIN')->get();
+        $users = User::administradores()->get();
         $metodos = ['TRANSFERENCIA', 'EFECTIVO', 'CHEQUE'];
 
         foreach ($purchases as $purchase) {

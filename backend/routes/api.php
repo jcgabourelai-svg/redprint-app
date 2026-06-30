@@ -98,6 +98,7 @@ Route::prefix('v1')->group(function () {
         // Operaciones
         // =====================================================
         Route::middleware('permission:operaciones.calendario')->group(function () {
+            Route::get('visits/socios', [VisitController::class, 'socios']);
             Route::apiResource('visits', VisitController::class);
             Route::post('visits/{visit}/complete', [VisitController::class, 'complete']);
             Route::post('visits/{visit}/reschedule', [VisitController::class, 'reschedule']);

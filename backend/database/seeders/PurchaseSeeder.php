@@ -15,7 +15,7 @@ class PurchaseSeeder extends Seeder
     public function run(): void
     {
         $suppliers = Supplier::all();
-        $users = User::where('rol', 'ADMIN')->get();
+        $users = User::administradores()->get();
         $articles = Article::all();
 
         for ($i = 0; $i < 15; $i++) {

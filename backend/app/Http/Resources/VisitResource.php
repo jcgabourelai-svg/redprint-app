@@ -17,6 +17,8 @@ class VisitResource extends JsonResource
             'fecha_programada' => $this->fecha_programada?->toDateString(),
             'fecha_realizada' => $this->when($this->fecha_realizada, $this->fecha_realizada?->toIso8601String()),
             'socio_id' => $this->socio_id,
+            'cliente_nombre' => $this->whenLoaded('client', fn () => $this->client?->razon_social),
+            'socio_nombre' => $this->whenLoaded('socio', fn () => $this->socio?->nombre),
             'estado' => $this->when($this->estado, $this->estado?->value),
             'notas' => $this->notas,
             'client' => $this->whenLoaded('client'),

@@ -28,6 +28,7 @@ export const VisitStatus = {
   COMPLETADA: 'COMPLETADA',
   REPROGRAMADA: 'REPROGRAMADA',
   CANCELADA: 'CANCELADA',
+  OMITIDA: 'OMITIDA',
 } as const
 export type VisitStatus = (typeof VisitStatus)[keyof typeof VisitStatus]
 

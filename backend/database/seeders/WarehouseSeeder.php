@@ -10,7 +10,7 @@ class WarehouseSeeder extends Seeder
 {
     public function run(): void
     {
-        $admin = User::where('rol', 'ADMIN')->first();
+        $admin = User::administradores()->first();
 
         $warehouses = [
             ['nombre' => 'Almacen Central', 'direccion' => 'Av. Principal 100, Col. Centro, CDMX', 'responsable_id' => $admin?->id],
