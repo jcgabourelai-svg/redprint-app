@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, MoreVertical } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
@@ -279,15 +279,6 @@ export default function ArticleList() {
       label: 'Costo Unitario',
       sortable: true,
       render: (value: number) => formatCurrency(value),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: () => (
-        <button className="p-1 hover:bg-muted rounded">
-          <MoreVertical className="h-4 w-4" />
-        </button>
-      ),
     },
   ]
 
