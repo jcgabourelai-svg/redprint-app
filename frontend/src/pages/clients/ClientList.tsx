@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Users, Plus, MoreVertical, Eye, FileText } from 'lucide-react'
+import { Users, Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import Button from '@/components/ui/Button'
@@ -79,37 +79,6 @@ export default function ClientList() {
         <Badge variant="client_status" color={value}>
           {estadoLabels[value] || value}
         </Badge>
-      ),
-    },
-    {
-      key: 'acciones',
-      label: 'Acciones',
-      render: (_value: unknown, row: Client) => (
-        <div className="flex items-center gap-1">
-          <button
-            className="p-1 hover:bg-muted rounded"
-            title="Ver detalle"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/clientes/${row.id}`)
-            }}
-          >
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <button
-            className="p-1 hover:bg-muted rounded"
-            title="Contratos"
-            onClick={(e) => {
-              e.stopPropagation()
-              navigate(`/contratos?cliente=${row.id}`)
-            }}
-          >
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </button>
-          <button className="p-1 hover:bg-muted rounded" title="Más opciones">
-            <MoreVertical className="h-4 w-4 text-muted-foreground" />
-          </button>
-        </div>
       ),
     },
   ]

@@ -22,7 +22,7 @@
 | 7 | **Cuentas por Cobrar** | ❌ | `👁 Historial`(modal), `$ Cobro`(modal, no persiste) | ❌ NO existe | **Mantener** — única vía (cablear API) |
 | 8 | **Pagos (por pagar)** | ❌ | `👁 Ver` **muerto** (modal existe pero inalcanzable) | ❌ NO existe | **Reducir/Implementar** — cablear modal o quitar |
 | 9 | **Facturas** | ❌ | `👁 Ver`(**ruta rota→/**), `$ Pago`(modal, no persiste), `🗑 Eliminar`(**muerto**) | ❌ NO existe | **Mantener + fix** — crear detalle o quitar `Eye` |
-| 10 | **Clientes** | ✅ → detalle | `👁 Ver`(dup), `📄 Contratos`(atajo), `⋮` **muerto** | ✅ (Editar/Eliminar* sin implementar) | **Quitar columna** — `Eye` duplica la fila |
+| 10 | **Clientes** | ✅ → detalle | ~~`👁 Ver`(dup), `📄 Contratos`(atajo), `⋮` **muerto**~~ | ✅ (Editar/Eliminar* sin implementar) | ✅ **Hecho** — columna quitada; fila clickeable → detalle |
 | 11 | **Contratos** | ✅ → detalle | `👁 Ver`(dup), `⋮` **muerto** | ✅ (Editar/Asignar/Liberar* sin implementar) | **Quitar columna** — `Eye` duplica la fila |
 | 12 | **Usuarios (admin)** | ❌ | `👁 Ver`, `✏️ Editar`, `🛡 Reset pass`, `🗑 Eliminar` | ❌ NO existe (solo modal) | **Mantener** — única vía de acceso |
 | 13 | **Lecturas** | ✅ → visita | `👁 Ver` (= click fila) | ❌ (va a Visita) | **Quitar columna** — `Eye` duplica la fila |
@@ -334,7 +334,11 @@ ver/crear contrato. *`Editar` y `Eliminar` existen pero sin `onClick`.*
 - Redundante con fila: `👁 Ver`.
 - Redundante con detalle: `📄 Contratos` (atajo cubierto por la pestaña del detalle).
 - Únicos: ninguno (`⋮` muerto).
-- **👉 QUITAR columna Acciones.** *(Si se valora mucho, dejar únicamente `📄 Contratos` como atajo.)*
+- **✅ HECHO.** Columna `acciones` eliminada de `ClientList.tsx` (eliminados los
+  botones `Eye`, `FileText` y el `MoreVertical` muerto), junto con los imports
+  `Eye`, `FileText`, `MoreVertical` que quedaron sin uso. La fila clickeable ya
+  cubre el acceso al detalle (pestaña "Contratos Activos"). *(Queda pendiente el
+  `Editar`/`Eliminar` del detalle, sin `onClick`.)*
 
 ---
 
@@ -423,7 +427,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | Mantenimiento | `MaintenanceList.tsx` | `Eye` | ✅ |
 | Artículos | `ArticleList.tsx` | `⋮` (muerto) | ✅ |
 | Compras | `PurchaseList.tsx` | `Eye`, `+`, `$`, `Trash2` | ⬜ |
-| Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ⬜ |
+| Clientes | `ClientList.tsx` | `Eye`, `⋮` (muerto); considerar dejar `📄 Contratos` | ✅ |
 | Contratos | `ContractList.tsx` | `Eye`, `⋮` (muerto) | ⬜ |
 | Lecturas | `ReadingListPage.tsx` | `Eye` | ⬜ |
 
@@ -463,7 +467,7 @@ no ruido. *(Observación: 3 botones del detalle están muertos: `Editar`, `Impri
 | `PurchaseList.tsx` | `$` Registrar pago | `:157-162` | ⬜ |
 | `PaymentList.tsx` | `Eye` Ver detalle | `:69-71` | ⬜ |
 | `InvoiceList.tsx` | `Trash2` Eliminar | `:109-111` | ⬜ |
-| `ClientList.tsx` | `⋮` Más opciones | `:109-111` | ⬜ |
+| `ClientList.tsx` | `⋮` Más opciones | `:109-111` | ✅ |
 | `ContractList.tsx` | `⋮` Más opciones | `:124-126` | ⬜ |
 | `ArticleDetail.tsx` | `Editar` | `:84-87` | ⬜ |
 | `ClientDetail.tsx` | `Editar`, `Eliminar` | `:96-103` | ⬜ |
