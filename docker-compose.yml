@@ -1,3 +1,17 @@
+# Variables de entorno compartidas entre los servicios `app` y `scheduler`.
+# Editar aqui una sola vez: ambos servicios usan el mismo origen (evita drift).
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-local}
+  # Se pasan al entrypoint para que ajuste APP_URL y SANCTUM_STATEFUL_DOMAINS
+  # con el host:puerto correcto (el bug del puerto de Sanctum en SPA auth).
+  APP_PORT: ${APP_PORT:-8080}
+  APP_DOMAIN: ${APP_DOMAIN:-localhost}
+  DB_HOST: database
+  DB_PORT: "5432"
+  DB_DATABASE: ${DB_DATABASE:-redprint}
+  DB_USERNAME: ${DB_USERNAME:-redprint}
+  DB_PASSWORD: ${DB_PASSWORD:-secret}
+
 services:
   # --- Builder del frontend (se ejecuta una sola vez y termina) -----------------
   # Compila la SPA React/Vite dentro de Docker. Asi NO hace falta tener Node/npm
@@ -11,6 +25,7 @@ services:
       - ./frontend:/app
 
   app:
+    image: redprint-app:${TAG:-latest}
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -21,17 +36,9 @@ services:
       - ./backend:/var/www/html
       - app_storage:/var/www/html/storage
     environment:
-      - APP_ENV=${APP_ENV:-local}
-      - RUN_MIGRATIONS=${RUN_MIGRATIONS:-1}
-      # Se pasan al entrypoint para que ajuste APP_URL y SANCTUM_STATEFUL_DOMAINS
-      # con el host:puerto correcto (el bug del puerto de Sanctum en SPA auth).
-      - APP_PORT=${APP_PORT:-8080}
-      - APP_DOMAIN=${APP_DOMAIN:-localhost}
-      - DB_HOST=database
-      - DB_PORT=5432
-      - DB_DATABASE=${DB_DATABASE:-redprint}
-      - DB_USERNAME=${DB_USERNAME:-redprint}
-      - DB_PASSWORD=${DB_PASSWORD:-secret}
+      <<: *app-env
+      # Solo `app` corre las migraciones (el scheduler las omite, ver abajo).
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-1}
     depends_on:
       database:
         condition: service_healthy
@@ -44,6 +51,25 @@ services:
       timeout: 3s
       retries: 30
       start_period: 60s
+    networks:
+      - redprint
+
+  scheduler:
+    image: redprint-app:${TAG:-latest}
+    container_name: redprint-scheduler
+    restart: unless-stopped
+    working_dir: /var/www/html
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - ./backend:/var/www/html
+      - app_storage:/var/www/html/storage
+    environment:
+      <<: *app-env
+      # El scheduler NO migra: `app` ya lo hizo y esta sano (service_healthy).
+      RUN_MIGRATIONS: "0"
+    depends_on:
+      app:
+        condition: service_healthy
     networks:
       - redprint
 
