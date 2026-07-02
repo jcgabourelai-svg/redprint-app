@@ -73,6 +73,16 @@ export function useDeleteVisit() {
   })
 }
 
+export function useGenerateVisits() {
+  const qc = useQueryClient()
+  return useMutation<{ message: string; creadas: number }>({
+    mutationFn: () => api.post('/visits/generate').then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['visits'] })
+    },
+  })
+}
+
 export interface Socio {
   id: number
   nombre: string

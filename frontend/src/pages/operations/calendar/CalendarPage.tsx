@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Eye, ClipboardList, Calendar as CalendarIcon, List } from 'lucide-react'
+import { Plus, Eye, ClipboardList, Calendar as CalendarIcon, List, RefreshCw } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Calendar from '@/components/ui/Calendar'
 import Table from '@/components/ui/Table'
@@ -12,7 +12,7 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import type { CalendarEvent } from '@/components/ui/Calendar'
 import type { Visit, VisitType, VisitStatus } from '@/types/operations'
-import { useVisits, useCreateVisit, useSocios } from '@/hooks/useVisits'
+import { useVisits, useCreateVisit, useSocios, useGenerateVisits } from '@/hooks/useVisits'
 import { useClients } from '@/hooks/useClients'
 import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
@@ -66,6 +66,7 @@ export default function CalendarPage() {
   const [view, setView] = useState<VisitView>(getInitialView)
   const [showNewVisitModal, setShowNewVisitModal] = useState(false)
   const [createError, setCreateError] = useState('')
+  const [generateMsg, setGenerateMsg] = useState('')
   const [newVisit, setNewVisit] = useState({
     cliente_id: '',
     tipo_visita: 'LECTURA' as VisitType,
@@ -77,6 +78,7 @@ export default function CalendarPage() {
   const { data: visitsData, isLoading, error } = useVisits()
   const visits = visitsData?.data || []
   const createVisit = useCreateVisit()
+  const generateVisits = useGenerateVisits()
   const { data: sociosData } = useSocios()
   const { data: clientsData } = useClients()
 
@@ -227,10 +229,35 @@ export default function CalendarPage() {
                 Lista
               </Button>
             </div>
-            <Button onClick={() => setShowNewVisitModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva visita
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={generateVisits.isPending}
+                onClick={() => {
+                  setGenerateMsg('')
+                  generateVisits.mutate(undefined, {
+                    onSuccess: (res) => {
+                      setGenerateMsg(
+                        res.creadas > 0
+                          ? `Se generaron ${res.creadas} visita(s) nueva(s).`
+                          : 'No se generaron visitas nuevas (todo al día).'
+                      )
+                    },
+                    onError: (err) => {
+                      setGenerateMsg(parseApiError(err))
+                    },
+                  })
+                }}
+              >
+                <RefreshCw className={`mr-1.5 h-4 w-4 ${generateVisits.isPending ? 'animate-spin' : ''}`} />
+                {generateVisits.isPending ? 'Generando...' : 'Generar visitas del próximo mes'}
+              </Button>
+              <Button onClick={() => setShowNewVisitModal(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva visita
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -252,6 +279,12 @@ export default function CalendarPage() {
             />
           </div>
         </div>
+
+        {generateMsg && (
+          <div className={`rounded-md p-3 text-sm ${generateVisits.isError ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {generateMsg}
+          </div>
+        )}
 
         {view === 'calendario' ? (
           <Calendar

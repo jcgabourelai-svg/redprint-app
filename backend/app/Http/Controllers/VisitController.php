@@ -7,9 +7,11 @@ use App\Http\Resources\VisitResource;
 use App\Enums\VisitStatus;
 use App\Models\Visit;
 use App\Models\User;
+use App\Services\VisitSchedulerService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class VisitController extends Controller
 {
@@ -117,5 +119,36 @@ class VisitController extends Controller
             ->get(['id', 'nombre']);
 
         return response()->json($socios);
+    }
+
+    /**
+     * Dispara manualmente la generacion de visitas recurrentes (rolling 1 mes)
+     * para todos los contratos activos. Es el equivalente en UI al cron job
+     * visits:generate-upcoming, util cuando no se puede garantizar que el
+     * scheduler del sistema este corriendo.
+     *
+     * Usa un candado distribuido para evitar ejecuciones concurrentes (p. ej.
+     * dos operadores o solapamiento con el cron) que podrian duplicar visitas,
+     * ya que el guard anticopia del servicio es a nivel aplicacion (SELECT
+     * seguido de INSERT) sin restriccion unica en BD.
+     */
+    public function generate(VisitSchedulerService $scheduler): JsonResponse
+    {
+        $lock = Cache::lock('visits:generate', 300);
+
+        if (!$lock->get()) {
+            return response()->json(['message' => 'Ya hay una generación en curso, intenta de nuevo en unos momentos'], 409);
+        }
+
+        try {
+            $created = $scheduler->generateRecurringVisits();
+        } finally {
+            $lock->release();
+        }
+
+        return response()->json([
+            'message' => 'Generacion completada',
+            'creadas' => count($created),
+        ]);
     }
 }
