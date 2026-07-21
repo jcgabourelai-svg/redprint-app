@@ -4,6 +4,7 @@ import { ArrowLeftRight, ArrowDown, ArrowUp } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import type { Column } from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -43,7 +44,7 @@ export default function MovementList() {
   const navigate = useNavigate()
   const [tipoFilter, setTipoFilter] = useState('')
   const [selected, setSelected] = useState<InventoryMovement | null>(null)
-  const { data: movements, tableProps, isLoading, error } = useServerTable<InventoryMovement>({
+  const { data: movements, tableProps, isLoading, error, hasActiveFilters } = useServerTable<InventoryMovement>({
     queryKey: ['inventory-movements'],
     fetcher: (p) => api.get('/inventory-movements', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
@@ -164,6 +165,7 @@ export default function MovementList() {
   }
 
   const hasFilters = !!tipoFilter
+  const isVirginEmpty = movements.length === 0 && !hasActiveFilters && !hasFilters
   const clearFilters = () => setTipoFilter('')
 
   return (
@@ -239,16 +241,24 @@ export default function MovementList() {
           )}
         </div>
 
-        <Table
-          data={movements}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          onRowClick={(row) => setSelected(row)}
-          {...tableProps}
-          emptyMessage="No hay movimientos registrados"
-        />
+        {isVirginEmpty ? (
+          <EmptyState
+            icon={ArrowLeftRight}
+            title="No hay movimientos"
+            description="Los movimientos de stock se generan desde el detalle de almacenes o impresoras."
+          />
+        ) : (
+          <Table
+            data={movements}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            onRowClick={(row) => setSelected(row)}
+            {...tableProps}
+            emptyMessage="No se encontraron movimientos con los filtros aplicados."
+          />
+        )}
 
         <p className="text-xs text-muted-foreground">
           Mostrando {movements.length} movimientos en la página. Las tarjetas de Entradas/Salidas

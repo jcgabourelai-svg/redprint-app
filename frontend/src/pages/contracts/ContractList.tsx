@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, FileText } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import type { Contract, ContractStatus } from '@/types/contract'
@@ -25,7 +26,7 @@ function getEsquemaLabel(contract: Contract): string {
 
 export default function ContractList() {
   const navigate = useNavigate()
-  const { data: contracts, tableProps, isLoading, error } = useServerTable<Contract>({
+  const { data: contracts, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Contract>({
     queryKey: ['contracts'],
     fetcher: (p) => api.get('/contracts', { params: p }).then((r) => r.data),
   })
@@ -146,16 +147,25 @@ export default function ContractList() {
           )}
         </div>
 
-        <Table
-          data={contracts}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No hay contratos registrados"
-          onRowClick={(contract) => navigate(`/contratos/${contract.id}`)}
-        />
+        {contracts.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={FileText}
+            title="No hay contratos"
+            description="Crea un contrato para vincular un cliente con una impresora."
+            action={{ label: 'Nuevo Contrato', onClick: () => navigate('/contratos/crear') }}
+          />
+        ) : (
+          <Table
+            data={contracts}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron contratos con los filtros aplicados."
+            onRowClick={(contract) => navigate(`/contratos/${contract.id}`)}
+          />
+        )}
       </div>
     </PageLayout>
   )

@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { Users, Plus, Eye, Pencil, Trash2, Shield, ShieldCheck, Lock } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -231,51 +232,60 @@ export default function UserListPage() {
           </div>
 
           <div className="bg-card rounded-lg border overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nombre</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Correo</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Rol</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Ultimo Acceso</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <tr key={user.id} className="border-b hover:bg-muted">
-                      <td className="py-3 px-4 font-medium">{user.nombre}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
-                      <td className="py-3 px-4 text-center">{renderRoleBadge(user)}</td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge variant={user.activo ? 'success' : 'error'}>
-                          {user.activo ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-center text-muted-foreground text-xs">{user.ultimo_acceso || 'Nunca'}</td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button className="p-1 hover:bg-muted rounded" title="Ver detalle" onClick={() => { setSelectedUser(user); setShowDetailModal(true) }}>
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                          <button className="p-1 hover:bg-muted rounded" title="Editar" onClick={() => openEdit(user)}>
-                            <Pencil className="h-4 w-4 text-primary" />
-                          </button>
-                          <button className="p-1 hover:bg-muted rounded" title="Resetear contrasena" onClick={() => openPassword(user)}>
-                            <Shield className="h-4 w-4 text-warning" />
-                          </button>
-                          <button className="p-1 hover:bg-muted rounded" title="Eliminar" onClick={() => { setDeletingUser(user); setShowDeleteModal(true) }}>
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </button>
-                        </div>
-                      </td>
+            {users.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title="No hay usuarios"
+                description="Invita o crea el primer usuario del sistema."
+                action={{ label: 'Nuevo usuario', onClick: openCreate }}
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted border-b">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nombre</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Correo</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Rol</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Ultimo Acceso</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {users.map((user) => (
+                      <tr key={user.id} className="border-b hover:bg-muted">
+                        <td className="py-3 px-4 font-medium">{user.nombre}</td>
+                        <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
+                        <td className="py-3 px-4 text-center">{renderRoleBadge(user)}</td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge variant={user.activo ? 'success' : 'error'}>
+                            {user.activo ? 'Activo' : 'Inactivo'}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-center text-muted-foreground text-xs">{user.ultimo_acceso || 'Nunca'}</td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button className="p-1 hover:bg-muted rounded" title="Ver detalle" onClick={() => { setSelectedUser(user); setShowDetailModal(true) }}>
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                            <button className="p-1 hover:bg-muted rounded" title="Editar" onClick={() => openEdit(user)}>
+                              <Pencil className="h-4 w-4 text-primary" />
+                            </button>
+                            <button className="p-1 hover:bg-muted rounded" title="Resetear contrasena" onClick={() => openPassword(user)}>
+                              <Shield className="h-4 w-4 text-warning" />
+                            </button>
+                            <button className="p-1 hover:bg-muted rounded" title="Eliminar" onClick={() => { setDeletingUser(user); setShowDeleteModal(true) }}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div className="text-sm text-muted-foreground">

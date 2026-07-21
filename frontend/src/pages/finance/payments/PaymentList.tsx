@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { DollarSign, Eye, AlertCircle, CreditCard, CheckCircle } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -14,7 +15,7 @@ import { useServerTable } from '@/hooks/useServerTable'
 import type { Payment } from '@/types/payment'
 
 export default function PaymentList() {
-  const { data: payments, tableProps, isLoading, error } = useServerTable<Payment>({
+  const { data: payments, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Payment>({
     queryKey: ['payments'],
     fetcher: (p) => api.get('/payments', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
@@ -140,15 +141,23 @@ export default function PaymentList() {
               </Card>
             </div>
 
-            <Table
-              data={payments}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginatable={true}
-              {...tableProps}
-              emptyMessage="No hay pagos registrados"
-            />
+            {payments.length === 0 && !hasActiveFilters ? (
+              <EmptyState
+                icon={CreditCard}
+                title="No hay pagos"
+                description="Los pagos se registran desde el detalle de facturas y compras."
+              />
+            ) : (
+              <Table
+                data={payments}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginatable={true}
+                {...tableProps}
+                emptyMessage="No se encontraron pagos con los filtros aplicados."
+              />
+            )}
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total pagado: <strong className="text-success">{formatCurrency(totalPagado)}</strong></span>

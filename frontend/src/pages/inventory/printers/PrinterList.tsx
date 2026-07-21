@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Printer as PrinterIcon, Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table, { type FilterConfig } from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -33,7 +34,7 @@ export default function PrinterList() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [createError, setCreateError] = useState<string | null>(null)
 
-  const { data: printers, tableProps, isLoading, error } = useServerTable<Printer>({
+  const { data: printers, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Printer>({
     queryKey: ['printers'],
     fetcher: (p) => api.get('/printers', { params: p }).then((r) => r.data),
   })
@@ -138,17 +139,30 @@ export default function PrinterList() {
           )}
         </div>
 
-        <Table
-          data={printers}
-          columns={columns}
-          filters={PRINTER_FILTERS}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No hay impresoras registradas"
-          onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
-        />
+        {printers.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={PrinterIcon}
+            title="No hay impresoras"
+            description="Comienza registrando tu primera impresora para gestionar el inventario."
+            action={
+              isAdmin
+                ? { label: 'Nueva Impresora', onClick: () => { setShowCreateModal(true); setCreateError(null) } }
+                : undefined
+            }
+          />
+        ) : (
+          <Table
+            data={printers}
+            columns={columns}
+            filters={PRINTER_FILTERS}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron impresoras con los filtros aplicados."
+            onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
+          />
+        )}
       </div>
 
       <Modal

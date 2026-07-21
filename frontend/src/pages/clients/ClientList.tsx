@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Users, Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -22,7 +23,7 @@ const estadoLabels: Record<string, string> = {
 
 export default function ClientList() {
   const navigate = useNavigate()
-  const { data: clients, tableProps, isLoading, error } = useServerTable<Client>({
+  const { data: clients, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Client>({
     queryKey: ['clients'],
     fetcher: (p) => api.get('/clients', { params: p }).then((r) => r.data),
   })
@@ -140,16 +141,25 @@ export default function ClientList() {
           </Button>
         </div>
 
-        <Table
-          data={clients}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No hay clientes registrados"
-          onRowClick={(client) => navigate(`/clientes/${client.id}`)}
-        />
+        {clients.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Users}
+            title="No hay clientes"
+            description="Registra tu primer cliente para gestionar contratos y visitas."
+            action={{ label: 'Nuevo Cliente', onClick: () => setShowNewClientModal(true) }}
+          />
+        ) : (
+          <Table
+            data={clients}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron clientes con los filtros aplicados."
+            onRowClick={(client) => navigate(`/clientes/${client.id}`)}
+          />
+        )}
       </div>
 
       <Modal

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Package } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -195,7 +196,7 @@ export default function ArticleList() {
     variant: 'success',
     message: '',
   })
-  const { data: articles, tableProps, isLoading, error } = useServerTable<Article>({
+  const { data: articles, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Article>({
     queryKey: ['articles'],
     fetcher: (p) => api.get('/articles', { params: p }).then((r) => r.data),
     defaultSort: { column: 'nombre', dir: 'asc' },
@@ -318,16 +319,29 @@ export default function ArticleList() {
           )}
         </div>
 
-        <Table
-          data={articles}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No hay artículos registrados"
-          onRowClick={(article) => navigate(`/inventario/articulos/${article.id}`)}
-        />
+        {articles.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Package}
+            title="No hay artículos"
+            description="Comienza creando tu primer artículo para el catálogo de insumos."
+            action={
+              isAdmin
+                ? { label: 'Nuevo Artículo', onClick: () => setShowCreateModal(true) }
+                : undefined
+            }
+          />
+        ) : (
+          <Table
+            data={articles}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron artículos con los filtros aplicados."
+            onRowClick={(article) => navigate(`/inventario/articulos/${article.id}`)}
+          />
+        )}
       </div>
 
       <Modal

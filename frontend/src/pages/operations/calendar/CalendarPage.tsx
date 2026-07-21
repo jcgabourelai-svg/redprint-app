@@ -5,6 +5,7 @@ import PageLayout from '@/components/layout/PageLayout'
 import Calendar from '@/components/ui/Calendar'
 import Table from '@/components/ui/Table'
 import type { Column } from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
@@ -105,6 +106,9 @@ export default function CalendarPage() {
       return true
     })
   }, [visits, socioFilter, estadoFilter])
+
+  const hasLocalFilters = !!socioFilter || !!estadoFilter
+  const isVirginEmpty = visits.length === 0 && !hasLocalFilters
 
   const calendarEvents: CalendarEvent[] = filteredVisits.map((v) => ({
     id: v.id,
@@ -286,7 +290,14 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {view === 'calendario' ? (
+        {isVirginEmpty ? (
+          <EmptyState
+            icon={CalendarIcon}
+            title="No hay visitas"
+            description="Programa visitas desde el calendario o el detalle de un contrato."
+            action={{ label: 'Nueva visita', onClick: () => setShowNewVisitModal(true) }}
+          />
+        ) : view === 'calendario' ? (
           <Calendar
             events={calendarEvents}
             onEventClick={(event) => navigate(`/operaciones/visitas/${event.id}`)}
@@ -305,7 +316,7 @@ export default function CalendarPage() {
             searchable
             sortable
             paginatable
-            emptyMessage="No hay visitas con los filtros seleccionados"
+            emptyMessage="No se encontraron visitas con los filtros aplicados."
             onRowClick={(v) => navigate(`/operaciones/visitas/${v.id}`)}
           />
         )}

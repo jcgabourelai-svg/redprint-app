@@ -139,6 +139,14 @@ export function useServerTable<T>({
     onFilterChange,
   }
 
+  // True cuando hay búsqueda, filtros u orden activos que no sean los defaults.
+  // Útil para distinguir el estado vacío "virgen" del "filtrado" en las páginas.
+  const hasActiveFilters =
+    search.trim() !== '' ||
+    sortColumn !== (defaultSort?.column ?? null) ||
+    sortDirection !== (defaultSort?.dir ?? 'asc') ||
+    Object.values(filters).some((v) => v !== '' && v != null)
+
   return {
     data: items,
     raw: query.data,
@@ -146,5 +154,6 @@ export function useServerTable<T>({
     isLoading: query.isLoading,
     isFetching: query.isFetching,
     error: query.error,
+    hasActiveFilters,
   }
 }

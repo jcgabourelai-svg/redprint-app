@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Bell, Eye, Check, Trash2, AlertTriangle, Info, Calendar, CheckCircle, Filter } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
 import Select from '@/components/ui/Select'
 import Badge from '@/components/ui/Badge'
@@ -44,6 +45,9 @@ export default function NotificationCenterPage() {
     if (filterCategoria && n.categoria !== filterCategoria) return false
     return true
   })
+
+  const hasLocalFilters = !!filterTipo || !!filterEstado || !!filterCategoria
+  const isVirginEmpty = notifications.length === 0 && !hasLocalFilters
 
   const handleMarkAsRead = async (id: string) => {
     await markAsRead.mutateAsync(id)
@@ -168,12 +172,18 @@ export default function NotificationCenterPage() {
             </div>
 
             <div className="space-y-3">
-              {filtered.length === 0 && (
+              {isVirginEmpty ? (
+                <EmptyState
+                  icon={Bell}
+                  title="No hay notificaciones"
+                  description="Las notificaciones del sistema aparecerán aquí."
+                />
+              ) : filtered.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
                   <p>No hay notificaciones con estos filtros</p>
                 </div>
-              )}
+              ) : null}
 
               {filtered.map((notif) => {
                 const config = tipoConfig[notif.tipo]

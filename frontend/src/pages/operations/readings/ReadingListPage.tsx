@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye } from 'lucide-react'
+import { Eye, Gauge } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
 import type { Reading } from '@/types/reading'
@@ -24,7 +25,7 @@ export default function ReadingListPage() {
   const [fechaInicio, setFechaInicio] = useState('')
   const [fechaFin, setFechaFin] = useState('')
 
-  const { data: readings, tableProps, isLoading, error } = useServerTable<Reading>({
+  const { data: readings, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Reading>({
     queryKey: ['readings'],
     fetcher: (p) => api.get('/readings', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
@@ -40,6 +41,9 @@ export default function ReadingListPage() {
     setFechaInicio('')
     setFechaFin('')
   }
+
+  const hasLocalFilters = !!socioFilter || !!fechaInicio || !!fechaFin
+  const isVirginEmpty = readings.length === 0 && !hasActiveFilters && !hasLocalFilters
 
   if (isLoading) {
     return (
@@ -168,16 +172,24 @@ export default function ReadingListPage() {
           </button>
         </div>
 
-        <Table
-          data={readings}
-          columns={columns}
-          searchable={false}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No se encontraron lecturas con los filtros aplicados"
-          onRowClick={(reading) => navigate(`/operaciones/visitas/${reading.visita_id}`)}
-        />
+        {isVirginEmpty ? (
+          <EmptyState
+            icon={Gauge}
+            title="No hay lecturas"
+            description="Las lecturas se capturan desde la página de captura de lecturas."
+          />
+        ) : (
+          <Table
+            data={readings}
+            columns={columns}
+            searchable={false}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron lecturas con los filtros aplicados."
+            onRowClick={(reading) => navigate(`/operaciones/visitas/${reading.visita_id}`)}
+          />
+        )}
       </div>
     </PageLayout>
   )

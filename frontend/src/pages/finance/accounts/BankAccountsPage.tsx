@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Landmark, Plus, Eye, ArrowUpRight, ArrowDownRight, DollarSign } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
@@ -133,51 +134,60 @@ export default function BankAccountsPage() {
               </Card>
             </div>
 
-            <div className="bg-card rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="bg-muted border-b">
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Banco</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
-                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">No. Cuenta</th>
-                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">Saldo Actual</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {accounts.map((account) => (
-                    <tr key={account.id} className="border-b hover:bg-muted">
-                      <td className="py-3 px-4 font-medium">{account.banco}</td>
-                      <td className="py-3 px-4">{tipoLabels[account.tipo]}</td>
-                      <td className="py-3 px-4 text-muted-foreground">{account.numero_cuenta}</td>
-                      <td className="py-3 px-4 text-right font-medium">{formatCurrency(account.saldo)}</td>
-                      <td className="py-3 px-4 text-center">
-                        <Badge
-                          variant={account.conciliacion_status === 'CONCILIADO' ? 'success' : 'warning'}
-                        >
-                          {conciliacionLabels[account.conciliacion_status]}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1">
-                          <button
-                            className="p-1 hover:bg-muted rounded"
-                            title="Ver movimientos"
-                            onClick={() => {
-                              setSelectedAccount(account)
-                              setAccountId(account.id)
-                            }}
-                          >
-                            <Eye className="h-4 w-4 text-muted-foreground" />
-                          </button>
-                        </div>
-                      </td>
+            {accounts.length === 0 ? (
+              <EmptyState
+                icon={Landmark}
+                title="No hay cuentas bancarias"
+                description="Registra tu primera cuenta para la conciliación."
+                action={{ label: 'Nueva cuenta', onClick: () => setShowNewAccountModal(true) }}
+              />
+            ) : (
+              <div className="bg-card rounded-lg border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-muted border-b">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Banco</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">No. Cuenta</th>
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">Saldo Actual</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                      <th className="text-center py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {accounts.map((account) => (
+                      <tr key={account.id} className="border-b hover:bg-muted">
+                        <td className="py-3 px-4 font-medium">{account.banco}</td>
+                        <td className="py-3 px-4">{tipoLabels[account.tipo]}</td>
+                        <td className="py-3 px-4 text-muted-foreground">{account.numero_cuenta}</td>
+                        <td className="py-3 px-4 text-right font-medium">{formatCurrency(account.saldo)}</td>
+                        <td className="py-3 px-4 text-center">
+                          <Badge
+                            variant={account.conciliacion_status === 'CONCILIADO' ? 'success' : 'warning'}
+                          >
+                            {conciliacionLabels[account.conciliacion_status]}
+                          </Badge>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              className="p-1 hover:bg-muted rounded"
+                              title="Ver movimientos"
+                              onClick={() => {
+                                setSelectedAccount(account)
+                                setAccountId(account.id)
+                              }}
+                            >
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total saldo: <strong>{formatCurrency(totalSaldo)}</strong></span>

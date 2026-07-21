@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Eye, DollarSign, ShoppingBag, Trash2 } from 'lucide-react'
+import { Plus, Eye, DollarSign, ShoppingBag, Trash2, ShoppingCart } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -43,7 +44,7 @@ const statusLabels: Record<string, string> = {
 
 export default function PurchaseList() {
   const navigate = useNavigate()
-  const { data: purchases, tableProps, isLoading, error } = useServerTable<Purchase>({
+  const { data: purchases, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Purchase>({
     queryKey: ['purchases'],
     fetcher: (p) => api.get('/purchases', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
@@ -264,16 +265,25 @@ export default function PurchaseList() {
               )}
             </div>
 
-            <Table
-              data={purchases}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginatable={true}
-              {...tableProps}
-              emptyMessage="No hay compras registradas"
-              onRowClick={(row) => navigate(`/finanzas/compras/${row.id}`)}
-            />
+            {purchases.length === 0 && !hasActiveFilters ? (
+              <EmptyState
+                icon={ShoppingCart}
+                title="No hay compras"
+                description="Registra una compra para añadir artículos al inventario."
+                action={{ label: 'Nueva Compra', onClick: () => setShowNewPurchase(true) }}
+              />
+            ) : (
+              <Table
+                data={purchases}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginatable={true}
+                {...tableProps}
+                emptyMessage="No se encontraron compras con los filtros aplicados."
+                onRowClick={(row) => navigate(`/finanzas/compras/${row.id}`)}
+              />
+            )}
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total pendiente: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>

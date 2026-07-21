@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Filter, X, Warehouse as WarehouseIcon } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
+import EmptyState from '@/components/ui/EmptyState'
 import Modal from '@/components/ui/Modal'
 import WarehouseTable from '@/components/warehouse/WarehouseTable'
 import WarehouseCard from '@/components/warehouse/WarehouseCard'
@@ -215,27 +216,23 @@ export default function WarehouseList() {
         </div>
 
         {warehouses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <WarehouseIcon className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">No hay almacenes</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Comienza creando tu primer almacén para gestionar las ubicaciones de impresoras.
-            </p>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Crear Almacén
-            </Button>
-          </div>
+          <EmptyState
+            icon={WarehouseIcon}
+            title="No hay almacenes"
+            description="Comienza creando tu primer almacén para gestionar las ubicaciones de impresoras."
+            action={
+              isAdmin
+                ? { label: 'Crear Almacén', onClick: () => setShowCreateModal(true) }
+                : undefined
+            }
+          />
         ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Search className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold text-muted-foreground mb-2">Sin resultados</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              No se encontraron almacenes con los filtros aplicados.
-            </p>
-            <Button variant="secondary" size="sm" onClick={clearFilters}>
-              Limpiar filtros
-            </Button>
+          <div className="hidden md:block">
+            <WarehouseTable
+              warehouses={paginated}
+              onView={handleView}
+              emptyMessage="No se encontraron almacenes con los filtros aplicados."
+            />
           </div>
         ) : (
           <>

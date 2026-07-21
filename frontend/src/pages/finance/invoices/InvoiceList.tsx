@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { FileText, Plus, Eye, DollarSign, Trash2, AlertCircle } from 'lucide-react'
+import { FileText, Plus, Eye, DollarSign, Trash2, AlertCircle, Receipt } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -15,7 +16,7 @@ import { useServerTable } from '@/hooks/useServerTable'
 import type { Invoice } from '@/types/invoice'
 
 export default function InvoiceList() {
-  const { data: invoices, tableProps, isLoading, error } = useServerTable<Invoice>({
+  const { data: invoices, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Invoice>({
     queryKey: ['invoices'],
     fetcher: (p) => api.get('/invoices', { params: p }).then((r) => r.data),
   })
@@ -216,15 +217,24 @@ export default function InvoiceList() {
               )}
             </div>
 
-            <Table
-              data={invoices}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginatable={true}
-              {...tableProps}
-              emptyMessage="No hay facturas registradas"
-            />
+            {invoices.length === 0 && !hasActiveFilters ? (
+              <EmptyState
+                icon={Receipt}
+                title="No hay facturas"
+                description="Registra una factura para iniciar la facturación."
+                action={{ label: 'Registrar Factura', onClick: () => navigate('/finanzas/facturas/registrar') }}
+              />
+            ) : (
+              <Table
+                data={invoices}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginatable={true}
+                {...tableProps}
+                emptyMessage="No se encontraron facturas con los filtros aplicados."
+              />
+            )}
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total pendiente: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>

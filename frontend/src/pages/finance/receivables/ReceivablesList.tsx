@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { DollarSign, Eye, AlertCircle, FileText, CheckCircle, Clock } from 'lucide-react'
+import { DollarSign, Eye, AlertCircle, FileText, CheckCircle, Clock, Wallet } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
@@ -28,7 +29,7 @@ function getDiasVencidosLabel(dias: number): { text: string; className: string }
 }
 
 export default function ReceivablesList() {
-  const { data: invoices, tableProps, isLoading, error } = useServerTable<Invoice>({
+  const { data: invoices, tableProps, isLoading, error, hasActiveFilters } = useServerTable<Invoice>({
     queryKey: ['invoices'],
     fetcher: (p) => api.get('/invoices', { params: p }).then((r) => r.data),
   })
@@ -268,15 +269,23 @@ export default function ReceivablesList() {
               )}
             </div>
 
-            <Table
-              data={invoices}
-              columns={columns}
-              searchable={true}
-              sortable={true}
-              paginatable={true}
-              {...tableProps}
-              emptyMessage="No hay cuentas por cobrar"
-            />
+            {invoices.length === 0 && !hasActiveFilters ? (
+              <EmptyState
+                icon={Wallet}
+                title="No hay cuentas por cobrar"
+                description="Se generan automáticamente al registrar facturas."
+              />
+            ) : (
+              <Table
+                data={invoices}
+                columns={columns}
+                searchable={true}
+                sortable={true}
+                paginatable={true}
+                {...tableProps}
+                emptyMessage="No se encontraron facturas con los filtros aplicados."
+              />
+            )}
 
             <div className="flex items-center justify-between text-sm text-muted-foreground">
               <span>Total por cobrar: <strong className="text-destructive">{formatCurrency(totalPendiente)}</strong></span>

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Wrench } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
+import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import api from '@/lib/api'
@@ -13,7 +14,7 @@ import type { MaintenanceOrder } from '@/types/maintenance-order'
 export default function MaintenanceList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
-  const { data: orders, tableProps, isLoading, error } = useServerTable<MaintenanceOrder>({
+  const { data: orders, tableProps, isLoading, error, hasActiveFilters } = useServerTable<MaintenanceOrder>({
     queryKey: ['maintenance-orders'],
     fetcher: (p) => api.get('/maintenance-orders', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
@@ -113,16 +114,29 @@ export default function MaintenanceList() {
           )}
         </div>
 
-        <Table
-          data={orders}
-          columns={columns}
-          searchable={true}
-          sortable={true}
-          paginatable={true}
-          {...tableProps}
-          emptyMessage="No hay órdenes de mantenimiento"
-          onRowClick={(order) => navigate(`/inventario/mantenimiento/${order.id}`)}
-        />
+        {orders.length === 0 && !hasActiveFilters ? (
+          <EmptyState
+            icon={Wrench}
+            title="No hay órdenes de mantenimiento"
+            description="Crea una orden para registrar el mantenimiento de una impresora."
+            action={
+              isAdmin
+                ? { label: 'Nueva Orden', onClick: () => navigate('/inventario/mantenimiento/crear') }
+                : undefined
+            }
+          />
+        ) : (
+          <Table
+            data={orders}
+            columns={columns}
+            searchable={true}
+            sortable={true}
+            paginatable={true}
+            {...tableProps}
+            emptyMessage="No se encontraron órdenes de mantenimiento con los filtros aplicados."
+            onRowClick={(order) => navigate(`/inventario/mantenimiento/${order.id}`)}
+          />
+        )}
       </div>
     </PageLayout>
   )

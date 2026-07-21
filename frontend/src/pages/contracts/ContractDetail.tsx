@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -13,12 +14,22 @@ import {
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
+import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useContract, useAssignPrinter, useReleasePrinter } from '@/hooks/useContracts'
-import type { Contract, ContractStatus } from '@/types/contract'
+import { useContract, useUpdateContract, useAssignPrinter, useReleasePrinter } from '@/hooks/useContracts'
+import type { Contract, ContractStatus, VisitFrequency } from '@/types/contract'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
+
+const frecuenciaOptions = [
+  { value: 'MENSUAL', label: 'Mensual' },
+  { value: 'QUINCENAL', label: 'Quincenal' },
+  { value: 'SEMANAL', label: 'Semanal' },
+  { value: 'CUSTOM', label: 'Personalizado' },
+]
 
 const estadoLabels: Record<ContractStatus, string> = {
   ACTIVO: 'Activo',
@@ -45,6 +56,54 @@ export default function ContractDetail() {
   const { data: contract, isLoading, error } = useContract(idNum)
   const assignPrinter = useAssignPrinter()
   const releasePrinter = useReleasePrinter()
+  const updateContract = useUpdateContract(idNum)
+
+  const [showEdit, setShowEdit] = useState(false)
+  const [editError, setEditError] = useState('')
+  const [form, setForm] = useState({
+    tarifa_base: '',
+    paginas_incluidas: '',
+    costo_por_pagina_excedente: '',
+    dias_gracia: '',
+    dias_adelanto: '',
+    frecuencia_visitas: 'MENSUAL' as VisitFrequency,
+    dia_visita: '',
+    fecha_fin: '',
+  })
+
+  const openEdit = () => {
+    if (!contract) return
+    setForm({
+      tarifa_base: String(contract.tarifa_base ?? 0),
+      paginas_incluidas: String(contract.paginas_incluidas ?? 0),
+      costo_por_pagina_excedente: String(contract.costo_por_pagina_excedente ?? 0),
+      dias_gracia: String(contract.dias_gracia ?? 0),
+      dias_adelanto: String(contract.dias_adelanto ?? 1),
+      frecuencia_visitas: contract.frecuencia_visitas ?? 'MENSUAL',
+      dia_visita: contract.dia_visita ? String(contract.dia_visita) : '',
+      fecha_fin: contract.fecha_fin ?? '',
+    })
+    setEditError('')
+    setShowEdit(true)
+  }
+
+  const handleSave = () => {
+    setEditError('')
+    const payload = {
+      tarifa_base: parseFloat(form.tarifa_base) || 0,
+      paginas_incluidas: parseInt(form.paginas_incluidas) || 0,
+      costo_pag_excedente: parseFloat(form.costo_por_pagina_excedente) || 0,
+      dias_gracia: parseInt(form.dias_gracia) || 0,
+      dias_adelanto: parseInt(form.dias_adelanto) || 1,
+      frecuencia_visitas: form.frecuencia_visitas,
+      dia_visita: form.dia_visita ? parseInt(form.dia_visita) : null,
+      fecha_fin: form.fecha_fin || null,
+    }
+    updateContract.mutate(payload, {
+      onSuccess: () => setShowEdit(false),
+      onError: (err) => setEditError(parseApiError(err)),
+    })
+  }
 
   if (!idNum) {
     return (
@@ -94,7 +153,7 @@ export default function ContractDetail() {
             Volver
           </Button>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={openEdit}>
               <Edit className="mr-2 h-4 w-4" />
               Editar
             </Button>
@@ -365,6 +424,100 @@ export default function ContractDetail() {
           </CardContent>
         </Card>
       </div>
+
+      <Modal isOpen={showEdit} onClose={() => setShowEdit(false)} title={`Editar Contrato #${contract.id}`}>
+        <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Tarifa base mensual ($)</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={form.tarifa_base}
+                onChange={(e) => setForm({ ...form, tarifa_base: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Páginas incluidas</label>
+              <Input
+                type="number"
+                value={form.paginas_incluidas}
+                onChange={(e) => setForm({ ...form, paginas_incluidas: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Costo por página excedente ($)</label>
+              <Input
+                type="number"
+                step="0.001"
+                value={form.costo_por_pagina_excedente}
+                onChange={(e) => setForm({ ...form, costo_por_pagina_excedente: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Días de gracia</label>
+              <Input
+                type="number"
+                value={form.dias_gracia}
+                onChange={(e) => setForm({ ...form, dias_gracia: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Días de adelanto (visitas)</label>
+              <Input
+                type="number"
+                value={form.dias_adelanto}
+                onChange={(e) => setForm({ ...form, dias_adelanto: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Frecuencia de visitas</label>
+              <Select
+                options={frecuenciaOptions}
+                value={form.frecuencia_visitas}
+                onChange={(v) => setForm({ ...form, frecuencia_visitas: v as VisitFrequency })}
+              />
+            </div>
+            {form.frecuencia_visitas === 'MENSUAL' && (
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">Día de visita del mes</label>
+                <Select
+                  options={[
+                    { value: '', label: 'Derivar desde fecha de inicio' },
+                    ...Array.from({ length: 31 }, (_, i) => ({ value: String(i + 1), label: String(i + 1) })),
+                  ]}
+                  value={form.dia_visita}
+                  onChange={(v) => setForm({ ...form, dia_visita: v })}
+                  placeholder="Día del mes (1-31)"
+                />
+              </div>
+            )}
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Fecha de fin (vacío = indefinido)
+              </label>
+              <Input
+                type="date"
+                value={form.fecha_fin}
+                onChange={(e) => setForm({ ...form, fecha_fin: e.target.value })}
+              />
+            </div>
+          </div>
+
+          {editError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {editError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowEdit(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={updateContract.isPending}>
+              {updateContract.isPending ? 'Guardando...' : 'Guardar Cambios'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </PageLayout>
   )
 }

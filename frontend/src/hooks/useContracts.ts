@@ -26,6 +26,17 @@ export function useCreateContract() {
   })
 }
 
+export function useUpdateContract(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: Record<string, unknown>) => api.put(`/contracts/${id}`, data).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      qc.invalidateQueries({ queryKey: ['contracts', id] })
+    },
+  })
+}
+
 export function useAssignPrinter() {
   const qc = useQueryClient()
   return useMutation({
