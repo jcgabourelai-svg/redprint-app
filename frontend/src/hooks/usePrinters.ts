@@ -10,6 +10,15 @@ export function usePrinters(params?: Record<string, string | number>) {
   })
 }
 
+export function useAllPrinters(enabled = true) {
+  return useQuery<Printer[]>({
+    queryKey: ['printers', 'all'],
+    queryFn: () =>
+      api.get('/printers', { params: { per_page: 500 } }).then(r => r.data.data as Printer[]),
+    enabled,
+  })
+}
+
 export function usePrinter(id: number) {
   return useQuery<Printer>({
     queryKey: ['printers', id],

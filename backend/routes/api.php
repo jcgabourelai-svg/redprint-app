@@ -56,6 +56,7 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:inventario.articulos')->group(function () {
             Route::apiResource('articles', ArticleController::class);
             Route::get('articles/{article}/movements', [ArticleController::class, 'movements']);
+            Route::post('articles/{article}/movements', [ArticleController::class, 'storeMovement']);
             Route::get('articles/{article}/compatible-printers', [ArticleController::class, 'compatiblePrinters']);
         });
 

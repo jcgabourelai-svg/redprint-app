@@ -20,6 +20,7 @@ const referenciaTipoLabel: Record<string, string> = {
   INVENTARIO_INICIAL: 'Inventario inicial',
   MANTENIMIENTO: 'Mantenimiento',
   AJUSTE: 'Ajuste',
+  AJUSTE_MANUAL: 'Ajuste manual',
   COMPRA: 'Compra',
   compra: 'Compra',
 }
@@ -245,7 +246,7 @@ export default function MovementList() {
           <EmptyState
             icon={ArrowLeftRight}
             title="No hay movimientos"
-            description="Los movimientos de stock se generan desde el detalle de almacenes o impresoras."
+            description="Los movimientos se generan automáticamente al recibir compras o completar mantenimientos. También puedes registrar entradas, salidas o ajustes manuales desde el detalle de un artículo."
           />
         ) : (
           <Table

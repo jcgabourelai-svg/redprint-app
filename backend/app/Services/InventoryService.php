@@ -76,9 +76,9 @@ class InventoryService
         });
     }
 
-    public function registerAdjustment(Article $article, int $newStock, User $socio, string $justificacion): InventoryMovement
+    public function registerAdjustment(Article $article, int $newStock, User $socio, string $justificacion, ?string $referenceType = 'AJUSTE'): InventoryMovement
     {
-        return DB::transaction(function () use ($article, $newStock, $socio, $justificacion) {
+        return DB::transaction(function () use ($article, $newStock, $socio, $justificacion, $referenceType) {
             $article = Article::lockForUpdate()->find($article->id);
 
             $stockAnterior = $article->stock_actual;
@@ -90,7 +90,7 @@ class InventoryService
                 'cantidad' => $cantidad,
                 'stock_anterior' => $stockAnterior,
                 'stock_posterior' => $newStock,
-                'referencia_tipo' => 'AJUSTE',
+                'referencia_tipo' => $referenceType,
                 'justificacion' => $justificacion,
                 'fecha' => now(),
                 'socio_id' => $socio->id,

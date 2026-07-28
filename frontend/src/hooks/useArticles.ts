@@ -47,6 +47,19 @@ export function useArticleMovements(articleId: number) {
   })
 }
 
+export function useCreateArticleMovement() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ articleId, ...data }: { articleId: number } & Record<string, unknown>) =>
+      api.post(`/articles/${articleId}/movements`, data).then(r => r.data),
+    onSuccess: (_, { articleId }) => {
+      qc.invalidateQueries({ queryKey: ['articles', articleId] })
+      qc.invalidateQueries({ queryKey: ['articles', articleId, 'movements'] })
+      qc.invalidateQueries({ queryKey: ['inventory-movements'] })
+    },
+  })
+}
+
 export function useArticleCompatiblePrinters(articleId: number) {
   return useQuery({
     queryKey: ['articles', articleId, 'compatible-printers'],

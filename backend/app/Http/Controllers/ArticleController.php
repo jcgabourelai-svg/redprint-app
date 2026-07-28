@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreArticleRequest;
+use App\Http\Requests\StoreManualMovementRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Http\Resources\ArticleResource;
 use App\Http\Resources\InventoryMovementResource;
 use App\Models\Article;
 use App\Models\Printer;
+use App\Services\InventoryService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -15,6 +17,10 @@ use Illuminate\Http\Request;
 class ArticleController extends Controller
 {
     use Sortable;
+
+    public function __construct(
+        private InventoryService $inventoryService
+    ) {}
 
     public function index(Request $request): JsonResponse
     {
@@ -85,6 +91,43 @@ class ArticleController extends Controller
             ->paginate($request->per_page ?? 20);
 
         return InventoryMovementResource::collection($movements)->response();
+    }
+
+    public function storeMovement(StoreManualMovementRequest $request, Article $article): JsonResponse
+    {
+        $data = $request->validated();
+        $socio = $request->user();
+        $justificacion = $data['justificacion'];
+
+        $tipo = $data['tipo_movimiento'];
+
+        $movement = match ($tipo) {
+            'ENTRADA' => $this->inventoryService->registerEntry(
+                $article,
+                (int) $data['cantidad'],
+                $socio,
+                'AJUSTE_MANUAL',
+                null,
+                $justificacion
+            ),
+            'SALIDA' => $this->inventoryService->registerExit(
+                $article,
+                (int) $data['cantidad'],
+                $socio,
+                'AJUSTE_MANUAL',
+                null,
+                $justificacion
+            ),
+            'AJUSTE' => $this->inventoryService->registerAdjustment(
+                $article,
+                (int) $data['stock_destino'],
+                $socio,
+                $justificacion,
+                'AJUSTE_MANUAL'
+            ),
+        };
+
+        return response()->json(new InventoryMovementResource($movement->load(['article', 'socio'])), 201);
     }
 
     public function compatiblePrinters(Article $article): JsonResponse

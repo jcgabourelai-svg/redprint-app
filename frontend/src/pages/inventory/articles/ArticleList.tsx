@@ -9,9 +9,11 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import MultiSelect from '@/components/ui/MultiSelect'
 import Toast from '@/components/ui/Toast'
 import api from '@/lib/api'
 import { useCreateArticle } from '@/hooks/useArticles'
+import { useAllPrinters } from '@/hooks/usePrinters'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
@@ -47,7 +49,14 @@ function ArticleForm({
   const [stock_actual, setStockActual] = useState('')
   const [umbral_reposicion, setUmbralReposicion] = useState('')
   const [costo_unitario, setCostoUnitario] = useState('')
+  const [compatibles, setCompatibles] = useState<string[]>([])
   const [errors, setErrors] = useState<FormErrors>({})
+  const { data: printers } = useAllPrinters()
+
+  const printerOptions = (printers ?? []).map((p) => ({
+    value: String(p.id),
+    label: `${p.marca} ${p.modelo}${p.numero_serie ? ` · ${p.numero_serie}` : ''} (#${p.id})`,
+  }))
 
   const validate = (): boolean => {
     const newErrors: FormErrors = {}
@@ -87,6 +96,7 @@ function ArticleForm({
       stock_actual: Number(stock_actual),
       umbral_reposicion: Number(umbral_reposicion),
       costo_unitario: Number(costo_unitario),
+      impresoras_compatibles: compatibles.map((v) => Number(v)),
     })
   }
 
@@ -173,6 +183,22 @@ function ArticleForm({
             helperText={errors.costo_unitario}
           />
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
+          Impresoras compatibles <span className="text-muted-foreground">(opcional)</span>
+        </label>
+        <MultiSelect
+          options={printerOptions}
+          value={compatibles}
+          onChange={setCompatibles}
+          searchable
+          placeholder="Selecciona las impresoras compatibles..."
+        />
+        <p className="mt-1 text-xs text-muted-foreground">
+          Indica en qué impresoras se puede usar este artículo.
+        </p>
       </div>
 
       <div className="flex justify-end gap-3 pt-2">
