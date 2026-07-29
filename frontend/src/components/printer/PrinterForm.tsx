@@ -2,11 +2,13 @@ import { useMemo, useState } from 'react'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import CreatableSelect from '@/components/ui/CreatableSelect'
 import { useWarehouses } from '@/hooks/useWarehouses'
+import { usePrinterBrands, useCreatePrinterBrand, useCreatePrinterModel } from '@/hooks/usePrinterCatalog'
+import { useIsAdmin } from '@/contexts/AuthContext'
 
 export interface PrinterFormData {
-  marca: string
-  modelo: string
+  printer_model_id: number
   num_serie: string
   fecha_adquisicion: string
   almacen_id: string
@@ -19,6 +21,7 @@ export interface PrinterFormData {
 export interface PrinterInitialData {
   marca?: string
   modelo?: string
+  printer_model_id?: number
   num_serie?: string
   fecha_adquisicion?: string
   almacen_id?: string | number
@@ -37,8 +40,7 @@ export interface PrinterFormProps {
 }
 
 interface FormErrors {
-  marca?: string
-  modelo?: string
+  printer_model_id?: string
   num_serie?: string
   fecha_adquisicion?: string
   almacen_id?: string
@@ -54,14 +56,18 @@ export default function PrinterForm({
   isEdit = false,
   loading = false,
 }: PrinterFormProps) {
+  const isAdmin = useIsAdmin()
   const almacenInicial =
     initialData?.almacen_id != null
       ? String(initialData.almacen_id)
       : initialData?.warehouse?.id != null
         ? String(initialData.warehouse.id)
         : ''
-  const [marca, setMarca] = useState(initialData?.marca ?? '')
-  const [modelo, setModelo] = useState(initialData?.modelo ?? '')
+
+  const [brandId, setBrandId] = useState<string>(initialData?.printer_model_id ? '' : '')
+  const [printerModelId, setPrinterModelId] = useState<string>(
+    initialData?.printer_model_id ? String(initialData.printer_model_id) : ''
+  )
   const [numSerie, setNumSerie] = useState(initialData?.num_serie ?? '')
   const [fechaAdquisicion, setFechaAdquisicion] = useState(
     initialData?.fecha_adquisicion ? initialData.fecha_adquisicion.slice(0, 10) : ''
@@ -80,6 +86,24 @@ export default function PrinterForm({
 
   const { data: warehousesData } = useWarehouses({ per_page: 100, estado: 'activo' })
   const warehouses = warehousesData?.data || []
+  const { data: brands, isLoading: loadingBrands } = usePrinterBrands(true)
+  const brandsList = brands ?? []
+
+  // Resolver brand_id inicial desde el modelo seleccionado (caso edición)
+  const initialModel = useMemo(
+    () =>
+      initialData?.printer_model_id
+        ? brandsList
+            .flatMap((b) => b.modelos ?? [])
+            .find((m) => m.id === initialData.printer_model_id)
+        : undefined,
+    [brandsList, initialData?.printer_model_id]
+  )
+
+  const resolvedBrandId = brandId || (initialModel ? String(initialModel.brand_id) : '')
+
+  const createBrand = useCreatePrinterBrand()
+  const createModel = useCreatePrinterModel()
 
   const warehouseOptions = useMemo(
     () =>
@@ -90,11 +114,50 @@ export default function PrinterForm({
     [warehouses]
   )
 
+  const brandOptions = useMemo(
+    () =>
+      brandsList.map((b) => ({
+        value: String(b.id),
+        label: b.nombre,
+      })),
+    [brandsList]
+  )
+
+  const modelOptions = useMemo(() => {
+    const brand = brandsList.find((b) => String(b.id) === resolvedBrandId)
+    return (brand?.modelos ?? []).map((m) => ({
+      value: String(m.id),
+      label: m.nombre,
+    }))
+  }, [brandsList, resolvedBrandId])
+
+  const handleBrandChange = (newBrandId: string) => {
+    setBrandId(newBrandId)
+    // Al cambiar de marca, se limpia siempre el modelo; el usuario vuelve a elegir.
+    setPrinterModelId('')
+  }
+
+  const handleCreateBrand = async (nombre: string) => {
+    const brand = await createBrand.mutateAsync({ nombre })
+    setBrandId(String(brand.id))
+    setPrinterModelId('')
+    return brand.id
+  }
+
+  const handleCreateModel = async (nombre: string) => {
+    if (!resolvedBrandId) return null
+    const model = await createModel.mutateAsync({
+      brand_id: Number(resolvedBrandId),
+      nombre,
+    })
+    setPrinterModelId(String(model.id))
+    return model.id
+  }
+
   const validate = (): boolean => {
     const newErrors: FormErrors = {}
 
-    if (!marca.trim()) newErrors.marca = 'La marca es obligatoria'
-    if (!modelo.trim()) newErrors.modelo = 'El modelo es obligatorio'
+    if (!printerModelId) newErrors.printer_model_id = 'Selecciona un modelo de impresora'
     if (!numSerie.trim()) newErrors.num_serie = 'El número de serie es obligatorio'
     if (!fechaAdquisicion) newErrors.fecha_adquisicion = 'La fecha de adquisición es obligatoria'
     if (!almacenId) newErrors.almacen_id = 'El almacén es obligatorio'
@@ -129,8 +192,7 @@ export default function PrinterForm({
     if (!validate()) return
 
     onSubmit({
-      marca: marca.trim(),
-      modelo: modelo.trim(),
+      printer_model_id: Number(printerModelId),
       num_serie: numSerie.trim(),
       fecha_adquisicion: fechaAdquisicion,
       almacen_id: almacenId,
@@ -145,23 +207,35 @@ export default function PrinterForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">Marca</label>
-          <Input
-            placeholder="Ej: HP"
-            value={marca}
-            onChange={(e) => setMarca(e.target.value)}
-            error={!!errors.marca}
-            helperText={errors.marca}
+          <CreatableSelect
+            options={brandOptions}
+            value={resolvedBrandId}
+            onChange={handleBrandChange}
+            onCreate={handleCreateBrand}
+            canCreate={isAdmin}
+            placeholder="Selecciona o crea una marca"
+            searchPlaceholder="Buscar marca..."
+            loading={loadingBrands}
+            error={!!errors.printer_model_id && !resolvedBrandId}
           />
         </div>
         <div>
           <label className="block text-sm font-medium text-muted-foreground mb-1">Modelo</label>
-          <Input
-            placeholder="Ej: LaserJet Pro M404"
-            value={modelo}
-            onChange={(e) => setModelo(e.target.value)}
-            error={!!errors.modelo}
-            helperText={errors.modelo}
+          <CreatableSelect
+            options={modelOptions}
+            value={printerModelId}
+            onChange={setPrinterModelId}
+            onCreate={handleCreateModel}
+            canCreate={isAdmin && !!resolvedBrandId}
+            placeholder={resolvedBrandId ? 'Selecciona o crea un modelo' : 'Primero elige una marca'}
+            searchPlaceholder="Buscar modelo..."
+            loading={loadingBrands}
+            disabled={!resolvedBrandId}
+            error={!!errors.printer_model_id}
           />
+          {errors.printer_model_id && (
+            <p className="mt-1 text-xs text-destructive">{errors.printer_model_id}</p>
+          )}
         </div>
       </div>
 

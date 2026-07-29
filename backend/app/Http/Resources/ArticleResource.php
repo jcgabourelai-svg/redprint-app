@@ -21,7 +21,14 @@ class ArticleResource extends JsonResource
             'costo_unitario' => $this->costo_unitario,
             'proveedor_id' => $this->proveedor_id,
             'supplier' => new SupplierResource($this->whenLoaded('supplier')),
-            'impresoras_compatibles' => $this->impresoras_compatibles,
+            'modelos_compatibles' => $this->whenLoaded('modelosCompatibles', function () {
+                return $this->modelosCompatibles->map(fn ($m) => [
+                    'id' => $m->id,
+                    'brand_id' => $m->brand_id,
+                    'nombre' => $m->nombre,
+                    'marca' => $m->relationLoaded('brand') ? $m->brand?->nombre : null,
+                ]);
+            }),
             'activo' => $this->activo,
             'motivo_baja' => $this->motivo_baja,
             'fecha_baja' => $this->fecha_baja,

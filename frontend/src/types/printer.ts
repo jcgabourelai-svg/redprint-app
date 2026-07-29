@@ -4,6 +4,7 @@ export interface Printer {
   id: string
   marca: string
   modelo: string
+  printer_model_id?: number
   numero_serie: string
   fecha_adquisicion: string
   costo_adquisicion: number

@@ -4,8 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\ArticleType;
 use App\Models\Article;
+use App\Models\PrinterModel;
 use App\Models\Supplier;
-use App\Models\Printer;
 use Illuminate\Database\Seeder;
 
 class ArticleSeeder extends Seeder
@@ -13,8 +13,7 @@ class ArticleSeeder extends Seeder
     public function run(): void
     {
         $suppliers = Supplier::all();
-        $printers = Printer::all();
-        $printerIds = $printers->pluck('id')->take(10)->values()->toArray();
+        $modelIds = PrinterModel::pluck('id')->take(12)->values()->toArray();
 
         $articles = [
             ['tipo_articulo' => 'CONSUMIBLE', 'subtipo' => 'TONER', 'nombre' => 'Toner HP 26A Negro', 'marca' => 'HP', 'modelo_sku' => 'CF226A', 'costo_unitario' => 1850.00, 'umbral_reposicion' => 3],
@@ -45,7 +44,7 @@ class ArticleSeeder extends Seeder
         ];
 
         foreach ($articles as $article) {
-            Article::create([
+            $created = Article::create([
                 'tipo_articulo' => $article['tipo_articulo'],
                 'subtipo' => $article['subtipo'],
                 'nombre' => $article['nombre'],
@@ -55,10 +54,12 @@ class ArticleSeeder extends Seeder
                 'umbral_reposicion' => $article['umbral_reposicion'],
                 'costo_unitario' => $article['costo_unitario'],
                 'proveedor_id' => $suppliers->random()->id,
-                'impresoras_compatibles' => collect($printerIds)->random(min(5, count($printerIds)))->values()->toArray(),
                 'activo' => true,
                 'fecha_creacion' => now(),
             ]);
+
+            $compatibleIds = collect($modelIds)->random(min(5, count($modelIds)))->values()->toArray();
+            $created->modelosCompatibles()->sync($compatibleIds);
         }
     }
 }

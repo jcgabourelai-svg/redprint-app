@@ -18,6 +18,7 @@ class Printer extends Model
     protected $fillable = [
         'marca',
         'modelo',
+        'printer_model_id',
         'num_serie',
         'fecha_adquisicion',
         'costo_adquisicion',
@@ -48,6 +49,11 @@ class Printer extends Model
     public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class, 'almacen_id');
+    }
+
+    public function printerModel(): BelongsTo
+    {
+        return $this->belongsTo(PrinterModel::class, 'printer_model_id');
     }
 
     public function history(): HasMany

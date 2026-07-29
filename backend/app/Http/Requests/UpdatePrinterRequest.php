@@ -14,8 +14,7 @@ class UpdatePrinterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'marca' => 'sometimes|string|max:255',
-            'modelo' => 'sometimes|string|max:255',
+            'printer_model_id' => 'sometimes|exists:printer_models,id',
             'num_serie' => 'sometimes|string|max:255|unique:printers,num_serie,' . $this->route('printer')?->id,
             'fecha_adquisicion' => 'sometimes|date',
             'costo_adquisicion' => 'nullable|numeric|min:0',

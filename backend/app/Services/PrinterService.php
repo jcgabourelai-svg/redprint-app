@@ -6,6 +6,7 @@ use App\Enums\PrinterStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
+use App\Models\PrinterModel;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -18,6 +19,7 @@ class PrinterService
     public function create(array $data, User $creator): Printer
     {
         return DB::transaction(function () use ($data, $creator) {
+            $data = $this->resolveModelDenorm($data);
             $data['codigo_negocio'] = $this->codeGenerator->generatePrinterCode();
             $data['creado_por'] = $creator->id;
             $data['estado'] = PrinterStatus::EN_ALMACEN;
@@ -39,8 +41,27 @@ class PrinterService
 
     public function update(Printer $printer, array $data): Printer
     {
-        $printer->update($data);
-        return $printer->fresh();
+        return DB::transaction(function () use ($printer, $data) {
+            $data = $this->resolveModelDenorm($data);
+            $printer->update($data);
+            return $printer->fresh();
+        });
+    }
+
+    private function resolveModelDenorm(array $data): array
+    {
+        if (array_key_exists('printer_model_id', $data)) {
+            $modelId = $data['printer_model_id'];
+            if ($modelId) {
+                $model = PrinterModel::with('brand')->find($modelId);
+                if ($model) {
+                    $data['marca'] = $model->brand->nombre;
+                    $data['modelo'] = $model->nombre;
+                }
+            }
+        }
+
+        return $data;
     }
 
     public function changeStatus(Printer $printer, PrinterStatus $newStatus, User $user, ?string $reason = null): Printer

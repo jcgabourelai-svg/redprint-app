@@ -17,7 +17,9 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PermissionController;
 use App\Http\Controllers\PeriodController;
+use App\Http\Controllers\PrinterBrandController;
 use App\Http\Controllers\PrinterController;
+use App\Http\Controllers\PrinterModelController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\ReadingController;
 use App\Http\Controllers\ReconciliationController;
@@ -42,6 +44,12 @@ Route::prefix('v1')->group(function () {
         Route::get('dashboard', [DashboardController::class, 'index']);
 
         // =====================================================
+        // Catálogo de marcas/modelos de impresora (lectura sin permiso)
+        // =====================================================
+        Route::get('printer-brands', [PrinterBrandController::class, 'index']);
+        Route::get('printer-models', [PrinterModelController::class, 'index']);
+
+        // =====================================================
         // Inventario
         // =====================================================
         Route::middleware('permission:inventario.impresoras')->group(function () {
@@ -51,13 +59,17 @@ Route::prefix('v1')->group(function () {
             Route::get('printer-expenses', [ExpenseController::class, 'index']);
             Route::get('printer-expenses/{printerExpense}', [ExpenseController::class, 'show']);
             Route::post('printer-expenses', [ExpenseController::class, 'store']);
+
+            // Creación de catálogo (solo admin con permiso de impresoras)
+            Route::post('printer-brands', [PrinterBrandController::class, 'store']);
+            Route::post('printer-models', [PrinterModelController::class, 'store']);
         });
 
         Route::middleware('permission:inventario.articulos')->group(function () {
             Route::apiResource('articles', ArticleController::class);
             Route::get('articles/{article}/movements', [ArticleController::class, 'movements']);
             Route::post('articles/{article}/movements', [ArticleController::class, 'storeMovement']);
-            Route::get('articles/{article}/compatible-printers', [ArticleController::class, 'compatiblePrinters']);
+            Route::get('articles/{article}/compatible-models', [ArticleController::class, 'compatibleModels']);
         });
 
         Route::middleware('permission:inventario.movimientos')->group(function () {

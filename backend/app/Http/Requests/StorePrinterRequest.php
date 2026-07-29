@@ -14,8 +14,7 @@ class StorePrinterRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'marca' => 'required|string|max:255',
-            'modelo' => 'required|string|max:255',
+            'printer_model_id' => 'required|exists:printer_models,id',
             'num_serie' => 'required|string|unique:printers,num_serie',
             'fecha_adquisicion' => 'required|date',
             'costo_adquisicion' => 'nullable|numeric|min:0',
@@ -28,8 +27,8 @@ class StorePrinterRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'marca.required' => 'La marca es obligatoria',
-            'modelo.required' => 'El modelo es obligatorio',
+            'printer_model_id.required' => 'El modelo de impresora es obligatorio',
+            'printer_model_id.exists' => 'El modelo de impresora no existe',
             'num_serie.required' => 'El numero de serie es obligatorio',
             'num_serie.unique' => 'El numero de serie ya existe',
             'fecha_adquisicion.required' => 'La fecha de adquisicion es obligatoria',

@@ -1,4 +1,5 @@
 import type { ArticleType } from './enums'
+import type { PrinterModel } from './printer-model'
 
 export interface Article {
   id: string
@@ -11,7 +12,7 @@ export interface Article {
   umbral_reposicion: number
   costo_unitario: number
   proveedor_id?: number | null
-  impresoras_compatibles?: number[]
+  modelos_compatibles?: PrinterModel[]
   activo?: boolean
   motivo_baja?: string | null
   fecha_baja?: string | null

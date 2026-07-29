@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
 import type { Article } from '@/types/article'
+import type { PrinterModel } from '@/types/printer-model'
 import type { InventoryMovement } from '@/types/inventory-movement'
 import type { PaginatedResponse } from '@/types/api'
 
@@ -60,10 +61,10 @@ export function useCreateArticleMovement() {
   })
 }
 
-export function useArticleCompatiblePrinters(articleId: number) {
-  return useQuery({
-    queryKey: ['articles', articleId, 'compatible-printers'],
-    queryFn: () => api.get(`/articles/${articleId}/compatible-printers`).then(r => r.data),
+export function useArticleCompatibleModels(articleId: number) {
+  return useQuery<PrinterModel[]>({
+    queryKey: ['articles', articleId, 'compatible-models'],
+    queryFn: () => api.get(`/articles/${articleId}/compatible-models`).then(r => r.data),
     enabled: !!articleId,
   })
 }

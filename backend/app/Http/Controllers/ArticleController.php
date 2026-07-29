@@ -7,8 +7,8 @@ use App\Http\Requests\StoreManualMovementRequest;
 use App\Http\Requests\UpdateArticleRequest;
 use App\Http\Resources\ArticleResource;
 use App\Http\Resources\InventoryMovementResource;
+use App\Http\Resources\PrinterModelResource;
 use App\Models\Article;
-use App\Models\Printer;
 use App\Services\InventoryService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
@@ -25,7 +25,6 @@ class ArticleController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Article::with('supplier');
-
         if ($request->has('tipo')) {
             $query->where('tipo_articulo', $request->tipo);
         }
@@ -66,21 +65,34 @@ class ArticleController extends Controller
 
     public function show(Article $article): JsonResponse
     {
-        return response()->json(new ArticleResource($article->load('supplier', 'movements.socio')));
+        return response()->json(new ArticleResource($article->load(['supplier', 'movements.socio', 'modelosCompatibles.brand'])));
     }
 
     public function store(StoreArticleRequest $request): JsonResponse
     {
-        $article = Article::create($request->validated());
+        $data = $request->validated();
+        $modelosCompatibles = $data['modelos_compatibles'] ?? [];
+        unset($data['modelos_compatibles']);
 
-        return response()->json(new ArticleResource($article->load('supplier')), 201);
+        $article = Article::create($data);
+        $article->modelosCompatibles()->sync($modelosCompatibles);
+
+        return response()->json(new ArticleResource($article->load(['supplier', 'modelosCompatibles.brand'])), 201);
     }
 
     public function update(UpdateArticleRequest $request, Article $article): JsonResponse
     {
-        $article->update($request->validated());
+        $data = $request->validated();
+        $modelosCompatibles = array_key_exists('modelos_compatibles', $data) ? $data['modelos_compatibles'] : null;
+        unset($data['modelos_compatibles']);
 
-        return response()->json(new ArticleResource($article->fresh('supplier')));
+        $article->update($data);
+
+        if ($modelosCompatibles !== null) {
+            $article->modelosCompatibles()->sync($modelosCompatibles);
+        }
+
+        return response()->json(new ArticleResource($article->fresh(['supplier', 'modelosCompatibles.brand'])));
     }
 
     public function movements(Article $article, Request $request): JsonResponse
@@ -130,13 +142,11 @@ class ArticleController extends Controller
         return response()->json(new InventoryMovementResource($movement->load(['article', 'socio'])), 201);
     }
 
-    public function compatiblePrinters(Article $article): JsonResponse
+    public function compatibleModels(Article $article): JsonResponse
     {
-        $printerIds = $article->impresoras_compatibles ?? [];
+        $models = $article->modelosCompatibles()->with('brand')->get();
 
-        $printers = Printer::whereIn('id', $printerIds)->get();
-
-        return response()->json($printers);
+        return response()->json(PrinterModelResource::collection($models));
     }
 
     public function destroy(Article $article, Request $request): JsonResponse

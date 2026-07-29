@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Package, AlertTriangle, DollarSign, BoxIcon, Link2, Edit, SlidersHorizontal, Pencil, Plus } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
@@ -10,8 +10,8 @@ import Select from '@/components/ui/Select'
 import MultiSelect from '@/components/ui/MultiSelect'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useArticle, useArticleCompatiblePrinters, useDeactivateArticle, useCreateArticleMovement, useUpdateArticle } from '@/hooks/useArticles'
-import { useAllPrinters } from '@/hooks/usePrinters'
+import { useArticle, useArticleCompatibleModels, useDeactivateArticle, useCreateArticleMovement, useUpdateArticle } from '@/hooks/useArticles'
+import { usePrinterBrands, buildPrinterModelOptions } from '@/hooks/usePrinterCatalog'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import type { Article } from '@/types/article'
@@ -22,7 +22,7 @@ export default function ArticleDetail() {
   const isAdmin = useIsAdmin()
   const articleId = id ? parseInt(id) : 0
   const { data: article, isLoading, error } = useArticle(articleId)
-  const { data: compatiblePrinters } = useArticleCompatiblePrinters(articleId)
+  const { data: compatibleModels } = useArticleCompatibleModels(articleId)
   const deactivateArticle = useDeactivateArticle()
   const createMovement = useCreateArticleMovement()
   const updateArticle = useUpdateArticle()
@@ -31,9 +31,11 @@ export default function ArticleDetail() {
   const [deactivateError, setDeactivateError] = useState('')
   const [showStockModal, setShowStockModal] = useState(false)
   const [editingCompat, setEditingCompat] = useState(false)
-  const { data: printers, isLoading: isLoadingPrinters } = useAllPrinters(editingCompat)
+  const { data: brands } = usePrinterBrands(true)
   const [compatDraft, setCompatDraft] = useState<string[]>([])
   const [compatError, setCompatError] = useState('')
+
+  const modelOptions = useMemo(() => buildPrinterModelOptions(brands), [brands])
 
   if (isLoading) {
     return (
@@ -84,7 +86,7 @@ export default function ArticleDetail() {
 
   const startEditCompat = () => {
     setCompatError('')
-    setCompatDraft((article.impresoras_compatibles ?? []).map(String))
+    setCompatDraft((article.modelos_compatibles ?? []).map((m) => String(m.id)))
     setEditingCompat(true)
   }
 
@@ -96,7 +98,7 @@ export default function ArticleDetail() {
   const saveCompat = () => {
     setCompatError('')
     updateArticle.mutate(
-      { id: articleId, impresoras_compatibles: compatDraft.map(Number) },
+      { id: articleId, modelos_compatibles: compatDraft.map(Number) },
       {
         onSuccess: () => setEditingCompat(false),
         onError: (err: any) => {
@@ -192,23 +194,13 @@ export default function ArticleDetail() {
 
                             {editingCompat ? (
                               <div className="space-y-3">
-                                {isLoadingPrinters ? (
-                                  <div className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                                    Cargando impresoras...
-                                  </div>
-                                ) : (
-                                  <MultiSelect
-                                    options={(printers ?? []).map((p) => ({
-                                      value: String(p.id),
-                                      label: `${p.marca} ${p.modelo}${p.numero_serie ? ` · ${p.numero_serie}` : ''} (#${p.id})`,
-                                    }))}
-                                    value={compatDraft}
-                                    onChange={setCompatDraft}
-                                    searchable
-                                    placeholder="Selecciona las impresoras compatibles..."
-                                  />
-                                )}
+                                <MultiSelect
+                                  options={modelOptions}
+                                  value={compatDraft}
+                                  onChange={setCompatDraft}
+                                  searchable
+                                  placeholder="Selecciona los modelos compatibles..."
+                                />
                                 {compatError && (
                                   <p className="text-sm text-destructive">{compatError}</p>
                                 )}
@@ -221,21 +213,23 @@ export default function ArticleDetail() {
                                   </Button>
                                 </div>
                               </div>
-                            ) : (compatiblePrinters ?? []).length === 0 ? (
+                            ) : (compatibleModels ?? []).length === 0 ? (
                               <div className="py-4">
-                                <p className="text-sm text-muted-foreground">No hay impresoras compatibles registradas.</p>
+                                <p className="text-sm text-muted-foreground">No hay modelos compatibles registrados.</p>
                                 {isAdmin && (
                                   <Button variant="outline" size="sm" className="mt-3" onClick={startEditCompat}>
                                     <Plus className="mr-2 h-4 w-4" />
-                                    Agregar impresoras
+                                    Agregar modelos
                                   </Button>
                                 )}
                               </div>
                             ) : (
-                              (compatiblePrinters as any[]).map((printer) => (
-                                <div key={printer.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                              (compatibleModels as any[]).map((model) => (
+                                <div key={model.id} className="flex items-center gap-3 rounded-lg border border-border p-3">
                                   <Link2 className="h-4 w-4 text-primary" />
-                                  <span className="text-sm text-foreground flex-1">{printer.id} • {printer.marca} {printer.modelo}</span>
+                                  <span className="text-sm text-foreground flex-1">
+                                    {model.id} • {model.marca ?? ''} {model.nombre}
+                                  </span>
                                 </div>
                               ))
                             )}

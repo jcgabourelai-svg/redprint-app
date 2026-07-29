@@ -22,8 +22,8 @@ class UpdateArticleRequest extends FormRequest
             'umbral_reposicion' => 'nullable|integer|min:0',
             'costo_unitario' => 'sometimes|numeric|min:0',
             'proveedor_id' => 'nullable|exists:suppliers,id',
-            'impresoras_compatibles' => 'nullable|array',
-            'impresoras_compatibles.*' => 'integer|exists:printers,id',
+            'modelos_compatibles' => 'nullable|array',
+            'modelos_compatibles.*' => 'integer|exists:printer_models,id',
             'activo' => 'nullable|boolean',
         ];
     }

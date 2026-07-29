@@ -6,6 +6,7 @@ use App\Enums\ArticleType;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Article extends Model
@@ -24,7 +25,6 @@ class Article extends Model
         'umbral_reposicion',
         'costo_unitario',
         'proveedor_id',
-        'impresoras_compatibles',
         'activo',
         'motivo_baja',
         'fecha_baja',
@@ -38,7 +38,6 @@ class Article extends Model
             'stock_actual' => 'integer',
             'umbral_reposicion' => 'integer',
             'costo_unitario' => 'decimal:2',
-            'impresoras_compatibles' => 'array',
             'activo' => 'boolean',
             'fecha_baja' => 'datetime',
             'fecha_creacion' => 'datetime',
@@ -48,6 +47,11 @@ class Article extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'proveedor_id');
+    }
+
+    public function modelosCompatibles(): BelongsToMany
+    {
+        return $this->belongsToMany(PrinterModel::class, 'article_printer_model', 'article_id', 'printer_model_id');
     }
 
     public function movements(): HasMany
