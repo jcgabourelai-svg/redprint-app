@@ -19,6 +19,7 @@ class UpdateArticleRequest extends FormRequest
             'nombre' => 'sometimes|string|max:255',
             'marca' => 'nullable|string|max:150',
             'modelo_sku' => 'nullable|string|max:150',
+            'stock_actual' => 'sometimes|integer|min:0',
             'umbral_reposicion' => 'nullable|integer|min:0',
             'costo_unitario' => 'sometimes|numeric|min:0',
             'proveedor_id' => 'nullable|exists:suppliers,id',

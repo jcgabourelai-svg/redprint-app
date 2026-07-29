@@ -86,7 +86,20 @@ class ArticleController extends Controller
         $modelosCompatibles = array_key_exists('modelos_compatibles', $data) ? $data['modelos_compatibles'] : null;
         unset($data['modelos_compatibles']);
 
+        $nuevoStock = array_key_exists('stock_actual', $data) ? (int) $data['stock_actual'] : null;
+        unset($data['stock_actual']);
+
         $article->update($data);
+
+        if ($nuevoStock !== null && $nuevoStock !== (int) $article->fresh()->stock_actual) {
+            $this->inventoryService->registerAdjustment(
+                $article,
+                $nuevoStock,
+                $request->user(),
+                'Ajuste desde edición del artículo',
+                'EDICION'
+            );
+        }
 
         if ($modelosCompatibles !== null) {
             $article->modelosCompatibles()->sync($modelosCompatibles);

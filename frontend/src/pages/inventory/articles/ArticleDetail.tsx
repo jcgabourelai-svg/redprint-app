@@ -8,6 +8,7 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import MultiSelect from '@/components/ui/MultiSelect'
+import ArticleForm from '@/components/articles/ArticleForm'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import { useArticle, useArticleCompatibleModels, useDeactivateArticle, useCreateArticleMovement, useUpdateArticle } from '@/hooks/useArticles'
@@ -30,6 +31,7 @@ export default function ArticleDetail() {
   const [deactivateReason, setDeactivateReason] = useState('')
   const [deactivateError, setDeactivateError] = useState('')
   const [showStockModal, setShowStockModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
   const [editingCompat, setEditingCompat] = useState(false)
   const { data: brands } = usePrinterBrands(true)
   const [compatDraft, setCompatDraft] = useState<string[]>([])
@@ -108,6 +110,15 @@ export default function ArticleDetail() {
     )
   }
 
+  const handleEditArticle = (data: Omit<Article, 'id'>) => {
+    updateArticle.mutate(
+      { id: articleId, ...data },
+      {
+        onSuccess: () => setShowEditModal(false),
+      }
+    )
+  }
+
   return (
     <PageLayout title={`Inventario › Artículos › ${article.nombre}`}>
       <div className="space-y-6">
@@ -118,7 +129,7 @@ export default function ArticleDetail() {
           </Button>
           {isAdmin && article.activo !== false && (
             <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={startEditCompat}>
+              <Button variant="outline" size="sm" onClick={() => setShowEditModal(true)}>
                 <Edit className="mr-2 h-4 w-4" />
                 Editar
               </Button>
@@ -361,6 +372,20 @@ export default function ArticleDetail() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Editar Artículo"
+        size="lg"
+      >
+        <ArticleForm
+          initialData={article}
+          onSubmit={handleEditArticle}
+          onCancel={() => setShowEditModal(false)}
+          submitting={updateArticle.isPending}
+        />
       </Modal>
 
       {article && (
