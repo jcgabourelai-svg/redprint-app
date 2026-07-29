@@ -15,6 +15,7 @@ class PrinterResource extends JsonResource
             'modelo' => $this->modelo,
             'printer_model_id' => $this->printer_model_id,
             'num_serie' => $this->num_serie,
+            'num_inventario' => $this->num_inventario,
             'codigo_negocio' => $this->codigo_negocio,
             'fecha_adquisicion' => $this->fecha_adquisicion?->toDateString(),
             'costo_adquisicion' => $this->costo_adquisicion,

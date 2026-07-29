@@ -20,6 +20,7 @@ class Printer extends Model
         'modelo',
         'printer_model_id',
         'num_serie',
+        'num_inventario',
         'fecha_adquisicion',
         'costo_adquisicion',
         'codigo_negocio',

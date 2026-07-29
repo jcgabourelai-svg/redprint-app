@@ -16,6 +16,7 @@ class StorePrinterRequest extends FormRequest
         return [
             'printer_model_id' => 'required|exists:printer_models,id',
             'num_serie' => 'required|string|unique:printers,num_serie',
+            'num_inventario' => 'nullable|string|max:50|unique:printers,num_inventario',
             'fecha_adquisicion' => 'required|date',
             'costo_adquisicion' => 'nullable|numeric|min:0',
             'vida_util_meses' => 'nullable|integer|min:1',

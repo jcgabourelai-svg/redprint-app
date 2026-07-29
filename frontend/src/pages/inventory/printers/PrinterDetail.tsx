@@ -143,7 +143,7 @@ export default function PrinterDetail() {
                       <CardTitle className="text-xl">
                         {printerData.marca} {printerData.modelo}
                       </CardTitle>
-                      <p className="text-sm text-muted-foreground">{printerData.id} • {printerData.num_serie}</p>
+                      <p className="text-sm text-muted-foreground">{printerData.id} • {printerData.num_serie}{printerData.num_inventario ? ` • INV: ${printerData.num_inventario}` : ''}</p>
                     </div>
                   </div>
                   <Badge variant="printer_status" color={printerData.estado}>
@@ -164,6 +164,16 @@ export default function PrinterDetail() {
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Número de Serie</p>
                     <p className="text-foreground">{printerData.num_serie}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Número de Inventario</p>
+                    {printerData.num_inventario ? (
+                      <p className="text-foreground font-medium">{printerData.num_inventario}</p>
+                    ) : (
+                      <p className="text-warning italic flex items-center gap-1">
+                        Sin asignar
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Fecha de Adquisición</p>

@@ -26,10 +26,10 @@ class PrinterController extends Controller
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->marca, fn($q, $m) => $q->where('marca', 'ilike', "%{$m}%"))
             ->when($request->modelo, fn($q, $m) => $q->where('modelo', 'ilike', "%{$m}%"))
-            ->search($request->search, ['codigo_negocio', 'num_serie', 'marca', 'modelo']);
+            ->search($request->search, ['codigo_negocio', 'num_serie', 'num_inventario', 'marca', 'modelo']);
 
         $this->applySorting($query, $request, [
-            'id', 'codigo_negocio', 'num_serie', 'marca', 'modelo', 'estado', 'created_at',
+            'id', 'codigo_negocio', 'num_serie', 'num_inventario', 'marca', 'modelo', 'estado', 'created_at',
         ], 'created_at', 'desc');
 
         $printers = $query->paginate($request->per_page ?? 15);

@@ -66,6 +66,14 @@ export default function PrinterList() {
         <div>
           <p className="font-medium">{row.marca} {_value}</p>
           <p className="text-xs text-muted-foreground">SERIE: {row.num_serie}</p>
+          <p className="text-xs">
+            <span className="text-muted-foreground">INV: </span>
+            {row.num_inventario ? (
+              <span className="font-medium text-foreground">{row.num_inventario}</span>
+            ) : (
+              <span className="italic text-warning">Sin asignar</span>
+            )}
+          </p>
           <p className="text-xs text-muted-foreground">COSTO: {formatCurrency(row.costo_adquisicion ?? 0)}</p>
         </div>
       ),

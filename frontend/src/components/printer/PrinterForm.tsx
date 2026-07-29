@@ -10,6 +10,7 @@ import { useIsAdmin } from '@/contexts/AuthContext'
 export interface PrinterFormData {
   printer_model_id: number
   num_serie: string
+  num_inventario?: string
   fecha_adquisicion: string
   almacen_id: string
   costo_adquisicion?: number
@@ -23,6 +24,7 @@ export interface PrinterInitialData {
   modelo?: string
   printer_model_id?: number
   num_serie?: string
+  num_inventario?: string
   fecha_adquisicion?: string
   almacen_id?: string | number
   warehouse?: { id?: string | number }
@@ -42,6 +44,7 @@ export interface PrinterFormProps {
 interface FormErrors {
   printer_model_id?: string
   num_serie?: string
+  num_inventario?: string
   fecha_adquisicion?: string
   almacen_id?: string
   costo_adquisicion?: string
@@ -69,6 +72,7 @@ export default function PrinterForm({
     initialData?.printer_model_id ? String(initialData.printer_model_id) : ''
   )
   const [numSerie, setNumSerie] = useState(initialData?.num_serie ?? '')
+  const [numInventario, setNumInventario] = useState(initialData?.num_inventario ?? '')
   const [fechaAdquisicion, setFechaAdquisicion] = useState(
     initialData?.fecha_adquisicion ? initialData.fecha_adquisicion.slice(0, 10) : ''
   )
@@ -194,6 +198,7 @@ export default function PrinterForm({
     onSubmit({
       printer_model_id: Number(printerModelId),
       num_serie: numSerie.trim(),
+      num_inventario: numInventario.trim() || undefined,
       fecha_adquisicion: fechaAdquisicion,
       almacen_id: almacenId,
       costo_adquisicion: costoAdquisicion ? Number(costoAdquisicion) : undefined,
@@ -247,6 +252,19 @@ export default function PrinterForm({
           onChange={(e) => setNumSerie(e.target.value)}
           error={!!errors.num_serie}
           helperText={errors.num_serie}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">
+          Número de inventario <span className="text-muted-foreground">(opcional)</span>
+        </label>
+        <Input
+          placeholder="Ej: INV-001 (etiqueta para la impresora)"
+          value={numInventario}
+          onChange={(e) => setNumInventario(e.target.value)}
+          error={!!errors.num_inventario}
+          helperText={errors.num_inventario}
         />
       </div>
 
