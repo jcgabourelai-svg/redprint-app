@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Printer extends Model
 {
@@ -85,6 +86,12 @@ class Printer extends Model
     public function readings()
     {
         return $this->hasMany(Reading::class, 'impresora_id');
+    }
+
+    public function latestReading(): HasOne
+    {
+        return $this->hasOne(Reading::class, 'impresora_id')
+            ->latestOfMany('fecha');
     }
 
     public function expenses()

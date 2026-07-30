@@ -20,6 +20,7 @@ class UpdatePrinterRequest extends FormRequest
             'fecha_adquisicion' => 'sometimes|date',
             'costo_adquisicion' => 'nullable|numeric|min:0',
             'vida_util_meses' => 'nullable|integer|min:1',
+            'contador_actual' => 'nullable|integer|min:0',
             'almacen_id' => 'sometimes|exists:warehouses,id',
         ];
     }

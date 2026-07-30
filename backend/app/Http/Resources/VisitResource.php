@@ -21,10 +21,40 @@ class VisitResource extends JsonResource
             'socio_nombre' => $this->whenLoaded('socio', fn () => $this->socio?->nombre),
             'estado' => $this->when($this->estado, $this->estado?->value),
             'notas' => $this->notas,
+            'impresoras' => $this->whenLoaded('contract', fn () => $this->resolveImpresoras()),
             'client' => $this->whenLoaded('client'),
             'contract' => $this->whenLoaded('contract'),
             'socio' => $this->whenLoaded('socio'),
             'readings' => ReadingResource::collection($this->whenLoaded('readings')),
         ];
+    }
+
+    protected function resolveImpresoras(): array
+    {
+        $contract = $this->whenLoaded('contract');
+        if (! $contract) {
+            return [];
+        }
+
+        return $contract->activePrinters
+            ->map(function ($printer) use ($contract) {
+                $latest = $printer->relationLoaded('latestReading') ? $printer->latestReading : null;
+                $lecturaAnterior = $latest
+                    ? (int) $latest->valor_contador - (int) ($latest->paginas_periodo ?? 0)
+                    : ((int) $printer->pivot?->lectura_inicial ?? $printer->contador_actual ?? 0);
+
+                return [
+                    'id' => (string) ($printer->pivot?->id ?? $printer->id),
+                    'impresora_id' => (string) $printer->id,
+                    'marca' => $printer->marca,
+                    'modelo' => $printer->modelo,
+                    'numero_serie' => $printer->num_serie,
+                    'contrato_id' => (string) $contract->id,
+                    'lectura_anterior' => (int) $lecturaAnterior,
+                    'fecha_lectura_anterior' => $latest?->fecha?->toDateString(),
+                ];
+            })
+            ->values()
+            ->all();
     }
 }

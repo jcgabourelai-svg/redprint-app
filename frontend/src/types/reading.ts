@@ -15,4 +15,5 @@ export interface Reading {
   es_anomalia?: boolean
   excepcion?: string | null
   justificacion_anomalia?: string | null
+  printer?: Record<string, unknown>
 }

@@ -10,6 +10,14 @@ export function useReadings(params?: Record<string, string | number>) {
   })
 }
 
+export function useReading(id: number) {
+  return useQuery<Reading>({
+    queryKey: ['readings', 'detail', id],
+    queryFn: () => api.get(`/readings/${id}`).then(r => r.data),
+    enabled: !!id,
+  })
+}
+
 export function useVisitReadings(visitId: number) {
   return useQuery<PaginatedResponse<Reading>>({
     queryKey: ['readings', 'visit', visitId],

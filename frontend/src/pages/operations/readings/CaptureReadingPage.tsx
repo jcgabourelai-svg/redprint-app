@@ -29,17 +29,7 @@ export default function CaptureReadingPage() {
   const { data: visit, isLoading, error } = useVisit(idNum)
   const createReading = useCreateReading()
 
-  const [readings, setReadings] = useState<ReadingState[]>(() => {
-    if (!visit) return []
-    return visit.impresoras.map((imp) => ({
-      printerId: imp.impresora_id,
-      visitPrinterId: imp.id,
-      lectura_actual: '',
-      anomalia: false,
-      justificacion: '',
-      fotoTomada: false,
-    }))
-  })
+  const [readings, setReadings] = useState<Record<string, ReadingState>>({})
 
   const [observaciones, setObservaciones] = useState('')
   const [showSavedModal, setShowSavedModal] = useState(false)
@@ -49,9 +39,9 @@ export default function CaptureReadingPage() {
   const costoPorPagina = 1.0
 
   const readingCalculations = useMemo(() => {
-    if (!visit) return []
-    return visit.impresoras.map((imp, idx) => {
-      const readingState = readings[idx]
+    if (!visit?.impresoras) return []
+    return visit.impresoras.map((imp) => {
+      const readingState = readings[imp.impresora_id]
       const lectura_actual = parseInt(readingState?.lectura_actual || '0') || 0
       const paginas_consumidas = lectura_actual > imp.lectura_anterior ? lectura_actual - imp.lectura_anterior : 0
       const montoEstimado = paginas_consumidas * costoPorPagina
@@ -115,12 +105,20 @@ export default function CaptureReadingPage() {
     )
   }
 
-  const updateReading = (idx: number, field: keyof ReadingState, value: string | boolean) => {
-    setReadings((prev) => {
-      const updated = [...prev]
-      updated[idx] = { ...updated[idx], [field]: value }
-      return updated
-    })
+  const updateReading = (printerId: string, field: keyof ReadingState, value: string | boolean) => {
+    setReadings((prev) => ({
+      ...prev,
+      [printerId]: {
+        printerId,
+        visitPrinterId: printerId,
+        lectura_actual: '',
+        anomalia: false,
+        justificacion: '',
+        fotoTomada: false,
+        ...prev[printerId],
+        [field]: value,
+      },
+    }))
   }
 
   const handleSave = () => {
@@ -133,16 +131,14 @@ export default function CaptureReadingPage() {
     }
 
     const readingPromises = validReadings.map((calc) => {
-      const readingState = readings.find((r) => r.printerId === calc.printerId)
+      const readingState = readings[calc.printerId]
       return createReading.mutateAsync({
         visita_id: idNum,
         impresora_id: calc.printerId,
-        lectura_anterior: calc.lectura_anterior,
-        lectura_actual: calc.lectura_actual,
+        contrato_id: calc.contratoId,
+        valor_contador: calc.lectura_actual,
         fecha: new Date().toISOString().split('T')[0],
-        hora: new Date().toTimeString().split(' ')[0].substring(0, 5),
-        socio_capturista: visit.socio_nombre,
-        excepcion: readingState?.anomalia ? readingState.justificacion : undefined,
+        justificacion_anomalia: readingState?.anomalia ? readingState.justificacion : undefined,
       })
     })
 
@@ -155,7 +151,7 @@ export default function CaptureReadingPage() {
       })
   }
 
-  const anomaliaIdx = anomaliaModal ? readings.findIndex((r) => r.visitPrinterId === anomaliaModal) : -1
+  const anomaliaPrinterId = anomaliaModal ?? ''
 
   return (
     <PageLayout title="Captura de Lectura">
@@ -186,14 +182,14 @@ export default function CaptureReadingPage() {
 
         <div>
           <h3 className="text-lg font-semibold text-foreground mb-4">
-            Impresoras del cliente ({visit.impresoras.length})
+            Impresoras del cliente ({(visit.impresoras || []).length})
           </h3>
           <div className="space-y-4">
-            {visit.impresoras.map((imp, idx) => {
-              const calc = readingCalculations[idx]
-              const reading = readings[idx]
+            {(visit.impresoras || []).map((imp) => {
+              const calc = readingCalculations.find((c) => c.printerId === imp.impresora_id)
+              const reading = readings[imp.impresora_id]
               return (
-                <Card key={imp.id}>
+                <Card key={imp.impresora_id}>
                   <CardContent className="p-4 space-y-4">
                     <div>
                       <p className="font-medium text-foreground">
@@ -219,22 +215,22 @@ export default function CaptureReadingPage() {
                       </label>
                       <Input
                         type="number"
-                        value={reading.lectura_actual}
+                        value={reading?.lectura_actual ?? ''}
                         onChange={(e) => {
                           const val = e.target.value
-                          updateReading(idx, 'lectura_actual', val)
+                          updateReading(imp.impresora_id, 'lectura_actual', val)
                           const numVal = parseInt(val) || 0
                           if (numVal > 0 && numVal < imp.lectura_anterior) {
-                            updateReading(idx, 'anomalia', true)
+                            updateReading(imp.impresora_id, 'anomalia', true)
                           } else {
-                            updateReading(idx, 'anomalia', false)
+                            updateReading(imp.impresora_id, 'anomalia', false)
                           }
                         }}
                         placeholder="Ingrese la lectura actual"
                       />
                     </div>
 
-                    {calc.lectura_actual > 0 && !calc.tieneAnomalia && (
+                    {calc && calc.lectura_actual > 0 && !calc.tieneAnomalia && (
                       <div className="flex items-center gap-4 text-sm">
                         <span className="text-muted-foreground">
                           Páginas del periodo: <span className="font-medium">{calc.paginas_consumidas.toLocaleString()}</span>
@@ -246,7 +242,7 @@ export default function CaptureReadingPage() {
                       </div>
                     )}
 
-                    {calc.tieneAnomalia && (
+                    {calc?.tieneAnomalia && (
                       <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
                         <div className="flex items-center gap-2 text-destructive font-medium mb-2">
                           <AlertTriangle className="h-4 w-4" />
@@ -268,14 +264,14 @@ export default function CaptureReadingPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => updateReading(idx, 'lectura_actual', '')}
+                            onClick={() => updateReading(imp.impresora_id, 'lectura_actual', '')}
                           >
                             Ingresar valor nuevamente
                           </Button>
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => setAnomaliaModal(imp.id)}
+                            onClick={() => setAnomaliaModal(imp.impresora_id)}
                           >
                             Confirmar anomalía
                           </Button>
@@ -283,7 +279,7 @@ export default function CaptureReadingPage() {
                       </div>
                     )}
 
-                    {reading.fotoTomada && (
+                    {reading?.fotoTomada && (
                       <p className="text-sm text-success flex items-center gap-1">
                         <CheckCircle className="h-4 w-4" />
                         Foto capturada
@@ -293,10 +289,10 @@ export default function CaptureReadingPage() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => updateReading(idx, 'fotoTomada', !reading.fotoTomada)}
+                      onClick={() => updateReading(imp.impresora_id, 'fotoTomada', !reading?.fotoTomada)}
                     >
                       <Camera className="mr-2 h-4 w-4" />
-                      {reading.fotoTomada ? 'Foto capturada' : 'Tomar foto del contador'}
+                      {reading?.fotoTomada ? 'Foto capturada' : 'Tomar foto del contador'}
                     </Button>
                   </CardContent>
                 </Card>
@@ -444,10 +440,10 @@ export default function CaptureReadingPage() {
             <textarea
               className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               rows={3}
-              value={anomaliaIdx >= 0 ? readings[anomaliaIdx].justificacion : ''}
+              value={readings[anomaliaPrinterId]?.justificacion ?? ''}
               onChange={(e) => {
-                if (anomaliaIdx >= 0) {
-                  updateReading(anomaliaIdx, 'justificacion', e.target.value)
+                if (anomaliaPrinterId) {
+                  updateReading(anomaliaPrinterId, 'justificacion', e.target.value)
                 }
               }}
               placeholder="Describa el motivo de la anomalía"

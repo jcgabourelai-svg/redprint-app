@@ -119,7 +119,7 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::middleware('permission:operaciones.lecturas')->group(function () {
-            Route::apiResource('readings', ReadingController::class)->only(['index', 'store']);
+            Route::apiResource('readings', ReadingController::class)->only(['index', 'store', 'show']);
             Route::get('readings/visit/{visitId}', [ReadingController::class, 'getByVisit']);
             Route::get('readings/printer/{printerId}', [ReadingController::class, 'getByPrinter']);
         });

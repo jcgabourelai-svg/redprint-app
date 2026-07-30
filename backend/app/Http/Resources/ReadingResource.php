@@ -23,10 +23,12 @@ class ReadingResource extends JsonResource
             'es_anomalia' => $this->es_anomalia,
             'excepcion' => $this->es_anomalia ? ($this->justificacion_anomalia ?? 'Anómala') : null,
             'justificacion_anomalia' => $this->justificacion_anomalia,
-            'impresora_nombre' => $this->whenLoaded('printer', fn() => $this->printer?->modelo ?? $this->printer?->serial ?? '-'),
+            'impresora_nombre' => $this->whenLoaded('printer', fn() => $this->printer?->num_inventario ?? $this->printer?->num_serie ?? $this->printer?->modelo ?? '-'),
             'socio_capturista' => $this->whenLoaded('socio', fn() => $this->socio?->nombre ?? '-'),
+            'evidencia_foto' => $this->foto_evidencia,
             'printer' => $this->whenLoaded('printer'),
             'socio' => $this->whenLoaded('socio'),
+            'visit' => $this->whenLoaded('visit'),
         ];
     }
 }

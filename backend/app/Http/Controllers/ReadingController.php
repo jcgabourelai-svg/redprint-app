@@ -33,6 +33,13 @@ class ReadingController extends Controller
         return ReadingResource::collection($readings);
     }
 
+    public function show(int $id)
+    {
+        $reading = Reading::with(['printer', 'visit', 'socio', 'contract'])->findOrFail($id);
+
+        return new ReadingResource($reading);
+    }
+
     public function store(StoreReadingRequest $request): JsonResponse
     {
         $reading = $this->readingService->captureReading($request->validated(), $request->user());

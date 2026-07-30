@@ -19,6 +19,7 @@ import CreateContract from '@/pages/contracts/CreateContract'
 import CalendarPage from '@/pages/operations/calendar/CalendarPage'
 import CaptureReadingPage from '@/pages/operations/readings/CaptureReadingPage'
 import ReadingListPage from '@/pages/operations/readings/ReadingListPage'
+import ReadingDetailPage from '@/pages/operations/readings/ReadingDetailPage'
 import VisitDetailPage from '@/pages/operations/VisitDetailPage'
 import InvoiceList from '@/pages/finance/invoices/InvoiceList'
 import RegisterInvoicePage from '@/pages/finance/invoices/RegisterInvoicePage'
@@ -65,6 +66,7 @@ function App() {
           <Route path="operaciones/visitas" element={<RequirePermission permiso="operaciones.calendario"><CalendarPage /></RequirePermission>} />
           <Route path="operaciones/visitas/:id" element={<RequirePermission permiso="operaciones.calendario"><VisitDetailPage /></RequirePermission>} />
           <Route path="operaciones/lecturas" element={<RequirePermission permiso="operaciones.lecturas"><ReadingListPage /></RequirePermission>} />
+          <Route path="operaciones/lecturas/detalle/:id" element={<RequirePermission permiso="operaciones.lecturas"><ReadingDetailPage /></RequirePermission>} />
           <Route path="operaciones/lecturas/:visitaId" element={<RequirePermission permiso="operaciones.lecturas"><CaptureReadingPage /></RequirePermission>} />
           <Route path="finanzas/facturas" element={<RequirePermission permiso="finanzas.facturas"><InvoiceList /></RequirePermission>} />
           <Route path="finanzas/facturas/registrar" element={<RequirePermission permiso="finanzas.facturas"><RegisterInvoicePage /></RequirePermission>} />

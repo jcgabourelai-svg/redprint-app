@@ -119,7 +119,7 @@ export default function ReadingListPage() {
           className="p-1 hover:bg-muted rounded"
           onClick={(e) => {
             e.stopPropagation()
-            navigate(`/operaciones/visitas/${row.visita_id}`)
+            navigate(`/operaciones/lecturas/detalle/${row.id}`)
           }}
         >
           <Eye className="h-4 w-4" />
@@ -187,7 +187,7 @@ export default function ReadingListPage() {
             paginatable={true}
             {...tableProps}
             emptyMessage="No se encontraron lecturas con los filtros aplicados."
-            onRowClick={(reading) => navigate(`/operaciones/visitas/${reading.visita_id}`)}
+            onRowClick={(reading) => navigate(`/operaciones/lecturas/detalle/${reading.id}`)}
           />
         )}
       </div>
