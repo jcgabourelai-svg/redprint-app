@@ -34,3 +34,36 @@ export interface InvoicePrinterDetail {
   paginas_consumidas: number
   monto_calculado: number
 }
+
+export interface InvoiceCalcLectura {
+  lectura_id: number
+  impresora_id: number
+  fecha: string
+  paginas_periodo: number
+}
+
+export interface InvoiceCalcContrato {
+  contrato_id: number
+  codigo: string
+  tarifa_base: number
+  paginas_incluidas: number
+  costo_pag_excedente: number
+  total_paginas: number
+  monto_contrato: number
+  lecturas: InvoiceCalcLectura[]
+}
+
+export interface InvoiceCalcDetalle {
+  contrato_id?: number
+  impresora_id?: number
+  lectura_id?: number
+  paginas_consumidas: number
+  monto_calculado: number
+}
+
+export interface InvoiceCalculation {
+  monto_total: number
+  contratos: InvoiceCalcContrato[]
+  detalles: InvoiceCalcDetalle[]
+  advertencias: string[]
+}

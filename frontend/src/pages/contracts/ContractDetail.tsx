@@ -20,7 +20,9 @@ import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import { useContract, useUpdateContract, useAssignPrinter, useReleasePrinter } from '@/hooks/useContracts'
+import { useVisits } from '@/hooks/useVisits'
 import type { Contract, ContractStatus, VisitFrequency } from '@/types/contract'
+import type { VisitStatus } from '@/types/operations'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -36,6 +38,22 @@ const estadoLabels: Record<ContractStatus, string> = {
   SUSPENDIDO: 'Suspendido',
   FINALIZADO: 'Finalizado',
   CANCELADO: 'Cancelado',
+}
+
+const visitaEstadoLabels: Record<VisitStatus, string> = {
+  PENDIENTE: 'Pendiente',
+  COMPLETADA: 'Completada',
+  REPROGRAMADA: 'Reprogramada',
+  CANCELADA: 'Cancelada',
+  OMITIDA: 'Omitida',
+}
+
+const visitaEstadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'neutral'> = {
+  PENDIENTE: 'primary',
+  COMPLETADA: 'success',
+  REPROGRAMADA: 'warning',
+  CANCELADA: 'neutral',
+  OMITIDA: 'neutral',
 }
 
 function getEsquemaLabel(contract: Contract): string {
@@ -54,6 +72,9 @@ export default function ContractDetail() {
   const idNum = parseInt(id || '0')
   
   const { data: contract, isLoading, error } = useContract(idNum)
+  const { data: visitsData, isLoading: isLoadingVisits } = useVisits(
+    { contrato_id: idNum, per_page: 100 }
+  )
   const assignPrinter = useAssignPrinter()
   const releasePrinter = useReleasePrinter()
   const updateContract = useUpdateContract(idNum)
@@ -143,6 +164,10 @@ export default function ContractDetail() {
 
   const totalEstimado = contract.impresoras.reduce((sum, p) => sum + p.estimado_del_periodo, 0)
   const totalRentAcum = contract.impresoras.reduce((sum, p) => sum + p.rentabilidad_acumulada, 0)
+
+  const visitas = (visitsData?.data || [])
+    .slice()
+    .sort((a, b) => (a.fecha_programada < b.fecha_programada ? 1 : -1))
 
   return (
     <PageLayout title={`Contratos › ${contract.id}`}>
@@ -343,12 +368,43 @@ export default function ContractDetail() {
                   },
                   {
                     id: 'visitas',
-                    label: 'Visitas Programadas',
+                    label: `Visitas Programadas (${visitas.length})`,
                     content: (
                       <div className="pb-4">
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground">No hay visitas programadas</p>
-                        </div>
+                        {isLoadingVisits ? (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">Cargando visitas...</p>
+                          </div>
+                        ) : visitas.length === 0 ? (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">No hay visitas programadas</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {visitas.map((visita) => (
+                              <div
+                                key={visita.id}
+                                className="flex items-center justify-between border border-border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
+                                onClick={() => navigate(`/operaciones/visitas/${visita.id}`)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                                  <div>
+                                    <p className="text-sm font-medium">
+                                      {formatDate(visita.fecha_programada)}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {visita.socio_nombre || 'Sin socio asignado'}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Badge variant={visitaEstadoVariant[visita.estado as VisitStatus]}>
+                                  {visitaEstadoLabels[visita.estado as VisitStatus]}
+                                </Badge>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     ),
                   },

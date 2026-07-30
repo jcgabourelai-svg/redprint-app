@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Models\Invoice;
+use App\Services\InvoiceCalculationService;
 use App\Services\InvoiceService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
@@ -15,8 +16,26 @@ class InvoiceController extends Controller
     use Sortable;
 
     public function __construct(
-        private InvoiceService $invoiceService
+        private InvoiceService $invoiceService,
+        private InvoiceCalculationService $calculationService
     ) {}
+
+    public function calcular(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'cliente_id' => 'required|exists:clients,id',
+            'periodo_inicio' => 'required|date',
+            'periodo_fin' => 'required|date|after_or_equal:periodo_inicio',
+        ]);
+
+        $resultado = $this->calculationService->calcularEstimacion(
+            (int) $data['cliente_id'],
+            $data['periodo_inicio'],
+            $data['periodo_fin'],
+        );
+
+        return response()->json($resultado);
+    }
 
     public function index(Request $request)
     {

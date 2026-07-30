@@ -22,6 +22,7 @@ class VisitController extends Controller
         $query = Visit::with(['client', 'contract', 'socio', 'readings'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
+            ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id))
             ->when($request->socio_id, fn($q, $id) => $q->where('socio_id', $id))
             ->when($request->month, fn($q, $m) => $q->whereMonth('fecha_programada', $m))
             ->when($request->year, fn($q, $y) => $q->whereYear('fecha_programada', $y));

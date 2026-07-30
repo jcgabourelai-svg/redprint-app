@@ -9,10 +9,12 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
+import Toast from '@/components/ui/Toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
+import { useCreatePayment } from '@/hooks/usePayments'
 import type { Invoice } from '@/types/invoice'
 
 export default function InvoiceList() {
@@ -29,8 +31,43 @@ export default function InvoiceList() {
     socio_registro: '',
   })
   const navigate = useNavigate()
+  const createPayment = useCreatePayment()
+  const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
+    open: false,
+    variant: 'success',
+    message: '',
+  })
 
   const totalPendiente = invoices.reduce((sum, inv) => sum + inv.saldo_pendiente, 0)
+
+  const handleRegisterPayment = async () => {
+    if (!selectedInvoice) return
+    if (!paymentForm.monto || paymentForm.monto <= 0) {
+      setToast({ open: true, variant: 'error', message: 'El monto debe ser mayor a 0.' })
+      return
+    }
+    if (paymentForm.monto > selectedInvoice.saldo_pendiente) {
+      setToast({ open: true, variant: 'error', message: 'El monto excede el saldo pendiente.' })
+      return
+    }
+    try {
+      await createPayment.mutateAsync({
+        factura_id: selectedInvoice.id,
+        fecha: paymentForm.fecha,
+        monto: paymentForm.monto,
+        metodo_pago: paymentForm.metodo,
+      })
+      setShowPaymentModal(false)
+      setToast({ open: true, variant: 'success', message: 'Pago registrado correctamente.' })
+    } catch (err: any) {
+      const backendMessage = err?.response?.data?.message
+      setToast({
+        open: true,
+        variant: 'error',
+        message: backendMessage || 'No se pudo registrar el pago. Verifica los datos.',
+      })
+    }
+  }
 
   const columns = [
     {
@@ -308,13 +345,20 @@ export default function InvoiceList() {
               <Button variant="secondary" onClick={() => setShowPaymentModal(false)}>
                 Cancelar
               </Button>
-              <Button onClick={() => setShowPaymentModal(false)}>
+              <Button onClick={handleRegisterPayment} loading={createPayment.isPending}>
                 Registrar Pago
               </Button>
             </div>
           </div>
         )}
       </Modal>
+
+      <Toast
+        isOpen={toast.open}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        variant={toast.variant}
+        message={toast.message}
+      />
     </PageLayout>
   )
 }

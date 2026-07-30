@@ -1,0 +1,187 @@
+<?php
+
+namespace App\Services;
+
+use App\Enums\ContractStatus;
+use App\Models\Contract;
+use App\Models\Reading;
+use Illuminate\Support\Facades\DB;
+
+class InvoiceCalculationService
+{
+    /**
+     * Calcula la estimacion de facturacion de un cliente para un periodo,
+     * agrupando las lecturas no facturadas por contrato y aplicando la
+     * formula de tarifa de cada contrato.
+     *
+     * @return array{monto_total: float, contratos: array, detalles: array, advertencias: array}
+     */
+    public function calcularEstimacion(int $clienteId, string $periodoInicio, string $periodoFin): array
+    {
+        $contratos = Contract::where('cliente_id', $clienteId)
+            ->where('estado', ContractStatus::ACTIVO)
+            ->with(['activePrinters'])
+            ->get();
+
+        $advertencias = [];
+        $detalles = [];
+        $contratosResult = [];
+        $montoTotal = 0.0;
+
+        if ($contratos->isEmpty()) {
+            $advertencias[] = 'El cliente no tiene contratos activos. Se recomienda usar el modo de monto manual.';
+            return [
+                'monto_total' => 0.0,
+                'contratos' => [],
+                'detalles' => [],
+                'advertencias' => $advertencias,
+            ];
+        }
+
+        // IDs de impresoras activas de todos los contratos del cliente.
+        $idsImpresoras = $contratos->flatMap->activePrinters->pluck('id')->unique()->values()->all();
+
+        if (empty($idsImpresoras)) {
+            $advertencias[] = 'Los contratos activos del cliente no tienen impresoras asignadas.';
+        }
+
+        // Lecturas candidatas del periodo para esas impresoras.
+        $lecturas = collect();
+        if (!empty($idsImpresoras)) {
+            $lecturas = Reading::whereIn('impresora_id', $idsImpresoras)
+                ->whereBetween('fecha', [$periodoInicio, $periodoFin])
+                ->get();
+        }
+
+        // Excluir las ya facturadas: consulta acotada solo a las lecturas
+        // candidatas del periodo (no a toda la tabla invoice_details).
+        if ($lecturas->isNotEmpty()) {
+            $idsCandidatos = $lecturas->pluck('id')->all();
+            $lecturasFacturadas = DB::table('invoice_details')
+                ->whereIn('lectura_id', $idsCandidatos)
+                ->whereNotNull('lectura_id')
+                ->pluck('lectura_id')
+                ->all();
+
+            if (!empty($lecturasFacturadas)) {
+                $lecturas = $lecturas->reject(
+                    fn ($l) => in_array($l->id, $lecturasFacturadas, true)
+                )->values();
+            }
+        }
+
+        // Lecturas sin contrato asignado -> advertencia, fuera del monto.
+        $lecturasSinContrato = $lecturas->filter(fn ($l) => $l->contrato_id === null);
+        foreach ($lecturasSinContrato as $lectura) {
+            $advertencias[] = sprintf(
+                'La lectura #%d (impresora #%d, %s) no tiene contrato asignado y no se incluyo en el calculo.',
+                $lectura->id,
+                $lectura->impresora_id,
+                $lectura->fecha?->toDateString(),
+            );
+        }
+
+        // Solo lecturas con contrato para el calculo.
+        $lecturasConContrato = $lecturas->filter(fn ($l) => $l->contrato_id !== null);
+
+        foreach ($contratos as $contrato) {
+            $lecturasContrato = $lecturasConContrato->where('contrato_id', $contrato->id)->values();
+            $totalPages = (int) $lecturasContrato->sum('paginas_periodo');
+            $montoContrato = $contrato->calculateEstimatedAmount($totalPages);
+            $montoContratoRedondeado = round($montoContrato, 2);
+            // Acumular el monto ya redondeado por contrato para que
+            // monto_total == Σ monto_contrato == Σ monto_calculado exacto.
+            $montoTotal += $montoContratoRedondeado;
+
+            $lecturasData = [];
+            foreach ($lecturasContrato as $lectura) {
+                $lecturasData[] = [
+                    'lectura_id' => $lectura->id,
+                    'impresora_id' => $lectura->impresora_id,
+                    'fecha' => $lectura->fecha?->toDateString(),
+                    'paginas_periodo' => $lectura->paginas_periodo,
+                ];
+            }
+
+            $contratosResult[] = [
+                'contrato_id' => $contrato->id,
+                'codigo' => $contrato->codigo_negocio,
+                'tarifa_base' => (float) $contrato->tarifa_base,
+                'paginas_incluidas' => $contrato->paginas_incluidas,
+                'costo_pag_excedente' => (float) $contrato->costo_pag_excedente,
+                'total_paginas' => $totalPages,
+                'monto_contrato' => $montoContratoRedondeado,
+                'lecturas' => $lecturasData,
+            ];
+
+            // Construir detalles para este contrato.
+            if ($lecturasContrato->isNotEmpty()) {
+                // Distribuir montoContrato entre las lecturas (proporcional al
+                // numero de paginas; si todas son 0, el monto completo cae en
+                // la ultima fila). Vincula cada lectura para marcarla facturada.
+                // Absorber el redondeo en la ultima fila para que sume exacto.
+                $acumulado = 0.0;
+                $count = $lecturasContrato->count();
+                foreach ($lecturasContrato as $index => $lectura) {
+                    if ($index === $count - 1) {
+                        $monto = round($montoContrato - $acumulado, 2);
+                    } else {
+                        $prop = $totalPages > 0 ? ((float) $lectura->paginas_periodo / $totalPages) : 0.0;
+                        $monto = round($montoContrato * $prop, 2);
+                        $acumulado += $monto;
+                    }
+
+                    $detalles[] = [
+                        'contrato_id' => $contrato->id,
+                        'impresora_id' => $lectura->impresora_id,
+                        'lectura_id' => $lectura->id,
+                        'paginas_consumidas' => $lectura->paginas_periodo,
+                        'monto_calculado' => $monto,
+                    ];
+                }
+            } elseif ($montoContratoRedondeado > 0) {
+                // Contrato de renta fija sin ninguna lectura en el periodo.
+                $detalles[] = [
+                    'contrato_id' => $contrato->id,
+                    'impresora_id' => null,
+                    'lectura_id' => null,
+                    'paginas_consumidas' => 0,
+                    'monto_calculado' => $montoContratoRedondeado,
+                ];
+            }
+
+            if ($totalPages === 0 && (float) $contrato->tarifa_base === 0.0) {
+                $advertencias[] = sprintf(
+                    'El contrato %s no tuvo lecturas en el periodo y su tarifa base es 0 (sin costo).',
+                    $contrato->codigo_negocio,
+                );
+            }
+        }
+
+        // Lecturas ligadas a contratos no activos (o que no pertenecen a los
+        // contratos activos del cliente): no se facturan, pero se advierten.
+        $activeContractIds = $contratos->modelKeys();
+        foreach ($lecturasConContrato as $lectura) {
+            if (!in_array($lectura->contrato_id, $activeContractIds, true)) {
+                $advertencias[] = sprintf(
+                    'La lectura #%d (impresora #%d, %s) esta ligada al contrato #%d que no esta activo y no se incluyo en el calculo.',
+                    $lectura->id,
+                    $lectura->impresora_id,
+                    $lectura->fecha?->toDateString(),
+                    $lectura->contrato_id,
+                );
+            }
+        }
+
+        if ($lecturasConContrato->isEmpty() && $montoTotal == 0.0) {
+            $advertencias[] = 'No se encontraron lecturas no facturadas en el periodo seleccionado.';
+        }
+
+        return [
+            'monto_total' => round($montoTotal, 2),
+            'contratos' => $contratosResult,
+            'detalles' => $detalles,
+            'advertencias' => $advertencias,
+        ];
+    }
+}

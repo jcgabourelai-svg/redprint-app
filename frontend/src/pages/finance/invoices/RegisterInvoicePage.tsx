@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Check, AlertTriangle } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatCurrency } from '@/lib/formatters'
-import { useCreateInvoice } from '@/hooks/useInvoices'
+import { useCreateInvoice, useInvoiceCalculation } from '@/hooks/useInvoices'
+import { useClients } from '@/hooks/useClients'
 import { parseApiError } from '@/lib/api-errors'
 
 const steps = [
@@ -16,49 +17,76 @@ const steps = [
   { id: '3', label: 'Revisión' },
 ]
 
-const mockClientes = [
-  { value: 'CLI-001', label: 'Empresa Alpha S.A. de C.V.' },
-  { value: 'CLI-002', label: 'Grupo Beta México' },
-  { value: 'CLI-003', label: 'Corporativo Gamma' },
-  { value: 'CLI-004', label: 'Soluciones Delta S.C.' },
-  { value: 'CLI-005', label: 'Tecnologías Epsilon' },
-  { value: 'CLI-006', label: 'Industrias Zeta' },
-]
-
 export default function RegisterInvoicePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [form, setForm] = useState({
-    numero: '',
+    numero_factura: '',
     cliente_id: '',
     fecha_emision: new Date().toISOString().split('T')[0],
     fecha_vencimiento: '',
     periodo_inicio: '',
     periodo_fin: '',
-    metodo_calculo: 'lecturas',
-    selected_contratos: [] as string[],
-    selected_impresoras: [] as string[],
+    monto_total: '',
+    metodo_calculo: 'lecturas' as 'lecturas' | 'manual',
     notas: '',
   })
   const [error, setError] = useState('')
   const navigate = useNavigate()
+  const createInvoice = useCreateInvoice()
+  const { data: clientsData, isLoading: clientsLoading } = useClients({ per_page: 100 })
+
+  const isLecturasMode = form.metodo_calculo === 'lecturas'
+
+  const calculo = useInvoiceCalculation(
+    form.cliente_id,
+    form.periodo_inicio,
+    form.periodo_fin,
+    isLecturasMode,
+  )
+
+  const clients = clientsData?.data || []
+  const clientOptions = clients.map((c) => ({
+    value: c.id,
+    label: `${c.razon_social}${c.rfc ? ` (${c.rfc})` : ''}`,
+  }))
+  const selectedClientLabel = clients.find((c) => c.id === form.cliente_id)?.razon_social
+
+  const calcMonto = calculo.data?.monto_total ?? 0
+  const effectiveMonto = isLecturasMode ? calcMonto : Number(form.monto_total) || 0
+  const periodoIncomplete = !form.cliente_id || !form.periodo_inicio || !form.periodo_fin
 
   const handleCreateInvoice = async () => {
     setError('')
     try {
-      await createInvoice.mutateAsync({
-        numero: form.numero,
-        cliente_id: form.cliente_id,
+      const payload: Record<string, unknown> = {
+        numero_factura: form.numero_factura,
+        cliente_id: parseInt(form.cliente_id),
         fecha_emision: form.fecha_emision,
         fecha_vencimiento: form.fecha_vencimiento,
-        periodo_inicio: form.periodo_inicio,
-        periodo_fin: form.periodo_fin,
-        notas: form.notas,
-      })
+        periodo_inicio: form.periodo_inicio || undefined,
+        periodo_fin: form.periodo_fin || undefined,
+        monto_total: effectiveMonto,
+        notas: form.notas || undefined,
+      }
+
+      if (isLecturasMode && calculo.data?.detalles?.length) {
+        payload.detalles = calculo.data.detalles
+      }
+
+      await createInvoice.mutateAsync(payload)
       navigate('/finanzas/cuentas-por-cobrar')
     } catch (err) {
       setError(parseApiError(err))
     }
   }
+
+  const step1Valid =
+    !!form.numero_factura &&
+    !!form.cliente_id &&
+    !!form.fecha_vencimiento &&
+    (isLecturasMode ? !!calculo.data : !!form.monto_total)
+
+  const advertencias = calculo.data?.advertencias ?? []
 
   return (
     <PageLayout title="Registrar Factura">
@@ -103,22 +131,26 @@ export default function RegisterInvoicePage() {
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Número de factura (del PAC externo) *</label>
                   <Input
-                    value={form.numero}
-                    onChange={(e) => setForm({ ...form, numero: e.target.value })}
+                    value={form.numero_factura}
+                    onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
                     placeholder="F-001"
-                    error={error && !form.numero ? 'Requerido' : undefined}
+                    error={error && !form.numero_factura ? 'Requerido' : undefined}
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
-                  <Select
-                    options={mockClientes}
-                    value={form.cliente_id}
-                    onChange={(v) => setForm({ ...form, cliente_id: v, selected_contratos: [], selected_impresoras: [] })}
-                    placeholder="Seleccionar cliente"
-                    searchable
-                  />
+                  {clientsLoading ? (
+                    <p className="text-sm text-muted-foreground">Cargando clientes...</p>
+                  ) : (
+                    <Select
+                      options={clientOptions}
+                      value={form.cliente_id}
+                      onChange={(v) => setForm({ ...form, cliente_id: v })}
+                      placeholder="Seleccionar cliente"
+                      searchable
+                    />
+                  )}
                 </div>
 
                 <div>
@@ -162,7 +194,7 @@ export default function RegisterInvoicePage() {
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Método de cálculo *</label>
                   <div className="space-y-2">
                     <label className="flex items-center gap-2">
-                      <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas' })} className="text-primary" />
+                      <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas', monto_total: '' })} className="text-primary" />
                       <span className="text-sm">Según lecturas registradas (recomendado)</span>
                     </label>
                     <label className="flex items-center gap-2">
@@ -172,9 +204,60 @@ export default function RegisterInvoicePage() {
                   </div>
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Monto total *</label>
+                  {isLecturasMode ? (
+                    <>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={periodoIncomplete ? '' : (calculo.data ? String(calculo.data.monto_total) : '')}
+                        readOnly
+                        disabled
+                        placeholder={periodoIncomplete ? 'Selecciona cliente y periodo para calcular' : 'Calculando...'}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Monto calculado automáticamente desde las lecturas del periodo (campo bloqueado).
+                      </p>
+                    </>
+                  ) : (
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={form.monto_total}
+                      onChange={(e) => setForm({ ...form, monto_total: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  )}
+                </div>
+
+                {isLecturasMode && !periodoIncomplete && (
+                  <div className="space-y-1">
+                    {calculo.isLoading && (
+                      <p className="text-sm text-muted-foreground">Calculando monto desde lecturas...</p>
+                    )}
+                    {calculo.isError && (
+                      <p className="text-sm text-destructive">No se pudo calcular el monto. Verifica los datos o usa modo manual.</p>
+                    )}
+                  </div>
+                )}
+
+                {advertencias.length > 0 && (
+                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 space-y-1">
+                    {advertencias.map((adv, i) => (
+                      <p key={i} className="text-sm text-warning flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        {adv}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-4">
                   <Button variant="secondary" onClick={() => navigate('/finanzas/cuentas-por-cobrar')}>Cancelar</Button>
-                  <Button onClick={() => setCurrentStep(2)} disabled={!form.numero || !form.cliente_id}>
+                  <Button onClick={() => setCurrentStep(2)} disabled={!step1Valid}>
                     Siguiente <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </div>
@@ -187,18 +270,65 @@ export default function RegisterInvoicePage() {
 
                 {form.cliente_id && (
                   <div className="bg-muted p-3 rounded-lg">
-                    <p className="text-sm">Cliente seleccionado: <strong>{mockClientes.find(c => c.value === form.cliente_id)?.label}</strong></p>
+                    <p className="text-sm">Cliente seleccionado: <strong>{selectedClientLabel}</strong></p>
                   </div>
                 )}
 
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-3">Seleccione impresoras:</h4>
-                  <p className="text-sm text-muted-foreground">Las impresoras se cargarán desde el sistema al seleccionar un cliente.</p>
-                </div>
+                {isLecturasMode && calculo.data ? (
+                  calculo.data.contratos.length > 0 ? (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b text-left text-muted-foreground">
+                            <th className="py-2 pr-4">Contrato</th>
+                            <th className="py-2 pr-4 text-right">Páginas</th>
+                            <th className="py-2 pr-4 text-right">Tarifa base</th>
+                            <th className="py-2 pr-4 text-right">Costo/pág. exced.</th>
+                            <th className="py-2 pr-4 text-right">Monto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {calculo.data.contratos.map((c) => (
+                            <tr key={c.contrato_id} className="border-b">
+                              <td className="py-2 pr-4 font-medium">{c.codigo}</td>
+                              <td className="py-2 pr-4 text-right">{c.total_paginas}</td>
+                              <td className="py-2 pr-4 text-right">{formatCurrency(c.tarifa_base)}</td>
+                              <td className="py-2 pr-4 text-right">{formatCurrency(c.costo_pag_excedente)}</td>
+                              <td className="py-2 pr-4 text-right font-semibold">{formatCurrency(c.monto_contrato)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="font-semibold">
+                            <td className="py-2 pr-4" colSpan={4}>Total</td>
+                            <td className="py-2 pr-4 text-right">{formatCurrency(calculo.data.monto_total)}</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
+                      No hay contratos activos ni lecturas para calcular en este periodo.
+                    </div>
+                  )
+                ) : (
+                  <div className="bg-muted p-4 rounded-lg text-sm text-muted-foreground">
+                    {isLecturasMode
+                      ? 'Esperando datos del cálculo...'
+                      : 'Modo manual: el monto se captura directamente en el paso anterior.'}
+                  </div>
+                )}
 
-                <div className="bg-primary/10 p-4 rounded-lg">
-                  <p className="text-sm font-medium">El cálculo se realizará al registrar la factura</p>
-                </div>
+                {advertencias.length > 0 && (
+                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 space-y-1">
+                    {advertencias.map((adv, i) => (
+                      <p key={i} className="text-sm text-warning flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                        {adv}
+                      </p>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex justify-between pt-4">
                   <Button variant="secondary" onClick={() => setCurrentStep(1)}>
@@ -221,11 +351,18 @@ export default function RegisterInvoicePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <p>Número de factura: <strong>{form.numero}</strong></p>
-                      <p>Cliente: <strong>{mockClientes.find(c => c.value === form.cliente_id)?.label}</strong></p>
+                      <p>Número de factura: <strong>{form.numero_factura}</strong></p>
+                      <p>Cliente: <strong>{selectedClientLabel}</strong></p>
                       <p>Fecha de emisión: <strong>{form.fecha_emision}</strong></p>
                       <p>Fecha de vencimiento: <strong>{form.fecha_vencimiento}</strong></p>
                       <p>Periodo: <strong>{form.periodo_inicio} - {form.periodo_fin}</strong></p>
+                      <p>Método de cálculo: <strong>{isLecturasMode ? 'Según lecturas' : 'Manual'}</strong></p>
+                      <p>Monto total: <strong>{formatCurrency(effectiveMonto)}</strong></p>
+                      {isLecturasMode && calculo.data && calculo.data.detalles.length > 0 && (
+                        <p className="text-muted-foreground">
+                          Se generarán <strong>{calculo.data.detalles.length}</strong> líneas de detalle vinculadas a las lecturas.
+                        </p>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -251,7 +388,7 @@ export default function RegisterInvoicePage() {
                   <Button variant="secondary" onClick={() => setCurrentStep(2)}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Anterior
                   </Button>
-                  <Button 
+                  <Button
                     onClick={handleCreateInvoice}
                     disabled={createInvoice.isPending}
                   >
