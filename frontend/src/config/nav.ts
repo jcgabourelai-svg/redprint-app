@@ -15,6 +15,7 @@ import {
   Bell,
   ArrowLeftRight,
   FileCheck2,
+  HelpCircle,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -105,6 +106,12 @@ export const navItems: NavItem[] = [
       { id: 'notificaciones', label: 'Notificaciones', icon: Bell, path: '/sistema/notificaciones', permiso: 'sistema.notificaciones' },
       { id: 'configuracion', label: 'Configuración', icon: Settings, path: '/sistema/configuracion', permiso: 'sistema.configuracion' },
     ],
+  },
+  {
+    id: 'ayuda',
+    label: 'Ayuda',
+    icon: HelpCircle,
+    path: '/ayuda',
   },
 ]
 

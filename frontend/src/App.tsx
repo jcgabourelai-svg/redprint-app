@@ -37,6 +37,7 @@ import ClosePeriodPage from '@/pages/finance/period/ClosePeriodPage'
 import UserListPage from '@/pages/admin/UserListPage'
 import NotificationCenterPage from '@/pages/admin/NotificationCenterPage'
 import ConfigPage from '@/pages/admin/ConfigPage'
+import HelpPage from '@/pages/help/HelpPage'
 import LoginPage from '@/pages/auth/LoginPage'
 import ChangePasswordPage from '@/pages/auth/ChangePasswordPage'
 import RequirePermission from '@/components/auth/RequirePermission'
@@ -86,6 +87,7 @@ function App() {
           <Route path="sistema/usuarios" element={<RequirePermission permiso="sistema.usuarios"><UserListPage /></RequirePermission>} />
           <Route path="sistema/notificaciones" element={<RequirePermission permiso="sistema.notificaciones"><NotificationCenterPage /></RequirePermission>} />
           <Route path="sistema/configuracion" element={<RequirePermission permiso="sistema.configuracion"><ConfigPage /></RequirePermission>} />
+          <Route path="ayuda" element={<HelpPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
       </Routes>
