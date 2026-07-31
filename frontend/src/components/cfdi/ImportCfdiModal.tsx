@@ -76,9 +76,7 @@ export default function ImportCfdiModal({ isOpen, onClose, onSuccess, onError }:
   }
 
   const handleDone = () => {
-    const huboImports = resultados.some((r) => r.estado === 'importado')
     handleClose()
-    if (huboImports) onSuccess('Comprobantes actualizados.')
   }
 
   return (

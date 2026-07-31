@@ -53,9 +53,15 @@ class InvoiceController extends Controller
         return InvoiceResource::collection($invoices);
     }
 
-    public function show(Invoice $invoice): InvoiceResource
+    public function show(Request $request, Invoice $invoice): InvoiceResource
     {
-        $invoice->load(['client', 'contract', 'details', 'payments.socio', 'socio']);
+        $relations = ['client', 'contract', 'details', 'payments.socio', 'socio'];
+        // El comprobante CFDI solo se expone a roles con permiso de CFDI; evita
+        // filtrar datos de comprobante a traves del endpoint de facturas.
+        if ($request->user()?->tienePermiso('finanzas.cfdi')) {
+            $relations[] = 'xmlComprobante.conceptos';
+        }
+        $invoice->load($relations);
         return new InvoiceResource($invoice);
     }
 

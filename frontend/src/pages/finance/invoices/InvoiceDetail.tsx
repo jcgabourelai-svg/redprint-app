@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, DollarSign, AlertCircle, Printer, Calendar } from 'lucide-react'
+import { ArrowLeft, FileText, DollarSign, AlertCircle, Printer, Calendar, Link2, Unlink2, Upload, FileCheck2, Eye } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -14,6 +14,12 @@ import Tabs from '@/components/ui/Tabs'
 import api from '@/lib/api'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
 import { useCreatePayment } from '@/hooks/usePayments'
+import { useUnlinkCfdi } from '@/hooks/useCfdi'
+import { parseApiError } from '@/lib/api-errors'
+import LinkCfdiModal from '@/components/cfdi/LinkCfdiModal'
+import ImportCfdiModal from '@/components/cfdi/ImportCfdiModal'
+import CfdiDetailModal from '@/components/cfdi/CfdiDetailModal'
+import type { XmlComprobante } from '@/types/cfdi'
 
 interface InvoiceDetailLine {
   factura_id: string
@@ -47,6 +53,7 @@ interface InvoiceFull {
   estado?: string
   notas?: string
   xml_comprobante_id?: number | null
+  xml_comprobante?: XmlComprobante | null
   client?: { razon_social?: string; rfc?: string } | null
   details?: InvoiceDetailLine[]
   payments?: InvoicePayment[]
@@ -73,6 +80,25 @@ export default function InvoiceDetail() {
     variant: 'success',
     message: '',
   })
+
+  const unlinkCfdi = useUnlinkCfdi()
+  const [showLinkCfdi, setShowLinkCfdi] = useState(false)
+  const [showImportXml, setShowImportXml] = useState(false)
+  const [detailCfdiId, setDetailCfdiId] = useState<number | null>(null)
+
+  const notify = (variant: 'success' | 'error', message: string) =>
+    setToast({ open: true, variant, message })
+
+  const handleUnlink = async () => {
+    if (!invoice?.xml_comprobante_id) return
+    if (!window.confirm('Desvincular el comprobante CFDI de esta factura?')) return
+    try {
+      await unlinkCfdi.mutateAsync(invoice.xml_comprobante_id)
+      notify('success', 'Comprobante desvinculado.')
+    } catch (err) {
+      notify('error', parseApiError(err))
+    }
+  }
 
   if (isLoading) {
     return (
@@ -104,6 +130,7 @@ export default function InvoiceDetail() {
       : 0
   const detalles = invoice.details || []
   const pagos = invoice.payments || []
+  const cfdi = invoice.xml_comprobante
 
   const openPaymentModal = () => {
     setPaymentForm({ fecha: new Date().toISOString().split('T')[0], monto: invoice.saldo_pendiente, metodo: 'EFECTIVO' })
@@ -270,6 +297,79 @@ export default function InvoiceDetail() {
             <p className="text-xl font-bold text-primary">{pagos.length}</p>
           </div>
         </div>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm uppercase text-muted-foreground">
+                Comprobante CFDI (XML)
+              </CardTitle>
+              {cfdi ? (
+                <Badge variant="success">Conciliado</Badge>
+              ) : (
+                <Badge variant="neutral">Sin CFDI</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {cfdi ? (
+              <div className="space-y-4">
+                <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+                  <p className="text-xs text-muted-foreground">Folio fiscal (UUID)</p>
+                  <p className="text-sm font-mono break-all">{cfdi.uuid}</p>
+                  <div className="grid gap-3 sm:grid-cols-3 pt-2">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Serie-Folio</p>
+                      <p className="text-sm font-medium">{cfdi.serie_folio || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Emisor</p>
+                      <p className="text-sm font-medium">{cfdi.nombre_emisor || cfdi.rfc_emisor}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Total CFDI</p>
+                      <p className="text-sm font-bold">{formatCurrency(cfdi.total)}</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setDetailCfdiId(cfdi.id)}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    Ver detalle
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={handleUnlink} loading={unlinkCfdi.isPending}>
+                    <Unlink2 className="mr-2 h-4 w-4" />
+                    Desvincular
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex flex-col items-center text-center py-4">
+                  <FileCheck2 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                  <p className="text-muted-foreground">
+                    Esta factura no tiene un comprobante CFDI vinculado.
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-md">
+                    "Subir XML" importa y vincula automáticamente solo si el
+                    serie-folio del comprobante coincide con el número de factura
+                    ({invoice.numero_factura}). Si no coincide, usa "Vincular CFDI".
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-end gap-2">
+                  <Button variant="secondary" size="sm" onClick={() => setShowImportXml(true)}>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Subir XML
+                  </Button>
+                  <Button size="sm" onClick={() => setShowLinkCfdi(true)}>
+                    <Link2 className="mr-2 h-4 w-4" />
+                    Vincular CFDI
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardContent className="p-0">
@@ -463,6 +563,23 @@ export default function InvoiceDetail() {
           </div>
         </div>
       </Modal>
+
+      <LinkCfdiModal
+        invoiceId={invoice.id}
+        isOpen={showLinkCfdi}
+        onClose={() => setShowLinkCfdi(false)}
+        onSuccess={(m) => notify('success', m)}
+        onError={(m) => notify('error', m)}
+      />
+
+      <ImportCfdiModal
+        isOpen={showImportXml}
+        onClose={() => setShowImportXml(false)}
+        onSuccess={(m) => notify('success', m)}
+        onError={(m) => notify('error', m)}
+      />
+
+      <CfdiDetailModal id={detailCfdiId} isOpen={detailCfdiId !== null} onClose={() => setDetailCfdiId(null)} />
 
       <Toast
         isOpen={toast.open}

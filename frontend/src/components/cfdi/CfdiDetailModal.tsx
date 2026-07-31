@@ -1,9 +1,15 @@
+import { Link } from 'react-router-dom'
 import Modal from '@/components/ui/Modal'
 import Badge from '@/components/ui/Badge'
 import { useCfdiDetail } from '@/hooks/useCfdi'
 import { formatCurrency, formatDateTime } from '@/lib/formatters'
 import { TipoComprobanteLabels } from '@/types/enums'
 import { EstadoConciliacionBadge, EstadoClienteBadge } from '@/components/cfdi/EstadoBadges'
+
+interface LinkedInvoice {
+  id: number | string
+  numero_factura?: string
+}
 
 interface CfdiDetailModalProps {
   id: number | null
@@ -44,6 +50,23 @@ export default function CfdiDetailModal({ id, isOpen, onClose }: CfdiDetailModal
             )}
             <p className="text-sm mt-1">Emision: {formatDateTime(cfdi.fecha_emision)}</p>
           </div>
+
+          {cfdi.invoice && (
+            <div className="flex items-center justify-between rounded-lg border border-success/20 bg-success/10 p-3">
+              <div>
+                <p className="text-xs text-muted-foreground">Factura vinculada</p>
+                <p className="text-sm font-medium">
+                  {(cfdi.invoice as LinkedInvoice).numero_factura ?? `#${cfdi.invoice.id}`}
+                </p>
+              </div>
+              <Link
+                to={`/finanzas/facturas/${cfdi.invoice.id}`}
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Abrir factura
+              </Link>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
