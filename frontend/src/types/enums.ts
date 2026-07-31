@@ -120,3 +120,42 @@ export const ValidationState = {
   ERROR: 'error',
 } as const
 export type ValidationState = (typeof ValidationState)[keyof typeof ValidationState]
+
+export const TipoComprobante = {
+  INGRESO: 'I',
+  EGRESO: 'E',
+  TRASLADO: 'T',
+  NOMINA: 'N',
+  PAGO: 'P',
+} as const
+export type TipoComprobante = (typeof TipoComprobante)[keyof typeof TipoComprobante]
+
+export const TipoComprobanteLabels: Record<TipoComprobante, string> = {
+  I: 'Ingreso',
+  E: 'Egreso',
+  T: 'Traslado',
+  N: 'Nomina',
+  P: 'Pago',
+}
+
+export const EstadoConciliacion = {
+  CONCILIADO: 'conciliado',
+  SIN_FACTURA: 'sin_factura',
+} as const
+export type EstadoConciliacion = (typeof EstadoConciliacion)[keyof typeof EstadoConciliacion]
+
+export const EstadoConciliacionLabels: Record<EstadoConciliacion, string> = {
+  conciliado: 'Conciliado',
+  sin_factura: 'Sin factura',
+}
+
+export const EstadoCliente = {
+  ASIGNADO: 'asignado',
+  SIN_CLIENTE: 'sin_cliente',
+} as const
+export type EstadoCliente = (typeof EstadoCliente)[keyof typeof EstadoCliente]
+
+export const EstadoClienteLabels: Record<EstadoCliente, string> = {
+  asignado: 'Asignado',
+  sin_cliente: 'Sin cliente',
+}

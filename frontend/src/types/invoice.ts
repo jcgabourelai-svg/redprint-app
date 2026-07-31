@@ -17,6 +17,8 @@ export interface Invoice {
   contrato_id?: string
   notas?: string
   comprobante?: string
+  xml_comprobante_id?: number | null
+  xml_comprobante?: { id: number; uuid: string; serie_folio?: string | null } | null
 }
 
 export interface InvoiceDetail {

@@ -14,6 +14,7 @@ import {
   FileSearch,
   Bell,
   ArrowLeftRight,
+  FileCheck2,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -83,6 +84,7 @@ export const navItems: NavItem[] = [
     path: '/finanzas',
     children: [
       { id: 'facturas', label: 'Facturas', icon: FileText, path: '/finanzas/facturas', permiso: 'finanzas.facturas' },
+      { id: 'cfdi', label: 'Comprobantes CFDI', icon: FileCheck2, path: '/finanzas/cfdi', permiso: 'finanzas.cfdi' },
       { id: 'cuentas-por-cobrar', label: 'Cuentas por Cobrar', icon: CreditCard, path: '/finanzas/cuentas-por-cobrar', permiso: 'finanzas.cuentas-por-cobrar' },
       { id: 'cuentas-por-pagar', label: 'Cuentas por Pagar', icon: DollarSign, path: '/finanzas/cuentas-por-pagar', permiso: 'finanzas.cuentas-por-pagar' },
       { id: 'compras', label: 'Compras', icon: ShoppingCart, path: '/finanzas/compras', permiso: 'finanzas.compras' },

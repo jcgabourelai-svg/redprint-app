@@ -44,6 +44,7 @@ return [
 
     'finanzas' => [
         ['clave' => 'finanzas.facturas', 'etiqueta' => 'Facturas'],
+        ['clave' => 'finanzas.cfdi', 'etiqueta' => 'Comprobantes CFDI (XML)'],
         ['clave' => 'finanzas.cuentas-por-cobrar', 'etiqueta' => 'Cuentas por Cobrar'],
         ['clave' => 'finanzas.cuentas-por-pagar', 'etiqueta' => 'Cuentas por Pagar'],
         ['clave' => 'finanzas.compras', 'etiqueta' => 'Compras'],

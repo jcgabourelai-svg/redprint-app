@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\BankAccountController;
 use App\Http\Controllers\ClientController;
+use App\Http\Controllers\CfdiController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
@@ -131,6 +132,15 @@ Route::prefix('v1')->group(function () {
             Route::get('invoices/calcular', [InvoiceController::class, 'calcular']);
             Route::apiResource('invoices', InvoiceController::class);
             Route::apiResource('payments', PaymentController::class)->only(['index', 'store']);
+        });
+
+        Route::middleware('permission:finanzas.cfdi')->group(function () {
+            Route::post('cfdi/import', [CfdiController::class, 'import']);
+            Route::post('cfdi/{cfdi}/factura', [CfdiController::class, 'generateInvoice']);
+            Route::post('cfdi/{cfdi}/vincular', [CfdiController::class, 'link']);
+            Route::delete('cfdi/{cfdi}/vincular', [CfdiController::class, 'unlink']);
+            Route::patch('cfdi/{cfdi}', [CfdiController::class, 'update']);
+            Route::apiResource('cfdi', CfdiController::class)->only(['index', 'show', 'destroy']);
         });
 
         Route::middleware('permission:finanzas.cuentas-por-pagar')->group(function () {

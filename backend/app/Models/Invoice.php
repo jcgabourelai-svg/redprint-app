@@ -29,6 +29,7 @@ class Invoice extends Model
         'notas',
         'socio_id',
         'comprobante',
+        'xml_comprobante_id',
         'creado_por',
         'fecha_creacion',
     ];
@@ -76,6 +77,11 @@ class Invoice extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'creado_por');
+    }
+
+    public function xmlComprobante(): BelongsTo
+    {
+        return $this->belongsTo(XmlComprobante::class, 'xml_comprobante_id');
     }
 
     public function scopePending($query)

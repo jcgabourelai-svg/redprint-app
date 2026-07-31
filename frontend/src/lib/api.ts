@@ -29,3 +29,18 @@ api.interceptors.response.use(
 )
 
 export default api
+
+/**
+ * Helper para subidas multipart (FormData).
+ *
+ * `api` fija `Content-Type: application/json` por defecto, lo que haria que
+ * axios convirtiera el FormData a JSON (ver `axios/lib/defaults/index.js`:
+ * isFormData + hasJSONContentType => JSON.stringify(formDataToJSON(data))).
+ * Forzamos multipart para que el navegador anada el boundary correcto.
+ */
+export async function apiUpload<T>(url: string, formData: FormData): Promise<T> {
+  const res = await api.post<T>(url, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return res.data
+}

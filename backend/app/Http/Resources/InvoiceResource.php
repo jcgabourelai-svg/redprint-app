@@ -22,7 +22,9 @@ class InvoiceResource extends JsonResource
             'saldo_pendiente' => $this->saldo_pendiente,
             'estado' => $this->when($this->estado, $this->estado?->value),
             'notas' => $this->notas,
+            'xml_comprobante_id' => $this->xml_comprobante_id,
             'client' => $this->whenLoaded('client'),
+            'xml_comprobante' => new XmlComprobanteResource($this->whenLoaded('xmlComprobante')),
             'details' => InvoiceDetailResource::collection($this->whenLoaded('details')),
             'payments' => PaymentResource::collection($this->whenLoaded('payments')),
         ];

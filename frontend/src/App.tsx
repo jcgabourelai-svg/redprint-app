@@ -22,7 +22,9 @@ import ReadingListPage from '@/pages/operations/readings/ReadingListPage'
 import ReadingDetailPage from '@/pages/operations/readings/ReadingDetailPage'
 import VisitDetailPage from '@/pages/operations/VisitDetailPage'
 import InvoiceList from '@/pages/finance/invoices/InvoiceList'
+import InvoiceDetail from '@/pages/finance/invoices/InvoiceDetail'
 import RegisterInvoicePage from '@/pages/finance/invoices/RegisterInvoicePage'
+import CfdiListPage from '@/pages/finance/cfdi/CfdiListPage'
 import PaymentList from '@/pages/finance/payments/PaymentList'
 import ReceivablesList from '@/pages/finance/receivables/ReceivablesList'
 import PurchaseList from '@/pages/finance/purchases/PurchaseList'
@@ -70,6 +72,8 @@ function App() {
           <Route path="operaciones/lecturas/:visitaId" element={<RequirePermission permiso="operaciones.lecturas"><CaptureReadingPage /></RequirePermission>} />
           <Route path="finanzas/facturas" element={<RequirePermission permiso="finanzas.facturas"><InvoiceList /></RequirePermission>} />
           <Route path="finanzas/facturas/registrar" element={<RequirePermission permiso="finanzas.facturas"><RegisterInvoicePage /></RequirePermission>} />
+          <Route path="finanzas/facturas/:id" element={<RequirePermission permiso="finanzas.facturas"><InvoiceDetail /></RequirePermission>} />
+          <Route path="finanzas/cfdi" element={<RequirePermission permiso="finanzas.cfdi"><CfdiListPage /></RequirePermission>} />
           <Route path="finanzas/cuentas-por-cobrar" element={<RequirePermission permiso="finanzas.cuentas-por-cobrar"><ReceivablesList /></RequirePermission>} />
           <Route path="finanzas/cuentas-por-pagar" element={<RequirePermission permiso="finanzas.cuentas-por-pagar"><PaymentList /></RequirePermission>} />
           <Route path="finanzas/compras" element={<RequirePermission permiso="finanzas.compras"><PurchaseList /></RequirePermission>} />

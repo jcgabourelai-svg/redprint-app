@@ -116,6 +116,16 @@ export default function InvoiceList() {
       ),
     },
     {
+      key: 'xml_comprobante_id',
+      label: 'CFDI',
+      render: (_value: unknown, row: Invoice) =>
+        row.xml_comprobante_id ? (
+          <Badge variant="success">Conciliado</Badge>
+        ) : (
+          <Badge variant="neutral">Sin XML</Badge>
+        ),
+    },
+    {
       key: 'acciones',
       label: 'Acciones',
       render: (_value: unknown, row: Invoice) => (
