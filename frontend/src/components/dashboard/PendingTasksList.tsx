@@ -3,7 +3,7 @@ import { Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface TaskItem {
-  id: string
+  id: string | number
   title: string
   subtitle?: string
   time?: string

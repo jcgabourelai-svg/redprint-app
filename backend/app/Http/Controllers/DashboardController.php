@@ -12,34 +12,40 @@ use App\Models\Invoice;
 use App\Models\MaintenanceOrder;
 use App\Models\Printer;
 use App\Models\Purchase;
+use App\Models\Reading;
 use App\Models\Visit;
+use App\Services\CashFlowService;
 use App\Services\InvoiceService;
+use App\Services\ProfitabilityService;
 use App\Services\VisitSchedulerService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 
 class DashboardController extends Controller
 {
     public function __construct(
         private InvoiceService $invoiceService,
-        private VisitSchedulerService $visitScheduler
+        private VisitSchedulerService $visitScheduler,
+        private CashFlowService $cashFlowService,
+        private ProfitabilityService $profitabilityService,
     ) {}
 
     public function index(Request $request)
     {
         $user = $request->user();
 
-        $currentMonth = now()->startOfMonth();
-        $lastMonth = now()->subMonth()->startOfMonth();
+        $ingresos6m = $this->buildIngresosSeries(6);
+        $currentMonthRevenue = $ingresos6m[count($ingresos6m) - 1]['total'] ?? 0;
+        $lastMonthRevenue = $ingresos6m[count($ingresos6m) - 2]['total'] ?? 0;
 
-        $currentMonthRevenue = Invoice::where('estado', '!=', InvoiceStatus::INCOBRABLE)
-            ->whereMonth('fecha_emision', now()->month)
-            ->whereYear('fecha_emision', now()->year)
-            ->sum('monto_total');
+        $tendenciaIngresosPct = ($lastMonthRevenue > 0)
+            ? round(($currentMonthRevenue / $lastMonthRevenue - 1) * 100, 1)
+            : null;
 
-        $lastMonthRevenue = Invoice::where('estado', '!=', InvoiceStatus::INCOBRABLE)
-            ->whereMonth('fecha_emision', $lastMonth->month)
-            ->whereYear('fecha_emision', $lastMonth->year)
-            ->sum('monto_total');
+        $paginasImpresasMes = (int) Reading::whereBetween('fecha', [
+            now()->startOfMonth(),
+            now()->endOfMonth(),
+        ])->sum('paginas_periodo');
 
         $pendingInvoices = Invoice::whereIn('estado', [
             InvoiceStatus::PENDIENTE,
@@ -96,14 +102,33 @@ class DashboardController extends Controller
             ->whereBetween('fecha_vto_pago', [now(), now()->addDays(7)])
             ->count();
 
+        $mesActual = now()->format('Y-m');
+        $flujoCaja6m = Cache::remember(
+            "dashboard.flujo_caja.6",
+            now()->addMinutes(5),
+            fn () => $this->cashFlowService->getCashFlowSeries(6),
+        );
+
+        $topRentabilidad = Cache::remember(
+            "dashboard.top_rentabilidad.{$mesActual}",
+            now()->addMinutes(5),
+            fn () => $this->profitabilityService->topByMargin(
+                5,
+                now()->startOfMonth()->toDateString(),
+                now()->endOfMonth()->toDateString(),
+            ),
+        );
+
         return response()->json([
             'kpis' => [
                 'ingresos_mes' => $currentMonthRevenue,
                 'ingresos_mes_anterior' => $lastMonthRevenue,
+                'tendencia_ingresos_pct' => $tendenciaIngresosPct,
                 'facturas_pendientes' => $pendingInvoices,
                 'facturas_vencidas' => $overdueInvoices,
                 'visitas_pendientes' => $pendingVisits,
                 'mis_visitas_proximas' => $myPendingVisits,
+                'paginas_impresas_mes' => $paginasImpresasMes,
                 'saldo_pendiente_total' => $outstandingBalance,
                 'stock_bajo' => $lowStockCount,
                 'valor_inventario' => $inventoryValue,
@@ -115,9 +140,16 @@ class DashboardController extends Controller
                 'compras_por_vencer' => $pendingPurchasesDueSoon,
             ],
             'impresoras_por_estado' => $printersByStatus,
+            'series' => [
+                'ingresos_6m' => $ingresos6m,
+                'flujo_caja_6m' => $flujoCaja6m,
+                'top_rentabilidad' => $topRentabilidad,
+            ],
             'alertas' => [
                 'facturas_vencidas' => Invoice::where('estado', InvoiceStatus::VENCIDA)
                     ->with('client')
+                    ->select(['id', 'cliente_id', 'numero_factura', 'saldo_pendiente', 'fecha_vencimiento'])
+                    ->orderBy('fecha_vencimiento')
                     ->limit(5)
                     ->get(),
                 'visitas_proximas' => $upcomingAlerts,
@@ -138,5 +170,39 @@ class DashboardController extends Controller
                     ->get(),
             ],
         ]);
+    }
+
+    /**
+     * Serie de ingresos mensuales (no incobrables) de los ultimos N meses.
+     * Una sola consulta agrupada por mes; sirve como fuente unica para la
+     * tendencia del KPI y para la grafica de ingresos.
+     *
+     * @return array<int, array{mes: string, mes_nombre: string, total: float}>
+     */
+    private function buildIngresosSeries(int $meses): array
+    {
+        $rangeStart = now()->subMonths($meses - 1)->startOfMonth();
+        $rangeEnd = now()->copy()->endOfMonth();
+
+        $porMes = Invoice::where('estado', '!=', InvoiceStatus::INCOBRABLE)
+            ->whereBetween('fecha_emision', [$rangeStart, $rangeEnd])
+            ->selectRaw("TO_CHAR(fecha_emision, 'YYYY-MM') AS mes, SUM(monto_total) AS total")
+            ->groupByRaw("TO_CHAR(fecha_emision, 'YYYY-MM')")
+            ->pluck('total', 'mes')
+            ->mapWithKeys(fn ($value, $key) => [(string) $key => (float) $value]);
+
+        $series = [];
+        for ($i = $meses - 1; $i >= 0; $i--) {
+            $month = now()->subMonths($i);
+            $key = $month->format('Y-m');
+
+            $series[] = [
+                'mes' => $key,
+                'mes_nombre' => $month->translatedFormat('F Y'),
+                'total' => $porMes[$key] ?? 0.0,
+            ];
+        }
+
+        return $series;
     }
 }
