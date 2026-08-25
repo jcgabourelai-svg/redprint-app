@@ -24,6 +24,15 @@ services:
     volumes:
       - ./frontend:/app
 
+  # --- Builder de la app móvil /m (one-shot, igual que frontend) ---------------
+  # Compila la SPA de mobile/ dentro de Docker. Se omite si mobile/dist ya existe.
+  mobile:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "if [ ! -f dist/index.html ]; then echo '[mobile] npm install + build'; npm install --no-audit --no-fund && npm run build; else echo '[mobile] dist ya existe, omito build'; fi"
+    volumes:
+      - ./mobile:/app
+
   app:
     image: redprint-app:${TAG:-latest}
     build:
@@ -103,11 +112,15 @@ services:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./backend:/var/www/html:ro
       - ./frontend/dist:/usr/share/nginx/html:ro
+      - ./mobile/dist:/usr/share/nginx/m:ro
     depends_on:
       app:
         condition: service_healthy
       frontend:
         # nginx no arranca hasta que el frontend este compilado (evita el 403).
+        condition: service_completed_successfully
+      mobile:
+        # Igual para la app móvil servida en /m/.
         condition: service_completed_successfully
     networks:
       - redprint

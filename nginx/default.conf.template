@@ -44,6 +44,22 @@ server {
         add_header Cache-Control "public, immutable";
     }
 
+    # App movil (mobile/dist montado en /usr/share/nginx/m). Se usa root hacia
+    # /usr/share/nginx (no alias) porque /m/ ya existe como montura en esa raiz;
+    # asi se evita tanto el problema de anidar monturas bajo el dist del frontend
+    # (solo lectura) como los bugs conocidos de alias + try_files.
+    location /m/assets/ {
+        root /usr/share/nginx;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    location /m/ {
+        root /usr/share/nginx;
+        try_files $uri $uri/ /m/index.html;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+    }
+
     location ~ \.php$ {
         root /var/www/html/public;
         fastcgi_pass php-fpm;

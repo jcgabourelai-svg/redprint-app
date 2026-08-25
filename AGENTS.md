@@ -111,9 +111,10 @@ docker compose run --rm --no-deps frontend sh -c "npm run build"
 | Servicio    | Imagen            | Rol |
 |-------------|-------------------|-----|
 | `frontend`  | node:20-alpine    | Builder one-shot: compila `frontend/dist` si no existe |
+| `mobile`    | node:20-alpine    | Builder one-shot: compila `mobile/dist` (app móvil `/m/`) si no existe |
 | `app`       | (build backend)   | Laravel + PHP-FPM, entrypoint hace migrate/seed |
 | `database`  | postgres:16-alpine| PostgreSQL |
-| `nginx`     | nginx:alpine      | Sirve el SPA y enruta `/api` y `/sanctum` a PHP-FPM |
+| `nginx`     | nginx:alpine      | Sirve la SPA (`/`), la app móvil (`/m/`) y enruta `/api` y `/sanctum` a PHP-FPM |
 
 Puerto público: `${APP_PORT:-8080}` (mapeado a nginx en el 80).
 
@@ -152,6 +153,24 @@ en el navegador hasta que se recompile.
 
 > No sugerir **nunca** `npm run dev` en el host ni el puerto 3000/5173. El flujo
 > esperado siempre es: editar → recompilar `dist` en Docker → recargar en 8080.
+
+## App móvil (`/m/`, directorio `mobile/`)
+
+La app móvil de campo ("RedPrint Operativo", React+Vite+TS+Tailwind) se sirve
+en **`http://localhost:8080/m/`**. Funciona igual que el frontend: el servicio
+`mobile` del compose compila `mobile/dist` una sola vez y nginx lo sirve (con
+`try_files` hacia `/m/index.html`; los assets hasheados bajo `/m/assets/` se
+sirven con cache inmutable).
+
+Tras editar código de `mobile/src/`, recompilar igual que el frontend:
+
+```bash
+docker compose run --rm --no-deps mobile sh -c "npm run build"
+```
+
+Mismas reglas que el frontend: el build vacía el contenido de `dist` sin borrar
+la carpeta (bind mount) y no se usa `npm run dev` en el host. Detalles de la
+app (usuarios de prueba, cola offline, limitaciones) en `mobile/README.md`.
 
 ## Reglas para el agente
 
