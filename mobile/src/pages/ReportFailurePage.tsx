@@ -3,21 +3,24 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
-import api, { apiErrorMessage, fetchAll } from '../lib/api'
-import { formatNumber } from '../lib/format'
-import type { Visit, Warehouse } from '../types/api'
+import api, { apiErrorMessage } from '../lib/api'
+import { formatNumber, todayISO } from '../lib/format'
+import type { Visit } from '../types/api'
 import {
   Banner,
+  Badge,
   Button,
   Card,
   EmptyState,
+  Field,
   Page,
   PageHeader,
   SectionTitle,
   SkeletonCard,
+  TextArea,
 } from '../components/ui'
 
-export default function RemovalPage() {
+export default function ReportFailurePage() {
   const { id } = useParams()
   const visitId = Number(id)
   const navigate = useNavigate()
@@ -25,15 +28,13 @@ export default function RemovalPage() {
   const toast = useToast()
   const online = useOnline()
 
-  const canRemove = hasPermission('contratos') && hasPermission('inventario.almacenes')
+  const canReport = hasPermission('inventario.mantenimiento')
 
   const [visit, setVisit] = useState<Visit | null>(null)
   const [loadingVisit, setLoadingVisit] = useState(true)
   const [visitError, setVisitError] = useState<string | null>(null)
-  const [warehouses, setWarehouses] = useState<Warehouse[] | null>(null)
-  const [warehousesError, setWarehousesError] = useState<string | null>(null)
   const [printerId, setPrinterId] = useState<string | null>(null)
-  const [warehouseId, setWarehouseId] = useState<number | null>(null)
+  const [descProblema, setDescProblema] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -59,37 +60,23 @@ export default function RemovalPage() {
     }
   }, [visitId])
 
-  const contratoId = visit?.contrato_id ?? null
-
-  useEffect(() => {
-    if (!canRemove || !contratoId) return
-    let cancelled = false
-    fetchAll<Warehouse>('/warehouses')
-      .then((ws) => {
-        if (!cancelled) {
-          setWarehouses(ws.filter((w) => w.activo))
-          setWarehousesError(null)
-        }
-      })
-      .catch((e) => {
-        if (!cancelled) setWarehousesError(apiErrorMessage(e))
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [canRemove, contratoId])
+  const printers = visit?.impresoras ?? []
+  const descValida = descProblema.trim().length >= 5
+  const canSubmit = canReport && printerId !== null && descValida && online && !submitting
 
   async function handleSubmit() {
-    if (!contratoId || printerId === null || warehouseId === null) return
+    if (!canSubmit || printerId === null) return
     setSubmitting(true)
     setSubmitError(null)
     try {
-      await api.post(`/contracts/${contratoId}/release-printer`, {
+      await api.post('/maintenance-orders', {
         impresora_id: Number(printerId),
-        almacen_destino_id: warehouseId,
+        fecha: todayISO(),
+        tipo_mantto: 'CORRECTIVO',
+        desc_problema: descProblema.trim(),
         visita_id: visitId,
       })
-      toast.success('Impresora liberada al almacén')
+      toast.success('Falla reportada: orden correctiva creada')
       navigate(`/visita/${visitId}`)
     } catch (e) {
       setSubmitError(apiErrorMessage(e))
@@ -98,23 +85,22 @@ export default function RemovalPage() {
     }
   }
 
-  const title = visit ? (visit.cliente_nombre ?? 'Retiro') : 'Retiro'
-  const printers = visit?.impresoras ?? []
-  const showForm = canRemove && contratoId !== null
+  const title = visit ? (visit.cliente_nombre ?? 'Reportar falla') : 'Reportar falla'
 
   return (
     <div>
       <PageHeader title={title} onBack={() => navigate(`/visita/${visitId}`)} />
       <Page>
-        {!canRemove && (
+        {!canReport && (
           <Banner tone="error">
-            No tienes permiso para retirar impresoras (se requieren permisos de contratos y
-            almacenes).
+            No tienes permiso para reportar fallas (se requiere el permiso de mantenimiento).
           </Banner>
         )}
-        {!online && canRemove && (
+        {!online && canReport && (
           <div className="mb-4">
-            <Banner tone="warn">📴 Sin conexión. El retiro requiere conexión a internet.</Banner>
+            <Banner tone="warn">
+              📴 Sin conexión. Reportar una falla requiere conexión a internet.
+            </Banner>
           </div>
         )}
 
@@ -126,19 +112,17 @@ export default function RemovalPage() {
           </div>
         )}
 
-        {visit && !contratoId && (
-          <div className="mb-4">
-            <Banner tone="warn">
-              Esta visita no tiene contrato asociado. No se puede retirar una impresora.
-            </Banner>
-          </div>
+        {visit && !canReport && (
+          <p className="text-xs text-gray-400">
+            La visita no se modifica: la orden correctiva se gestiona desde el panel web.
+          </p>
         )}
 
-        {showForm && (
+        {canReport && visit && (
           <>
-            <SectionTitle hint="Selecciona la impresora a retirar">Impresoras del contrato</SectionTitle>
+            <SectionTitle hint="Selecciona la impresora con la falla">Impresoras del contrato</SectionTitle>
             {printers.length === 0 && (
-              <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas para retirar" />
+              <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas que reportar" />
             )}
             {printers.map((p) => (
               <Card
@@ -161,30 +145,24 @@ export default function RemovalPage() {
               </Card>
             ))}
 
-            {printerId !== null && warehouses !== null && (
+            {printerId !== null && (
               <div className="mt-5">
-                <SectionTitle>Almacén destino</SectionTitle>
-                {warehouses.map((w) => (
-                  <Card
-                    key={w.id}
-                    className={`mb-3 ${warehouseId === w.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                    onClick={() => setWarehouseId(w.id)}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div>
-                        <p className="font-semibold text-gray-800">{w.nombre}</p>
-                        <p className="mt-0.5 text-xs text-gray-500">{w.direccion}</p>
-                      </div>
-                      {warehouseId === w.id && <span className="text-blue-600">✓</span>}
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            )}
-
-            {warehousesError && (
-              <div className="mb-4">
-                <Banner tone="error">{warehousesError}</Banner>
+                <Field
+                  label="Descripción del problema *"
+                  help="Se creará una orden de mantenimiento CORRECTIVO vinculada a esta visita."
+                  error={
+                    descProblema.trim().length > 0 && !descValida
+                      ? 'Describe la falla con al menos 5 caracteres'
+                      : null
+                  }
+                >
+                  <TextArea
+                    rows={4}
+                    placeholder="Describe la falla observada (atasco, error en pantalla, mala calidad de impresión...)"
+                    value={descProblema}
+                    onChange={(e) => setDescProblema(e.target.value)}
+                  />
+                </Field>
               </div>
             )}
 
@@ -197,13 +175,41 @@ export default function RemovalPage() {
             <Button
               block
               className="mt-4"
-              disabled={printerId === null || warehouseId === null || !online || submitting}
+              disabled={!canSubmit}
               loading={submitting}
               onClick={() => void handleSubmit()}
             >
-              Confirmar retiro
+              Reportar falla
             </Button>
+
+            <div className="mt-4">
+              <Banner tone="info">
+                La impresora pasará a <strong>EN_MANTENIMIENTO</strong> hasta que la orden se
+                complete desde el panel web. Esta visita no se auto-completa.
+              </Banner>
+            </div>
           </>
+        )}
+
+        {(visit?.mantenimientos ?? []).length > 0 && (
+          <section className="mt-8">
+            <SectionTitle>Ya reportado en esta visita</SectionTitle>
+            {(visit?.mantenimientos ?? []).map((m) => (
+              <Card key={m.id} className="mb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-800">
+                      🔧 {m.printer ? `${m.printer.marca} ${m.printer.modelo}` : `Impresora #${m.impresora_id}`}
+                    </p>
+                    {m.desc_problema && (
+                      <p className="mt-0.5 text-xs text-gray-500">{m.desc_problema}</p>
+                    )}
+                  </div>
+                  {m.estado && <Badge tone="violet">{m.estado}</Badge>}
+                </div>
+              </Card>
+            ))}
+          </section>
         )}
       </Page>
     </div>

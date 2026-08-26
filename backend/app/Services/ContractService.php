@@ -99,7 +99,7 @@ class ContractService
         });
     }
 
-    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user): void
+    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null): void
     {
         $printer = Printer::findOrFail($printerId);
 
@@ -126,17 +126,22 @@ class ContractService
             'almacen_id' => null,
         ]);
 
+        $datosAdicionales = ['contrato_id' => $contract->id];
+        if ($visitaId) {
+            $datosAdicionales['visita_id'] = $visitaId;
+        }
+
         PrinterHistory::create([
             'impresora_id' => $printer->id,
             'tipo_evento' => 'ASIGNACION_CONTRATO',
             'descripcion' => "Asignada al contrato {$contract->codigo_negocio}",
-            'datos_adicionales' => ['contrato_id' => $contract->id],
+            'datos_adicionales' => $datosAdicionales,
             'socio_id' => $user->id,
             'fecha' => now(),
         ]);
     }
 
-    public function releasePrinter(Contract $contract, Printer $printer, int $warehouseId, User $user): void
+    public function releasePrinter(Contract $contract, Printer $printer, int $warehouseId, User $user, ?int $visitaId = null): void
     {
         $contract->printers()->updateExistingPivot($printer->id, [
             'fecha_liberacion' => now(),
@@ -148,11 +153,16 @@ class ContractService
             'almacen_id' => $warehouseId,
         ]);
 
+        $datosAdicionales = ['contrato_id' => $contract->id, 'almacen_destino' => $warehouseId];
+        if ($visitaId) {
+            $datosAdicionales['visita_id'] = $visitaId;
+        }
+
         PrinterHistory::create([
             'impresora_id' => $printer->id,
             'tipo_evento' => 'LIBERACION_CONTRATO',
             'descripcion' => "Liberada del contrato {$contract->codigo_negocio}",
-            'datos_adicionales' => ['contrato_id' => $contract->id, 'almacen_destino' => $warehouseId],
+            'datos_adicionales' => $datosAdicionales,
             'socio_id' => $user->id,
             'fecha' => now(),
         ]);

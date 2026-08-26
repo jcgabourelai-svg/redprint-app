@@ -1,4 +1,9 @@
-export type TipoVisita = 'LECTURA' | 'MANTENIMIENTO' | 'INSTALACION' | 'RETIRO'
+export type TipoVisita =
+  | 'LECTURA'
+  | 'MANTENIMIENTO'
+  | 'INSTALACION'
+  | 'RETIRO'
+  | 'ENTREGA_INSUMOS'
 export type VisitEstado = 'PENDIENTE' | 'COMPLETADA' | 'REPROGRAMADA' | 'CANCELADA' | 'OMITIDA'
 export type PrinterEstado = 'EN_ALMACEN' | 'RENTADA' | 'EN_MANTENIMIENTO' | 'DADA_DE_BAJA'
 
@@ -47,6 +52,34 @@ export interface Reading {
   evidencia_foto: string | null
 }
 
+export interface MaintenanceOrder {
+  id: number
+  impresora_id: number
+  fecha: string | null
+  tipo_mantto: 'PREVENTIVO' | 'CORRECTIVO' | null
+  desc_problema: string | null
+  trabajo_realizado: string | null
+  estado: string | null
+  visita_id: number | null
+  printer?: {
+    id: number
+    marca: string
+    modelo: string
+    num_serie?: string | null
+  } | null
+}
+
+export interface PrinterChange {
+  evento: string
+  fecha: string | null
+  impresora: {
+    id: number
+    marca: string
+    modelo: string
+    num_serie: string | null
+  } | null
+}
+
 export interface Visit {
   id: number
   cliente_id: number
@@ -59,8 +92,47 @@ export interface Visit {
   socio_nombre?: string
   estado: VisitEstado | null
   notas: string | null
+  motivo_cierre: string | null
+  origen: string | null
   impresoras?: VisitPrinter[]
   readings?: Reading[]
+  entregas?: ArticleDelivery[]
+  mantenimientos?: MaintenanceOrder[]
+  cambios_impresoras?: PrinterChange[]
+}
+
+export interface ClientOption {
+  id: number
+  razon_social: string
+  contratos: { id: number; codigo_negocio: string }[]
+}
+
+export interface Article {
+  id: number
+  tipo_articulo: string | null
+  subtipo: string | null
+  nombre: string
+  marca: string | null
+  modelo_sku: string | null
+  stock_actual: number
+  umbral_reposicion: number
+  costo_unitario: string | number | null
+  activo: boolean
+  fecha_creacion: string | null
+}
+
+export interface ArticleDelivery {
+  id: number
+  articulo_id: number
+  visita_id: number
+  contrato_id: number | null
+  cliente_id: number
+  cantidad: number
+  costo_unitario: string | number | null
+  subtotal: string | number | null
+  notas: string | null
+  article?: { id: number; nombre: string; marca: string | null; modelo_sku: string | null; subtipo: string | null } | null
+  fecha_creacion: string | null
 }
 
 export interface StoreReadingResponse {

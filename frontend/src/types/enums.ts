@@ -37,6 +37,7 @@ export const VisitType = {
   MANTENIMIENTO: 'MANTENIMIENTO',
   INSTALACION: 'INSTALACION',
   RETIRO: 'RETIRO',
+  ENTREGA_INSUMOS: 'ENTREGA_INSUMOS',
 } as const
 export type VisitType = (typeof VisitType)[keyof typeof VisitType]
 

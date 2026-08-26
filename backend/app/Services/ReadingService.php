@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReadingService
 {
+    public function __construct(
+        private VisitService $visitService
+    ) {}
+
     public function captureReading(array $data, User $creator): Reading
     {
         return DB::transaction(function () use ($data, $creator) {
@@ -104,10 +108,10 @@ class ReadingService
             ->count();
 
         if ($readingsForVisit >= $activePrinters->count()) {
-            $visit->update([
-                'estado' => VisitStatus::COMPLETADA,
-                'fecha_realizada' => now(),
-            ]);
+            // La lectura recien creada ya cuenta como actividad, por lo que el
+            // cierre nunca exige motivo. El guard de estado de VisitService no
+            // aplica: aqui solo se completa si sigue PENDIENTE.
+            $this->visitService->complete($visit);
         }
     }
 }

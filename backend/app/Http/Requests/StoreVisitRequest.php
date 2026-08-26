@@ -16,10 +16,11 @@ class StoreVisitRequest extends FormRequest
         return [
             'cliente_id' => 'required|exists:clients,id',
             'contrato_id' => 'nullable|exists:contracts,id',
-            'tipo_visita' => 'required|string|in:LECTURA,MANTENIMIENTO,INSTALACION,RETIRO',
+            'tipo_visita' => 'required|string|in:LECTURA,MANTENIMIENTO,INSTALACION,RETIRO,ENTREGA_INSUMOS',
             'fecha_programada' => 'required|date',
             'socio_id' => 'required|exists:users,id',
             'notas' => 'nullable|string',
+            'origen' => 'nullable|string|in:CAMPO',
         ];
     }
 

@@ -45,12 +45,25 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
 
 - **Hoy / Calendario**: visitas por mes/año (`GET /visits?month=&year=&per_page=`),
   agrupación client-side (el backend no filtra por día exacto)
-- **Detalle de visita** por `tipo_visita`:
-  - `LECTURA` → selección de impresora → captura de lectura
-  - `INSTALACION` → picker de impresoras `EN_ALMACEN` + `lectura_inicial` → `assign-printer`
-  - `RETIRO` → picker de impresora activa + almacén destino → `release-printer`
-  - `MANTENIMIENTO` → solo info + completar visita
-- **Acciones de visita**: completar, reprogramar, omitir (marca `OMITIDA`)
+- **Detalle de visita** (motivo + actividades): `tipo_visita` es el **motivo
+  principal**, no una restricción. La sección *Actividades* ofrece, según
+  permisos, todas las acciones en cualquier visita editable:
+  - 📊 Tomar lectura (offline-capable vía cola)
+  - 📦 Entregar insumos (online-only, permiso `inventario.articulos`)
+  - 🔧 Reportar falla → orden `CORRECTIVO` con `visita_id` (online-only,
+    permiso `inventario.mantenimiento`; completar la orden queda en el panel
+    web y **no** auto-completa la visita)
+  - 📥 Instalar impresora → `assign-printer` con `visita_id` (auto-completa
+    la visita `INSTALACION`)
+  - 📤 Retirar impresora → `release-printer` con `visita_id` (auto-completa
+    la visita `RETIRO`)
+- **Registrado en la visita** (independiente del motivo): lecturas, insumos
+  entregados, órdenes de mantenimiento (`mantenimientos`) y cambios de
+  impresora (`cambios_impresoras`)
+- **Completar visita** (modal): resumen de actividades; si no hay ninguna, el
+  backend exige `motivo_cierre` (textarea obligatoria). `complete` sobre una
+  visita ya completada responde 422
+- **Acciones de visita**: reprogramar, omitir (marca `OMITIDA`)
 - **Captura de lectura**: validación client-side de anomalía
   (`valor_contador < lectura_anterior` exige justificación), foto del contador
   comprimida vía canvas (JPEG ≤1280px q0.7, data-URI en `foto_evidencia`),
@@ -62,6 +75,9 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
 - La visita **se auto-completa** cuando todas las impresoras activas del
   contrato tienen lectura (`ReadingService::checkVisitCompletion`); la app no
   llama a `/visits/{id}/complete` en el flujo de lecturas.
+- Instalación/retiro con `visita_id` también auto-completan la visita cuando
+  el motivo coincide (`INSTALACION`/`RETIRO`); una segunda operación sobre la
+  misma visita ya completada no falla (solo registra el cambio).
 - El `lectura_anterior` del `VisitResource` puede diferir del "previous" que
   usa el backend para validar anomalías (última lectura por impresora+contrato):
   si el backend responde 422 pidiendo justificación, la app revela el campo y
@@ -87,7 +103,10 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
   crearía una lectura doble. El único guard es el client-side.
 - No hay service worker: sin conexión solo funciona la captura de lecturas
   (no la navegación por páginas no visitadas).
-- Instalación/retiro requieren conexión (operaciones online-only).
+- Entregas, reporte de fallas e instalación/retiro requieren conexión
+  (operaciones online-only); la cola offline sigue siendo solo para lecturas.
+- El reporte de fallas no adjunta foto: `maintenance_orders` no tiene columna
+  de evidencia en la API (la descripción del problema es el registro).
 - La sesión depende de cookies de Sanctum: para probar desde el teléfono vía
   IP de LAN, arranca el stack con `APP_DOMAIN=<ip>:<puerto>` o la cookie auth
   fallará con 419/401.
@@ -109,5 +128,6 @@ mobile/
     ├── hooks/              # useAuth (contexto + /auth/user), useOnline, useSyncQueue
     ├── components/         # Layout (nav inferior), SyncIndicator, Toast, ui
     └── pages/              # Login, Hoy, Calendario, VisitDetail, CaptureReading,
-                            # Installation, Removal, Notifications, Profile
+                            # Installation, Removal, Delivery, ReportFailure,
+                            # NewVisit, Notifications, Profile
 ```

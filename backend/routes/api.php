@@ -71,6 +71,10 @@ Route::prefix('v1')->group(function () {
             Route::get('articles/{article}/movements', [ArticleController::class, 'movements']);
             Route::post('articles/{article}/movements', [ArticleController::class, 'storeMovement']);
             Route::get('articles/{article}/compatible-models', [ArticleController::class, 'compatibleModels']);
+
+            // Entrega de insumos en visita (salida de stock)
+            Route::post('visits/{visit}/deliver-article', [VisitController::class, 'deliverArticle']);
+            Route::get('visits/{visit}/deliveries', [VisitController::class, 'deliveries']);
         });
 
         Route::middleware('permission:inventario.movimientos')->group(function () {
@@ -113,6 +117,8 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         Route::middleware('permission:operaciones.calendario')->group(function () {
             Route::get('visits/socios', [VisitController::class, 'socios']);
+            // Debe registrarse ANTES del apiResource para no colisionar con {visit}.
+            Route::get('visits/clientes', [VisitController::class, 'clientes']);
             Route::post('visits/generate', [VisitController::class, 'generate']);
             Route::apiResource('visits', VisitController::class);
             Route::post('visits/{visit}/complete', [VisitController::class, 'complete']);

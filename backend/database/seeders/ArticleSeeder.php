@@ -50,7 +50,7 @@ class ArticleSeeder extends Seeder
                 'nombre' => $article['nombre'],
                 'marca' => $article['marca'],
                 'modelo_sku' => $article['modelo_sku'],
-                'stock_actual' => rand(0, 20),
+                'stock_actual' => $article['tipo_articulo'] === 'CONSUMIBLE' ? rand(5, 20) : rand(0, 20),
                 'umbral_reposicion' => $article['umbral_reposicion'],
                 'costo_unitario' => $article['costo_unitario'],
                 'proveedor_id' => $suppliers->random()->id,

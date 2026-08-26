@@ -8,4 +8,5 @@ enum VisitType: string
     case MANTENIMIENTO = 'MANTENIMIENTO';
     case INSTALACION = 'INSTALACION';
     case RETIRO = 'RETIRO';
+    case ENTREGA_INSUMOS = 'ENTREGA_INSUMOS';
 }

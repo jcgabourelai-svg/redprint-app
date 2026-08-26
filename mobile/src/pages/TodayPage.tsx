@@ -125,16 +125,25 @@ export default function TodayPage() {
           {formatDateLong(todayISO())}
         </p>
 
-        <div className="mb-4 flex gap-2">
-          <Chip active={filter === 'hoy'} onClick={() => setFilter('hoy')}>
-            Hoy
-          </Chip>
-          <Chip active={filter === 'semana'} onClick={() => setFilter('semana')}>
-            7 días
-          </Chip>
-          <Chip active={filter === 'mes'} onClick={() => setFilter('mes')}>
-            Mes actual
-          </Chip>
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <div className="flex gap-2">
+            <Chip active={filter === 'hoy'} onClick={() => setFilter('hoy')}>
+              Hoy
+            </Chip>
+            <Chip active={filter === 'semana'} onClick={() => setFilter('semana')}>
+              7 días
+            </Chip>
+            <Chip active={filter === 'mes'} onClick={() => setFilter('mes')}>
+              Mes actual
+            </Chip>
+          </div>
+          <Link
+            to="/visita/nueva"
+            aria-label="Nueva visita"
+            className="shrink-0 rounded-full bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white active:bg-blue-600"
+          >
+            + Visita
+          </Link>
         </div>
 
         {error && (

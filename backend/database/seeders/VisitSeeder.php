@@ -15,7 +15,13 @@ class VisitSeeder extends Seeder
     {
         $users = User::all();
         $contracts = Contract::all();
-        $types = [VisitType::LECTURA, VisitType::INSTALACION, VisitType::MANTENIMIENTO];
+        $types = [
+            VisitType::LECTURA,
+            VisitType::INSTALACION,
+            VisitType::MANTENIMIENTO,
+            VisitType::ENTREGA_INSUMOS,
+            VisitType::RETIRO,
+        ];
         $statuses = [VisitStatus::PENDIENTE, VisitStatus::COMPLETADA, VisitStatus::REPROGRAMADA];
 
         foreach ($contracts as $contract) {
@@ -37,6 +43,30 @@ class VisitSeeder extends Seeder
                     'fecha_creacion' => now(),
                 ]);
             }
+        }
+
+        // Garantiza una visita ENTREGA_INSUMOS pendiente en los proximos 7
+        // dias para que el flujo demo de entregas sea descubrible.
+        $tieneEntregaPendiente = Visit::query()
+            ->where('tipo_visita', VisitType::ENTREGA_INSUMOS)
+            ->where('estado', VisitStatus::PENDIENTE)
+            ->whereBetween('fecha_programada', [today(), today()->addDays(7)])
+            ->exists();
+
+        if (! $tieneEntregaPendiente && $contracts->isNotEmpty()) {
+            $contract = $contracts->random();
+
+            Visit::create([
+                'cliente_id' => $contract->cliente_id,
+                'contrato_id' => $contract->id,
+                'tipo_visita' => VisitType::ENTREGA_INSUMOS,
+                'fecha_programada' => today()->addDays(rand(1, 7)),
+                'socio_id' => $users->random()->id,
+                'estado' => VisitStatus::PENDIENTE,
+                'notas' => 'Entrega programada de consumibles',
+                'creado_por' => $users->random()->id,
+                'fecha_creacion' => now(),
+            ]);
         }
     }
 }

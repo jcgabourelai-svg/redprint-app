@@ -14,6 +14,33 @@ export interface VisitPrinter {
   paginas_consumidas?: number
 }
 
+export interface VisitDelivery {
+  id: number
+  articulo_id: number
+  cantidad: number
+  costo_unitario: string | number | null
+  subtotal: string | number | null
+  article?: { nombre: string; marca: string | null; modelo_sku: string | null } | null
+}
+
+export interface VisitMaintenanceOrder {
+  id: number
+  impresora_id: number
+  fecha: string | null
+  tipo_mantto: string | null
+  desc_problema: string | null
+  trabajo_realizado: string | null
+  estado: string | null
+  visita_id: number | null
+  printer?: { id: number; marca: string; modelo: string; num_serie?: string | null } | null
+}
+
+export interface VisitPrinterChange {
+  evento: string
+  fecha: string | null
+  impresora: { id: number; marca: string; modelo: string; num_serie: string | null } | null
+}
+
 export interface Visit {
   id: string
   cliente_id: string
@@ -26,6 +53,7 @@ export interface Visit {
   hora_programada?: string
   estado: VisitStatus
   notas?: string
+  motivo_cierre?: string | null
   impresoras?: VisitPrinter[]
   direccion_cliente?: string
   duracion_estimada?: string
@@ -33,6 +61,9 @@ export interface Visit {
   contract?: unknown
   socio?: unknown
   readings?: unknown[]
+  entregas?: VisitDelivery[]
+  mantenimientos?: VisitMaintenanceOrder[]
+  cambios_impresoras?: VisitPrinterChange[]
 }
 
 export interface Reading {

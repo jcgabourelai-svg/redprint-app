@@ -11,6 +11,9 @@ import {
   MapPin,
   Printer,
   FileText,
+  Package,
+  Wrench,
+  ArrowLeftRight,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -28,6 +31,7 @@ const tipoVisitaLabels: Record<string, string> = {
   MANTENIMIENTO: 'Mantenimiento',
   INSTALACION: 'Instalación',
   RETIRO: 'Retiro',
+  ENTREGA_INSUMOS: 'Entrega de insumos',
 }
 
 const estadoLabels: Record<VisitStatus, string> = {
@@ -36,6 +40,16 @@ const estadoLabels: Record<VisitStatus, string> = {
   REPROGRAMADA: 'Reprogramada',
   CANCELADA: 'Cancelada',
   OMITIDA: 'Omitida',
+}
+
+const tipoManttoLabels: Record<string, string> = {
+  PREVENTIVO: 'Preventivo',
+  CORRECTIVO: 'Correctivo',
+}
+
+const eventoCambioLabels: Record<string, string> = {
+  ASIGNACION_CONTRATO: 'Instalada',
+  LIBERACION_CONTRATO: 'Retirada',
 }
 
 const estadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning' | 'neutral'> = {
@@ -54,9 +68,12 @@ export default function VisitDetailPage() {
   const [showRescheduleModal, setShowRescheduleModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [rescheduleData, setRescheduleData] = useState({ fecha_programada: '' })
   const [editData, setEditData] = useState({ fecha_programada: '', socio_id: '', notas: '' })
   const [formError, setFormError] = useState('')
+  const [motivoCierre, setMotivoCierre] = useState('')
+  const [completeError, setCompleteError] = useState('')
 
   const { data: visit, isLoading, error } = useVisit(idNum)
   const completeVisit = useCompleteVisit()
@@ -103,11 +120,23 @@ export default function VisitDetailPage() {
   }
 
   const handleCompleteVisit = () => {
-    completeVisit.mutate({ id: idNum, notas: '' }, {
-      onSuccess: () => {
-        navigate('/operaciones/visitas')
-      },
-    })
+    setCompleteError('')
+    completeVisit.mutate(
+      { id: idNum, motivo_cierre: motivoCierre.trim() || undefined },
+      {
+        onSuccess: () => {
+          setShowCompleteModal(false)
+          navigate('/operaciones/visitas')
+        },
+        onError: (err) => setCompleteError(parseApiError(err)),
+      }
+    )
+  }
+
+  const openCompleteModal = () => {
+    setMotivoCierre('')
+    setCompleteError('')
+    setShowCompleteModal(true)
   }
 
   const handleRescheduleVisit = () => {
@@ -154,6 +183,13 @@ export default function VisitDetailPage() {
       onSuccess: () => navigate('/operaciones/visitas'),
     })
   }
+
+  const entregas = visit.entregas ?? []
+  const mantenimientos = visit.mantenimientos ?? []
+  const cambiosImpresoras = visit.cambios_impresoras ?? []
+  const totalActividades =
+    (visit.readings?.length ?? 0) + entregas.length + mantenimientos.length + cambiosImpresoras.length
+  const requiereMotivoCierre = totalActividades === 0
 
 
   return (
@@ -249,6 +285,12 @@ export default function VisitDetailPage() {
                   <p className="text-sm text-muted-foreground">{visit.notas}</p>
                 </div>
               )}
+              {visit.motivo_cierre && (
+                <div className="sm:col-span-2 bg-muted rounded-lg p-3">
+                  <p className="text-xs text-muted-foreground mb-1">Motivo de cierre</p>
+                  <p className="text-sm text-muted-foreground">{visit.motivo_cierre}</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -316,6 +358,115 @@ export default function VisitDetailPage() {
         </Card>
         )}
 
+        {entregas.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase text-muted-foreground">
+              Insumos entregados ({entregas.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {entregas.map((d) => (
+                <div key={d.id} className="flex items-start justify-between border border-border rounded-lg p-3">
+                  <div className="flex items-start gap-3">
+                    <Package className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {d.article?.nombre ?? `Artículo #${d.articulo_id}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {d.article?.marca ?? '-'} · {d.article?.modelo_sku ?? '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right text-sm">
+                    <p className="font-medium text-foreground">×{d.cantidad}</p>
+                    <p className="text-xs text-muted-foreground">
+                      ${Number(d.subtotal ?? 0).toLocaleString('es-MX', { minimumFractionDigits: 2 })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        )}
+
+        {mantenimientos.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase text-muted-foreground">
+              Órdenes de mantenimiento ({mantenimientos.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {mantenimientos.map((m) => (
+                <div key={m.id} className="border border-border rounded-lg p-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <Wrench className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {m.printer ? `${m.printer.marca} ${m.printer.modelo}` : `Impresora #${m.impresora_id}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {tipoManttoLabels[m.tipo_mantto ?? ''] ?? m.tipo_mantto} · {m.fecha ?? '-'}
+                        </p>
+                      </div>
+                    </div>
+                    <Badge variant="neutral">{m.estado ?? '-'}</Badge>
+                  </div>
+                  {m.desc_problema && (
+                    <p className="mt-2 text-sm text-muted-foreground">{m.desc_problema}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        )}
+
+        {cambiosImpresoras.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm uppercase text-muted-foreground">
+              Cambios de impresoras ({cambiosImpresoras.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {cambiosImpresoras.map((c, i) => (
+                <div key={`${c.evento}-${i}`} className="flex items-start justify-between border border-border rounded-lg p-3">
+                  <div className="flex items-start gap-3">
+                    <ArrowLeftRight className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="font-medium text-foreground">
+                        {c.impresora ? `${c.impresora.marca} ${c.impresora.modelo}` : 'Impresora'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        SERIE: {c.impresora?.num_serie ?? '-'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <Badge variant={c.evento === 'ASIGNACION_CONTRATO' ? 'success' : 'warning'}>
+                      {eventoCambioLabels[c.evento] ?? c.evento}
+                    </Badge>
+                    {c.fecha && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(c.fecha).toLocaleString('es-MX')}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle className="text-sm uppercase text-muted-foreground">Acciones</CardTitle>
@@ -328,9 +479,9 @@ export default function VisitDetailPage() {
                     <ClipboardList className="mr-2 h-4 w-4" />
                     Capturar lecturas
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={handleCompleteVisit}
+                  <Button
+                    variant="outline"
+                    onClick={openCompleteModal}
                     disabled={completeVisit.isPending}
                   >
                     <CheckCircle className="mr-2 h-4 w-4" />
@@ -445,6 +596,62 @@ export default function VisitDetailPage() {
             </Button>
             <Button onClick={handleUpdateVisit} disabled={updateVisit.isPending}>
               {updateVisit.isPending ? 'Guardando...' : 'Guardar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        title="Completar visita"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div className="bg-muted rounded-lg p-3 text-sm text-muted-foreground space-y-1">
+            <p>Lecturas registradas: {visit.readings?.length ?? 0}</p>
+            <p>Insumos entregados: {entregas.length}</p>
+            <p>Órdenes de mantenimiento: {mantenimientos.length}</p>
+            <p>Cambios de impresoras: {cambiosImpresoras.length}</p>
+          </div>
+
+          {requiereMotivoCierre ? (
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Motivo de cierre *
+              </label>
+              <textarea
+                className="w-full rounded-md border border-input px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                rows={3}
+                placeholder="La visita no tiene actividades registradas; describe el motivo del cierre..."
+                value={motivoCierre}
+                onChange={(e) => setMotivoCierre(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                El motivo es obligatorio cuando no hay actividades registradas.
+              </p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Hay actividades registradas; no se requiere motivo de cierre.
+            </p>
+          )}
+
+          {completeError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {completeError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="secondary" onClick={() => setShowCompleteModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCompleteVisit}
+              disabled={completeVisit.isPending || (requiereMotivoCierre && motivoCierre.trim().length < 5)}
+            >
+              {completeVisit.isPending ? 'Completando...' : 'Completar visita'}
             </Button>
           </div>
         </div>

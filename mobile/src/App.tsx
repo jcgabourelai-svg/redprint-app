@@ -12,6 +12,9 @@ import VisitDetailPage from './pages/VisitDetailPage'
 import CaptureReadingPage from './pages/CaptureReadingPage'
 import InstallationPage from './pages/InstallationPage'
 import RemovalPage from './pages/RemovalPage'
+import NewVisitPage from './pages/NewVisitPage'
+import DeliveryPage from './pages/DeliveryPage'
+import ReportFailurePage from './pages/ReportFailurePage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -58,10 +61,14 @@ export default function App() {
             >
               <Route index element={<TodayPage />} />
               <Route path="calendario" element={<CalendarPage />} />
+              {/* Ruta estática antes de visita/:id para que "nueva" no se capture como id */}
+              <Route path="visita/nueva" element={<NewVisitPage />} />
               <Route path="visita/:id" element={<VisitDetailPage />} />
               <Route path="visita/:id/captura/:printerId" element={<CaptureReadingPage />} />
               <Route path="visita/:id/instalacion" element={<InstallationPage />} />
               <Route path="visita/:id/retiro" element={<RemovalPage />} />
+              <Route path="visita/:id/entrega" element={<DeliveryPage />} />
+              <Route path="visita/:id/falla" element={<ReportFailurePage />} />
               <Route path="notificaciones" element={<NotificationsPage />} />
               <Route path="perfil" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

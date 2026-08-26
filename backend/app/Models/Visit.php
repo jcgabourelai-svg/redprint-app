@@ -21,8 +21,10 @@ class Visit extends Model
         'socio_id',
         'estado',
         'notas',
+        'motivo_cierre',
         'creado_por',
         'fecha_creacion',
+        'origen',
     ];
 
     protected function casts(): array
@@ -59,6 +61,11 @@ class Visit extends Model
     public function maintenanceOrders(): HasMany
     {
         return $this->hasMany(MaintenanceOrder::class, 'visita_id');
+    }
+
+    public function deliveries(): HasMany
+    {
+        return $this->hasMany(ArticleDelivery::class, 'visita_id');
     }
 
     public function creator(): BelongsTo

@@ -22,11 +22,12 @@ export default function VisitCard({ visit }: { visit: Visit }) {
           {tipoVisitaIcon[visit.tipo_visita ?? ''] ?? '📋'}
         </span>
       </div>
-      <div className="mt-2.5 flex gap-1.5">
+      <div className="mt-2.5 flex flex-wrap gap-1.5">
         {visit.tipo_visita && (
           <Badge tone={tipoVisitaTone[visit.tipo_visita]}>{visit.tipo_visita}</Badge>
         )}
         {visit.estado && <Badge tone={estadoVisitaTone[visit.estado]}>{visit.estado}</Badge>}
+        {visit.origen === 'CAMPO' && <Badge tone="blue">Campo</Badge>}
       </div>
     </button>
   )

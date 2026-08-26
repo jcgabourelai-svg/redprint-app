@@ -3,11 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreVisitRequest;
+use App\Http\Resources\ArticleDeliveryResource;
 use App\Http\Resources\VisitResource;
+use App\Enums\ContractStatus;
 use App\Enums\VisitStatus;
+use App\Models\Client;
+use App\Models\PrinterHistory;
 use App\Models\Visit;
 use App\Models\User;
+use App\Services\DeliveryService;
 use App\Services\VisitSchedulerService;
+use App\Services\VisitService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,7 +47,19 @@ class VisitController extends Controller
         $visit->load([
             'client', 'contract', 'socio', 'readings.printer',
             'contract.activePrinters.latestReading',
+            'deliveries.article',
+            'maintenanceOrders.printer',
         ]);
+
+        // Cambios de impresora (instalacion/retiro) vinculados a esta visita
+        // via datos_adicionales->visita_id. Solo en el detalle, no en index().
+        $visit->setRelation('printer_changes', PrinterHistory::query()
+            ->where('datos_adicionales->visita_id', $visit->id)
+            ->whereIn('tipo_evento', ['ASIGNACION_CONTRATO', 'LIBERACION_CONTRATO'])
+            ->with('printer:id,marca,modelo,num_serie')
+            ->orderBy('id')
+            ->get());
+
         return new VisitResource($visit);
     }
 
@@ -76,14 +94,15 @@ class VisitController extends Controller
         return new VisitResource($visit->fresh());
     }
 
-    public function complete(Request $request, Visit $visit): VisitResource
+    public function complete(Request $request, Visit $visit, VisitService $visitService): VisitResource
     {
-        $visit->update([
-            'estado' => VisitStatus::COMPLETADA,
-            'fecha_realizada' => now(),
+        $data = $request->validate([
+            'motivo_cierre' => 'nullable|string|max:1000',
         ]);
 
-        return new VisitResource($visit->fresh());
+        $visit = $visitService->complete($visit, $data['motivo_cierre'] ?? null);
+
+        return new VisitResource($visit->load(['client', 'contract', 'socio']));
     }
 
     public function reschedule(Request $request, Visit $visit): VisitResource
@@ -123,6 +142,68 @@ class VisitController extends Controller
             ->get(['id', 'nombre']);
 
         return response()->json($socios);
+    }
+
+    /**
+     * Lista ligera de clientes con contrato ACTIVO y sus contratos activos,
+     * para el picker de visitas espontaneas de la app movil (solo clientes
+     * con contrato activo tienen flujo movil posible).
+     */
+    public function clientes(): JsonResponse
+    {
+        $clientes = Client::whereHas('contracts', fn ($q) => $q->where('contracts.estado', ContractStatus::ACTIVO->value))
+            ->with(['contracts' => fn ($q) => $q->where('contracts.estado', ContractStatus::ACTIVO->value)->orderBy('id')])
+            ->orderBy('razon_social')
+            ->get(['id', 'razon_social']);
+
+        return response()->json(
+            $clientes->map(fn ($cliente) => [
+                'id' => $cliente->id,
+                'razon_social' => $cliente->razon_social,
+                'contratos' => $cliente->contracts
+                    ->map(fn ($contract) => [
+                        'id' => $contract->id,
+                        'codigo_negocio' => $contract->codigo_negocio,
+                    ])
+                    ->values()
+                    ->all(),
+            ])->values()->all()
+        );
+    }
+
+    /**
+     * Registra la entrega de un insumo (toner/consumible) durante una visita
+     * ENTREGA_INSUMOS. Descontar stock es una salida de inventario, por lo que
+     * la ruta vive bajo permission:inventario.articulos.
+     */
+    public function deliverArticle(Request $request, Visit $visit, DeliveryService $deliveryService): JsonResponse
+    {
+        $data = $request->validate([
+            'articulo_id' => 'required|exists:articles,id',
+            'cantidad' => 'required|integer|min:1',
+        ]);
+
+        $delivery = $deliveryService->deliver(
+            $visit,
+            (int) $data['articulo_id'],
+            (int) $data['cantidad'],
+            $request->user()
+        );
+
+        return response()->json(new ArticleDeliveryResource($delivery->load('article')), 201);
+    }
+
+    /**
+     * Lista las entregas de insumos registradas en la visita.
+     */
+    public function deliveries(Request $request, Visit $visit)
+    {
+        $deliveries = $visit->deliveries()
+            ->with('article')
+            ->orderBy('id')
+            ->paginate($request->per_page ?? 15);
+
+        return ArticleDeliveryResource::collection($deliveries);
     }
 
     /**

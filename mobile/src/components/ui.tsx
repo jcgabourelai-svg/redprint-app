@@ -79,6 +79,7 @@ export const tipoVisitaTone: Record<string, BadgeTone> = {
   MANTENIMIENTO: 'violet',
   INSTALACION: 'emerald',
   RETIRO: 'orange',
+  ENTREGA_INSUMOS: 'sky',
 }
 
 export const estadoVisitaTone: Record<string, BadgeTone> = {
@@ -94,6 +95,7 @@ export const tipoVisitaIcon: Record<string, string> = {
   MANTENIMIENTO: '🔧',
   INSTALACION: '📥',
   RETIRO: '📤',
+  ENTREGA_INSUMOS: '📦',
 }
 
 export function Page({ children, className = '' }: { children: ReactNode; className?: string }) {

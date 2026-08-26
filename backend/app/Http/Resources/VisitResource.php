@@ -21,11 +21,28 @@ class VisitResource extends JsonResource
             'socio_nombre' => $this->whenLoaded('socio', fn () => $this->socio?->nombre),
             'estado' => $this->when($this->estado, $this->estado?->value),
             'notas' => $this->notas,
+            'motivo_cierre' => $this->motivo_cierre,
+            'origen' => $this->origen,
             'impresoras' => $this->whenLoaded('contract', fn () => $this->resolveImpresoras()),
             'client' => $this->whenLoaded('client'),
             'contract' => $this->whenLoaded('contract'),
             'socio' => $this->whenLoaded('socio'),
             'readings' => ReadingResource::collection($this->whenLoaded('readings')),
+            'entregas' => ArticleDeliveryResource::collection($this->whenLoaded('deliveries')),
+            'mantenimientos' => MaintenanceOrderResource::collection($this->whenLoaded('maintenanceOrders')),
+            'cambios_impresoras' => $this->whenLoaded('printer_changes', fn () => $this->printer_changes
+                ->map(fn ($h) => [
+                    'evento' => $h->tipo_evento,
+                    'fecha' => $h->fecha?->toIso8601String(),
+                    'impresora' => $h->printer ? [
+                        'id' => $h->printer->id,
+                        'marca' => $h->printer->marca,
+                        'modelo' => $h->printer->modelo,
+                        'num_serie' => $h->printer->num_serie,
+                    ] : null,
+                ])
+                ->values()
+                ->all()),
         ];
     }
 

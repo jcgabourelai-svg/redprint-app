@@ -32,6 +32,7 @@ const tipoVisitaLabels: Record<VisitType, string> = {
   MANTENIMIENTO: 'Mantenimiento',
   INSTALACION: 'Instalación',
   RETIRO: 'Retiro',
+  ENTREGA_INSUMOS: 'Entrega de insumos',
 }
 
 const estadoLabels: Record<VisitStatus, string> = {

@@ -89,6 +89,7 @@ export default function InstallationPage() {
       await api.post(`/contracts/${contratoId}/assign-printer`, {
         impresora_id: selectedId,
         lectura_inicial: Number.parseInt(lecturaInicial || '0', 10) || 0,
+        visita_id: visitId,
       })
       toast.success('Impresora asignada al contrato')
       navigate(`/visita/${visitId}`)

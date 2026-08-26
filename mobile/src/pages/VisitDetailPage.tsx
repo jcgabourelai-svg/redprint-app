@@ -5,22 +5,29 @@ import { useSyncQueue } from '../hooks/useSyncQueue'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
-import { formatDateLong, formatNumber } from '../lib/format'
-import type { Visit } from '../types/api'
+import { formatDateLong, formatDateTime, formatMoney, formatNumber } from '../lib/format'
+import type { TipoVisita, Visit } from '../types/api'
 import {
   Banner,
   Badge,
   Button,
   Card,
   EmptyState,
+  Field,
   Page,
   PageHeader,
   SectionTitle,
   SkeletonCard,
+  TextArea,
   estadoVisitaTone,
   tipoVisitaIcon,
   tipoVisitaTone,
 } from '../components/ui'
+
+const eventoCambioLabels: Record<string, string> = {
+  ASIGNACION_CONTRATO: '📥 Instalada en esta visita',
+  LIBERACION_CONTRATO: '📤 Retirada en esta visita',
+}
 
 export default function VisitDetailPage() {
   const { id } = useParams()
@@ -36,10 +43,16 @@ export default function VisitDetailPage() {
   const [actionError, setActionError] = useState<string | null>(null)
   const [busy, setBusy] = useState<'complete' | 'reschedule' | 'omitir' | null>(null)
   const [rescheduleDate, setRescheduleDate] = useState('')
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [motivoCierre, setMotivoCierre] = useState('')
   const [tick, setTick] = useState(0)
 
   const canLecturas = hasPermission('operaciones.lecturas')
   const canContratos = hasPermission('contratos')
+  const canInsumos = hasPermission('inventario.articulos')
+  const canMantenimiento = hasPermission('inventario.mantenimiento')
+  const canInstalar = canContratos && hasPermission('inventario.impresoras')
+  const canRetirar = canContratos && hasPermission('inventario.almacenes')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -64,14 +77,11 @@ export default function VisitDetailPage() {
     return () => window.removeEventListener(SYNC_DONE_EVENT, handler)
   }, [])
 
-  async function runAction(kind: 'complete' | 'reschedule' | 'omitir'): Promise<void> {
+  async function runAction(kind: 'reschedule' | 'omitir'): Promise<void> {
     setBusy(kind)
     setActionError(null)
     try {
-      if (kind === 'complete') {
-        await api.post(`/visits/${visitId}/complete`)
-        toast.success('Visita completada')
-      } else if (kind === 'reschedule') {
+      if (kind === 'reschedule') {
         if (!rescheduleDate) return
         await api.post(`/visits/${visitId}/reschedule`, { fecha_programada: rescheduleDate })
         toast.success('Visita reprogramada')
@@ -81,6 +91,24 @@ export default function VisitDetailPage() {
         await api.delete(`/visits/${visitId}`)
         toast.success('Visita omitida')
       }
+      await load()
+    } catch (e) {
+      setActionError(apiErrorMessage(e))
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function handleComplete(): Promise<void> {
+    setBusy('complete')
+    setActionError(null)
+    try {
+      await api.post(`/visits/${visitId}/complete`, {
+        motivo_cierre: motivoCierre.trim() || undefined,
+      })
+      toast.success('Visita completada')
+      setShowCompleteModal(false)
+      setMotivoCierre('')
       await load()
     } catch (e) {
       setActionError(apiErrorMessage(e))
@@ -116,6 +144,11 @@ export default function VisitDetailPage() {
   const isEditable = estado === 'PENDIENTE' || estado === 'REPROGRAMADA'
   const printers = visit.impresoras ?? []
   const readings = visit.readings ?? []
+  const entregas = visit.entregas ?? []
+  const mantenimientos = visit.mantenimientos ?? []
+  const cambiosImpresoras = visit.cambios_impresoras ?? []
+  const totalActividades =
+    readings.length + entregas.length + mantenimientos.length + cambiosImpresoras.length
   const capturedIds = new Set(readings.map((r) => String(r.impresora_id)))
   const queuedKeys = new Set(
     queueItems
@@ -134,6 +167,17 @@ export default function VisitDetailPage() {
             capturedIds.has(p.impresora_id) || queuedKeys.has(`${visit.id}:${p.impresora_id}`)
         ).length
       : 0
+  const nextPrinter =
+    printers.find(
+      (p) => !capturedIds.has(p.impresora_id) && !queuedKeys.has(`${visit.id}:${p.impresora_id}`)
+    ) ?? null
+  const tipo = visit.tipo_visita
+
+  const motivoButtonVariant = (accion: TipoVisita): 'primary' | 'secondary' =>
+    tipo === accion ? 'primary' : 'secondary'
+
+  const motivoCierreValido = motivoCierre.trim().length >= 5
+  const canConfirmComplete = totalActividades > 0 || motivoCierreValido
 
   return (
     <div>
@@ -141,9 +185,9 @@ export default function VisitDetailPage() {
       <Page>
         <Card className="mb-5">
           <div className="mb-2 flex flex-wrap gap-1.5">
-            {visit.tipo_visita && (
-              <Badge tone={tipoVisitaTone[visit.tipo_visita]}>
-                {tipoVisitaIcon[visit.tipo_visita]} {visit.tipo_visita}
+            {tipo && (
+              <Badge tone={tipoVisitaTone[tipo]}>
+                {tipoVisitaIcon[tipo]} Motivo: {tipo}
               </Badge>
             )}
             {estado && <Badge tone={estadoVisitaTone[estado]}>{estado}</Badge>}
@@ -158,6 +202,11 @@ export default function VisitDetailPage() {
             <p className="mt-1 text-sm text-gray-600">📄 Contrato #{visit.contrato_id}</p>
           )}
           {visit.notas && <p className="mt-2 text-sm italic text-gray-500">"{visit.notas}"</p>}
+          {visit.motivo_cierre && (
+            <p className="mt-2 rounded-lg bg-gray-50 p-2 text-sm text-gray-600">
+              🚪 Cierre: {visit.motivo_cierre}
+            </p>
+          )}
         </Card>
 
         {actionError && (
@@ -166,7 +215,61 @@ export default function VisitDetailPage() {
           </div>
         )}
 
-        {visit.tipo_visita === 'LECTURA' && (
+        {isEditable && (
+          <section className="mb-6">
+            <SectionTitle hint="El motivo es la actividad principal; el resto son opcionales">
+              Actividades
+            </SectionTitle>
+            <div className="space-y-2.5">
+              <Button
+                variant={motivoButtonVariant('LECTURA')}
+                block
+                disabled={!canLecturas || printers.length === 0 || !nextPrinter}
+                onClick={() =>
+                  nextPrinter && navigate(`/visita/${visitId}/captura/${nextPrinter.impresora_id}`)
+                }
+              >
+                📊 {printers.length > 0 && progress >= printers.length
+                  ? `Tomar lectura (${progress}/${printers.length} capturadas)`
+                  : 'Tomar lectura'}
+              </Button>
+              <Button
+                variant={motivoButtonVariant('ENTREGA_INSUMOS')}
+                block
+                disabled={!canInsumos}
+                onClick={() => navigate(`/visita/${visitId}/entrega`)}
+              >
+                📦 Entregar insumos
+              </Button>
+              <Button
+                variant={motivoButtonVariant('MANTENIMIENTO')}
+                block
+                disabled={!canMantenimiento || printers.length === 0}
+                onClick={() => navigate(`/visita/${visitId}/falla`)}
+              >
+                🔧 Reportar falla
+              </Button>
+              <Button
+                variant={motivoButtonVariant('INSTALACION')}
+                block
+                disabled={!canInstalar || !visit.contrato_id}
+                onClick={() => navigate(`/visita/${visitId}/instalacion`)}
+              >
+                📥 Instalar impresora
+              </Button>
+              <Button
+                variant={motivoButtonVariant('RETIRO')}
+                block
+                disabled={!canRetirar || !visit.contrato_id}
+                onClick={() => navigate(`/visita/${visitId}/retiro`)}
+              >
+                📤 Retirar impresora
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {tipo === 'LECTURA' && (
           <section className="mb-6">
             <SectionTitle hint="👆 Toca una impresora para capturar su lectura">
               Impresoras del contrato {printers.length > 0 && `(${progress}/${printers.length})`}
@@ -226,75 +329,87 @@ export default function VisitDetailPage() {
           </section>
         )}
 
-        {visit.tipo_visita === 'INSTALACION' && (
+        {tipo !== 'LECTURA' && printers.length > 0 && (
           <section className="mb-6">
-            <SectionTitle>Acción de visita</SectionTitle>
-            {!canContratos && (
-              <div className="mb-3">
-                <Banner tone="warn">No tienes permiso de gestionar contratos</Banner>
-              </div>
-            )}
-            {!visit.contrato_id ? (
-              <Banner tone="warn">
-                Esta visita no tiene contrato asociado: no se puede instalar
-              </Banner>
-            ) : (
-              <Button
-                variant="secondary"
-                block
-                disabled={!canContratos}
-                onClick={() => navigate(`/visita/${visitId}/instalacion`)}
-              >
-                📥 Instalar Impresora
-              </Button>
-            )}
-          </section>
-        )}
-
-        {visit.tipo_visita === 'RETIRO' && (
-          <section className="mb-6">
-            <SectionTitle>Acción de visita</SectionTitle>
-            {!canContratos && (
-              <div className="mb-3">
-                <Banner tone="warn">No tienes permiso de gestionar contratos</Banner>
-              </div>
-            )}
-            {!visit.contrato_id ? (
-              <Banner tone="warn">
-                Esta visita no tiene contrato asociado: no se puede retirar
-              </Banner>
-            ) : (
-              <Button
-                variant="secondary"
-                block
-                disabled={!canContratos}
-                onClick={() => navigate(`/visita/${visitId}/retiro`)}
-              >
-                📤 Retirar Impresora
-              </Button>
-            )}
-          </section>
-        )}
-
-        {visit.tipo_visita === 'MANTENIMIENTO' && (
-          <section className="mb-6">
-            <SectionTitle>Acción de visita</SectionTitle>
-            <Banner tone="info">
-              El mantenimiento de campo no está disponible en esta versión. Puedes registrar la
-              visita como completada.
-            </Banner>
-          </section>
-        )}
-
-        {visit.tipo_visita !== 'LECTURA' && printers.length > 0 && (
-          <section className="mb-6">
-            <SectionTitle>Impresoras del contrato</SectionTitle>
+            <SectionTitle>Impresoras activas del contrato</SectionTitle>
             {printers.map((p) => (
               <Card key={p.id} className="mb-3">
                 <p className="font-semibold text-gray-800">
                   {p.marca} {p.modelo}
                 </p>
                 <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
+              </Card>
+            ))}
+          </section>
+        )}
+
+        {entregas.length > 0 && (
+          <section className="mb-6">
+            <SectionTitle>Insumos entregados</SectionTitle>
+            {entregas.map((d) => (
+              <Card key={d.id} className="mb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-800">
+                      {d.article?.nombre ?? `Artículo #${d.articulo_id}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {d.article?.marca ?? '-'} · {d.article?.modelo_sku ?? '-'}
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right text-sm text-gray-600">
+                    <p>×{d.cantidad}</p>
+                    <p className="text-xs">{formatMoney(Number(d.subtotal ?? 0))}</p>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </section>
+        )}
+
+        {mantenimientos.length > 0 && (
+          <section className="mb-6">
+            <SectionTitle>Órdenes de mantenimiento</SectionTitle>
+            {mantenimientos.map((m) => (
+              <Card key={m.id} className="mb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-800">
+                      🔧 {m.printer ? `${m.printer.marca} ${m.printer.modelo}` : `Impresora #${m.impresora_id}`}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {m.tipo_mantto ?? '-'} · {m.fecha ?? '-'}
+                    </p>
+                  </div>
+                  {m.estado && <Badge tone="violet">{m.estado}</Badge>}
+                </div>
+                {m.desc_problema && (
+                  <p className="mt-2 text-sm text-gray-600">{m.desc_problema}</p>
+                )}
+              </Card>
+            ))}
+          </section>
+        )}
+
+        {cambiosImpresoras.length > 0 && (
+          <section className="mb-6">
+            <SectionTitle>Cambios de impresoras</SectionTitle>
+            {cambiosImpresoras.map((c, i) => (
+              <Card key={`${c.evento}-${i}`} className="mb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-800">
+                      {c.impresora ? `${c.impresora.marca} ${c.impresora.modelo}` : 'Impresora'}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Serie: {c.impresora?.num_serie ?? '-'}
+                    </p>
+                  </div>
+                  <Badge tone={c.evento === 'ASIGNACION_CONTRATO' ? 'emerald' : 'orange'}>
+                    {eventoCambioLabels[c.evento] ?? c.evento}
+                  </Badge>
+                </div>
+                <p className="mt-2 text-xs text-gray-400">{formatDateTime(c.fecha)}</p>
               </Card>
             ))}
           </section>
@@ -334,9 +449,12 @@ export default function VisitDetailPage() {
             <div className="space-y-3">
               <Button
                 block
-                onClick={() => void runAction('complete')}
-                loading={busy === 'complete'}
-                disabled={busy !== null && busy !== 'complete'}
+                onClick={() => {
+                  setMotivoCierre('')
+                  setActionError(null)
+                  setShowCompleteModal(true)
+                }}
+                disabled={busy !== null}
               >
                 ✅ Completar visita
               </Button>
@@ -371,6 +489,71 @@ export default function VisitDetailPage() {
           )}
         </section>
       </Page>
+
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 px-4 pb-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl">
+            <h3 className="text-base font-bold text-gray-800">Completar visita</h3>
+
+            <div className="mt-3 space-y-1 rounded-xl bg-gray-50 p-3 text-sm text-gray-600">
+              <p>📊 Lecturas registradas: {readings.length}</p>
+              <p>📦 Insumos entregados: {entregas.length}</p>
+              <p>🔧 Órdenes de mantenimiento: {mantenimientos.length}</p>
+              <p>🖨️ Cambios de impresoras: {cambiosImpresoras.length}</p>
+            </div>
+
+            {totalActividades === 0 ? (
+              <div className="mt-4">
+                <Field
+                  label="Motivo de cierre *"
+                  help="La visita no tiene actividades registradas; el motivo es obligatorio."
+                  error={
+                    motivoCierre.trim().length > 0 && !motivoCierreValido
+                      ? 'El motivo debe tener al menos 5 caracteres'
+                      : null
+                  }
+                >
+                  <TextArea
+                    rows={3}
+                    placeholder="Describe por qué se cierra la visita sin actividades..."
+                    value={motivoCierre}
+                    onChange={(e) => setMotivoCierre(e.target.value)}
+                  />
+                </Field>
+              </div>
+            ) : (
+              <p className="mt-3 text-xs text-gray-400">
+                Hay actividades registradas: no se requiere motivo de cierre.
+              </p>
+            )}
+
+            {actionError && (
+              <div className="mt-3">
+                <Banner tone="error">{actionError}</Banner>
+              </div>
+            )}
+
+            <div className="mt-4 flex gap-3">
+              <Button
+                variant="secondary"
+                block
+                onClick={() => setShowCompleteModal(false)}
+                disabled={busy === 'complete'}
+              >
+                Cancelar
+              </Button>
+              <Button
+                block
+                disabled={!canConfirmComplete}
+                loading={busy === 'complete'}
+                onClick={() => void handleComplete()}
+              >
+                Confirmar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
