@@ -29,6 +29,10 @@ const eventoCambioLabels: Record<string, string> = {
   LIBERACION_CONTRATO: '📤 Retirada en esta visita',
 }
 
+function telHref(tel: string): string {
+  return tel.replace(/[^\d+]/g, '')
+}
+
 export default function VisitDetailPage() {
   const { id } = useParams()
   const visitId = Number(id)
@@ -172,6 +176,14 @@ export default function VisitDetailPage() {
       (p) => !capturedIds.has(p.impresora_id) && !queuedKeys.has(`${visit.id}:${p.impresora_id}`)
     ) ?? null
   const tipo = visit.tipo_visita
+  const client = visit.client
+  const hasContacto = Boolean(
+    client &&
+      (client.nombre_contacto ||
+        client.telefono ||
+        client.correo ||
+        client.direccion_instalacion)
+  )
 
   const motivoButtonVariant = (accion: TipoVisita): 'primary' | 'secondary' =>
     tipo === accion ? 'primary' : 'secondary'
@@ -195,11 +207,38 @@ export default function VisitDetailPage() {
           <p className="text-sm text-gray-600">
             📅 <span className="capitalize">{formatDateLong(visit.fecha_programada)}</span>
           </p>
-          {visit.socio_nombre && (
-            <p className="mt-1 text-sm text-gray-600">👤 {visit.socio_nombre}</p>
-          )}
-          {visit.contrato_id && (
-            <p className="mt-1 text-sm text-gray-600">📄 Contrato #{visit.contrato_id}</p>
+          {hasContacto && client && (
+            <div>
+              {client.nombre_contacto && (
+                <p className="mt-1 text-sm text-gray-600">👤 {client.nombre_contacto}</p>
+              )}
+              {client.telefono && (
+                <a
+                  href={`tel:${telHref(client.telefono)}`}
+                  className="mt-1 block text-sm font-medium text-blue-600"
+                >
+                  📱 {client.telefono}
+                </a>
+              )}
+              {client.correo && (
+                <a
+                  href={`mailto:${client.correo}`}
+                  className="mt-1 block text-sm font-medium text-blue-600"
+                >
+                  📧 {client.correo}
+                </a>
+              )}
+              {client.direccion_instalacion && (
+                <a
+                  href={`https://maps.google.com/?q=${encodeURIComponent(client.direccion_instalacion)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 block text-sm font-medium text-blue-600"
+                >
+                  📍 {client.direccion_instalacion}
+                </a>
+              )}
+            </div>
           )}
           {visit.notas && <p className="mt-2 text-sm italic text-gray-500">"{visit.notas}"</p>}
           {visit.motivo_cierre && (

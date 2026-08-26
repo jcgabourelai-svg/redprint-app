@@ -80,6 +80,15 @@ export interface PrinterChange {
   } | null
 }
 
+export interface VisitClient {
+  id: number
+  razon_social: string
+  nombre_contacto: string | null
+  telefono: string | null
+  correo: string | null
+  direccion_instalacion: string | null
+}
+
 export interface Visit {
   id: number
   cliente_id: number
@@ -94,6 +103,7 @@ export interface Visit {
   notas: string | null
   motivo_cierre: string | null
   origen: string | null
+  client?: VisitClient
   impresoras?: VisitPrinter[]
   readings?: Reading[]
   entregas?: ArticleDelivery[]
