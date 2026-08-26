@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Enums\MaintenanceStatus;
 use App\Enums\MaintenanceType;
+use App\Enums\ProblemSeverity;
+use App\Enums\ProblemType;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -21,6 +23,8 @@ class MaintenanceOrder extends Model
         'fecha',
         'tipo_mantto',
         'desc_problema',
+        'tipo_problema',
+        'severidad',
         'trabajo_realizado',
         'costo_mano_obra',
         'costo_total',
@@ -36,6 +40,8 @@ class MaintenanceOrder extends Model
         return [
             'fecha' => 'date',
             'tipo_mantto' => MaintenanceType::class,
+            'tipo_problema' => ProblemType::class,
+            'severidad' => ProblemSeverity::class,
             'costo_mano_obra' => 'decimal:2',
             'costo_total' => 'decimal:2',
             'estado' => MaintenanceStatus::class,

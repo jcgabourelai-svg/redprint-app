@@ -23,6 +23,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useVisit, useCompleteVisit, useRescheduleVisit, useUpdateVisit, useDeleteVisit, useSocios } from '@/hooks/useVisits'
 import type { VisitStatus } from '@/types/operations'
 import { formatDate } from '@/lib/formatters'
+import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { parseApiError } from '@/lib/api-errors'
 import { useState } from 'react'
 
@@ -416,7 +417,22 @@ export default function VisitDetailPage() {
                         </p>
                       </div>
                     </div>
-                    <Badge variant="neutral">{m.estado ?? '-'}</Badge>
+                    <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      {m.tipo_problema && (
+                        <Badge variant="neutral">
+                          {problemTypeLabels[m.tipo_problema] ?? m.tipo_problema}
+                        </Badge>
+                      )}
+                      {m.severidad && (
+                        <Badge
+                          variant={severityBadgeVariant(m.severidad)}
+                          className={m.severidad === 'CRITICA' ? 'ring-2 ring-red-300' : ''}
+                        >
+                          {severityLabels[m.severidad] ?? m.severidad}
+                        </Badge>
+                      )}
+                      <Badge variant="neutral">{m.estado ?? '-'}</Badge>
+                    </div>
                   </div>
                   {m.desc_problema && (
                     <p className="mt-2 text-sm text-muted-foreground">{m.desc_problema}</p>

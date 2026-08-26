@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\MaintenanceStatus;
 use App\Enums\MaintenanceType;
+use App\Enums\ProblemSeverity;
+use App\Enums\ProblemType;
 use App\Models\Article;
 use App\Models\ArticleUsed;
 use App\Models\MaintenanceOrder;
@@ -36,6 +38,27 @@ class MaintenanceOrderSeeder extends Seeder
             ],
         ];
 
+        $problemTypesByDescription = [
+            'Reemplazo de fusora defectuosa' => [
+                ProblemType::NO_IMPRIME,
+                ProblemType::CALIDAD_DEFICIENTE,
+            ],
+            'Reparacion de atasco recurrente' => [
+                ProblemType::ATASCOS,
+            ],
+            'Cambio de tarjeta principal' => [
+                ProblemType::NO_IMPRIME,
+                ProblemType::ERROR_PANTALLA,
+            ],
+            'Reparacion de alimentador automatico' => [
+                ProblemType::ATASCOS,
+            ],
+            'Reemplazo de rodillo de pickup desgastado' => [
+                ProblemType::ATASCOS,
+                ProblemType::CALIDAD_DEFICIENTE,
+            ],
+        ];
+
         for ($i = 0; $i < 30; $i++) {
             $type = $i < 20 ? MaintenanceType::PREVENTIVO : MaintenanceType::CORRECTIVO;
             $isCompleted = rand(0, 100) < 70;
@@ -53,6 +76,12 @@ class MaintenanceOrderSeeder extends Seeder
                 'fecha' => $fecha,
                 'tipo_mantto' => $type,
                 'desc_problema' => $descProblema,
+                'tipo_problema' => $type === MaintenanceType::CORRECTIVO
+                    ? $problemTypesByDescription[$descProblema][array_rand($problemTypesByDescription[$descProblema])]
+                    : null,
+                'severidad' => $type === MaintenanceType::CORRECTIVO
+                    ? ProblemSeverity::cases()[array_rand(ProblemSeverity::cases())]
+                    : null,
                 'trabajo_realizado' => $isCompleted ? $descProblema . ' - Completado' : null,
                 'costo_mano_obra' => $costoManoObra,
                 'costo_total' => $costoManoObra,

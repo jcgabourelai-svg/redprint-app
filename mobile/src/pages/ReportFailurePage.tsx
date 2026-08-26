@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
 import { formatNumber, todayISO } from '../lib/format'
-import type { Visit } from '../types/api'
+import type { Severidad, TipoProblema, Visit } from '../types/api'
 import {
   Banner,
   Badge,
@@ -20,10 +20,48 @@ import {
   TextArea,
 } from '../components/ui'
 
+const TIPOS_PROBLEMA: { value: TipoProblema; label: string; icon: string }[] = [
+  { value: 'NO_IMPRIME', label: 'No imprime', icon: '🖨️' },
+  { value: 'CALIDAD_DEFICIENTE', label: 'Calidad deficiente', icon: '📄' },
+  { value: 'ATASCOS', label: 'Atascos', icon: '📎' },
+  { value: 'ERROR_PANTALLA', label: 'Error en pantalla', icon: '⚠️' },
+  { value: 'OTRO', label: 'Otro', icon: '❓' },
+]
+
+const SEVERIDADES: { value: Severidad; label: string; icon: string; selectedClasses: string }[] = [
+  { value: 'BAJA', label: 'Baja', icon: '🟢', selectedClasses: 'border-emerald-500 bg-emerald-100' },
+  { value: 'MEDIA', label: 'Media', icon: '🟡', selectedClasses: 'border-amber-500 bg-amber-100' },
+  { value: 'ALTA', label: 'Alta', icon: '🔴', selectedClasses: 'border-red-500 bg-red-100' },
+  { value: 'CRITICA', label: 'Crítica', icon: '⚠️', selectedClasses: 'border-red-600 bg-red-100' },
+]
+
+const tipoProblemaLabels: Record<string, string> = {
+  NO_IMPRIME: 'No imprime',
+  CALIDAD_DEFICIENTE: 'Calidad deficiente',
+  ATASCOS: 'Atascos',
+  ERROR_PANTALLA: 'Error en pantalla',
+  OTRO: 'Otro',
+}
+
+const severidadLabels: Record<string, string> = {
+  BAJA: 'Baja',
+  MEDIA: 'Media',
+  ALTA: 'Alta',
+  CRITICA: 'Crítica',
+}
+
+const severidadTone: Record<string, 'emerald' | 'amber' | 'red'> = {
+  BAJA: 'emerald',
+  MEDIA: 'amber',
+  ALTA: 'red',
+  CRITICA: 'red',
+}
+
 export default function ReportFailurePage() {
   const { id } = useParams()
   const visitId = Number(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const online = useOnline()
@@ -33,7 +71,9 @@ export default function ReportFailurePage() {
   const [visit, setVisit] = useState<Visit | null>(null)
   const [loadingVisit, setLoadingVisit] = useState(true)
   const [visitError, setVisitError] = useState<string | null>(null)
-  const [printerId, setPrinterId] = useState<string | null>(null)
+  const [printerId, setPrinterId] = useState<string | null>(searchParams.get('impresora'))
+  const [tipoProblema, setTipoProblema] = useState<TipoProblema | null>(null)
+  const [severidad, setSeveridad] = useState<Severidad | null>(null)
   const [descProblema, setDescProblema] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -61,11 +101,20 @@ export default function ReportFailurePage() {
   }, [visitId])
 
   const printers = visit?.impresoras ?? []
+  const selectedPrinter = printers.find((p) => p.impresora_id === printerId) ?? null
   const descValida = descProblema.trim().length >= 5
-  const canSubmit = canReport && printerId !== null && descValida && online && !submitting
+  const canSubmit =
+    canReport &&
+    printerId !== null &&
+    selectedPrinter !== null &&
+    tipoProblema !== null &&
+    severidad !== null &&
+    descValida &&
+    online &&
+    !submitting
 
   async function handleSubmit() {
-    if (!canSubmit || printerId === null) return
+    if (!canSubmit || printerId === null || tipoProblema === null || severidad === null) return
     setSubmitting(true)
     setSubmitError(null)
     try {
@@ -74,6 +123,8 @@ export default function ReportFailurePage() {
         fecha: todayISO(),
         tipo_mantto: 'CORRECTIVO',
         desc_problema: descProblema.trim(),
+        tipo_problema: tipoProblema,
+        severidad: severidad,
         visita_id: visitId,
       })
       toast.success('Falla reportada: orden correctiva creada')
@@ -120,50 +171,129 @@ export default function ReportFailurePage() {
 
         {canReport && visit && (
           <>
-            <SectionTitle hint="Selecciona la impresora con la falla">Impresoras del contrato</SectionTitle>
-            {printers.length === 0 && (
-              <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas que reportar" />
-            )}
-            {printers.map((p) => (
-              <Card
-                key={p.id}
-                className={`mb-3 ${printerId === p.impresora_id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                onClick={() => setPrinterId(p.impresora_id)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-gray-800">
-                      {p.marca} {p.modelo}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
-                    <p className="text-xs text-gray-400">
-                      Última lectura: {formatNumber(p.lectura_anterior)}
-                    </p>
-                  </div>
-                  {printerId === p.impresora_id && <span className="text-blue-600">✓</span>}
-                </div>
-              </Card>
-            ))}
-
-            {printerId !== null && (
-              <div className="mt-5">
-                <Field
-                  label="Descripción del problema *"
-                  help="Se creará una orden de mantenimiento CORRECTIVO vinculada a esta visita."
-                  error={
-                    descProblema.trim().length > 0 && !descValida
-                      ? 'Describe la falla con al menos 5 caracteres'
-                      : null
-                  }
-                >
-                  <TextArea
-                    rows={4}
-                    placeholder="Describe la falla observada (atasco, error en pantalla, mala calidad de impresión...)"
-                    value={descProblema}
-                    onChange={(e) => setDescProblema(e.target.value)}
-                  />
-                </Field>
+            {selectedPrinter ? (
+              <div className="mb-5 rounded-xl bg-gray-50 px-4 py-3">
+                <p className="text-base font-semibold text-gray-800">
+                  {selectedPrinter.marca} {selectedPrinter.modelo}
+                </p>
+                <p className="mt-0.5 text-[13px] text-gray-500">
+                  Serie: {selectedPrinter.numero_serie ?? '-'}
+                </p>
+                {printers.length > 1 && (
+                  <button
+                    className="mt-1.5 text-xs font-semibold text-blue-600 active:text-blue-700"
+                    onClick={() => setPrinterId(null)}
+                  >
+                    Cambiar impresora
+                  </button>
+                )}
               </div>
+            ) : (
+              <>
+                <SectionTitle hint="Selecciona la impresora con la falla">
+                  Impresoras del contrato
+                </SectionTitle>
+                {printers.length === 0 && (
+                  <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas que reportar" />
+                )}
+                {printers.map((p) => (
+                  <Card
+                    key={p.id}
+                    className={`mb-3 ${printerId === p.impresora_id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                    onClick={() => setPrinterId(p.impresora_id)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-gray-800">
+                          {p.marca} {p.modelo}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
+                        <p className="text-xs text-gray-400">
+                          Última lectura: {formatNumber(p.lectura_anterior)}
+                        </p>
+                      </div>
+                      {printerId === p.impresora_id && <span className="text-blue-600">✓</span>}
+                    </div>
+                  </Card>
+                ))}
+              </>
+            )}
+
+            {selectedPrinter !== null && (
+              <>
+                <div className="mt-5">
+                  <SectionTitle>Tipo de problema</SectionTitle>
+                  <div className="grid grid-cols-3 gap-2">
+                    {TIPOS_PROBLEMA.map((t) => {
+                      const selected = tipoProblema === t.value
+                      return (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => setTipoProblema(t.value)}
+                          className={`flex min-h-[72px] flex-col items-center justify-center rounded-xl border p-2 text-center transition-colors ${
+                            selected
+                              ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500'
+                              : 'border-gray-200 bg-white active:bg-gray-50'
+                          }`}
+                        >
+                          <span className="text-[22px] leading-none">{t.icon}</span>
+                          <span className="mt-1 text-[12px] font-medium leading-tight text-gray-800">
+                            {t.label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <SectionTitle>Severidad</SectionTitle>
+                  <div className="flex gap-2">
+                    {SEVERIDADES.map((s) => {
+                      const selected = severidad === s.value
+                      return (
+                        <button
+                          key={s.value}
+                          type="button"
+                          onClick={() => setSeveridad(s.value)}
+                          className={`flex-1 rounded-xl border-2 px-1 py-2.5 text-center transition-transform ${
+                            selected ? `${s.selectedClasses} scale-[1.03]` : 'border-gray-200 bg-white active:bg-gray-50'
+                          }`}
+                        >
+                          <span className="block text-xl leading-none">{s.icon}</span>
+                          <span
+                            className={`mt-1 block text-xs font-semibold ${
+                              selected && s.value === 'CRITICA' ? 'text-red-700' : 'text-gray-800'
+                            }`}
+                          >
+                            {s.label}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                <div className="mt-5">
+                  <Field
+                    label="Descripción del problema *"
+                    help="Se creará una orden de mantenimiento CORRECTIVO vinculada a esta visita."
+                    error={
+                      descProblema.trim().length > 0 && !descValida
+                        ? 'Describe la falla con al menos 5 caracteres'
+                        : null
+                    }
+                  >
+                    <TextArea
+                      rows={4}
+                      placeholder="Describe la falla observada (atasco, error en pantalla, mala calidad de impresión...)"
+                      value={descProblema}
+                      onChange={(e) => setDescProblema(e.target.value)}
+                    />
+                  </Field>
+                </div>
+              </>
             )}
 
             {submitError && (
@@ -205,7 +335,17 @@ export default function ReportFailurePage() {
                       <p className="mt-0.5 text-xs text-gray-500">{m.desc_problema}</p>
                     )}
                   </div>
-                  {m.estado && <Badge tone="violet">{m.estado}</Badge>}
+                  <div className="flex flex-wrap items-center justify-end gap-1">
+                    {m.tipo_problema && (
+                      <Badge tone="blue">{tipoProblemaLabels[m.tipo_problema] ?? m.tipo_problema}</Badge>
+                    )}
+                    {m.severidad && (
+                      <Badge tone={severidadTone[m.severidad] ?? 'gray'}>
+                        {severidadLabels[m.severidad] ?? m.severidad}
+                      </Badge>
+                    )}
+                    {m.estado && <Badge tone="violet">{m.estado}</Badge>}
+                  </div>
                 </div>
               </Card>
             ))}

@@ -16,6 +16,8 @@ class MaintenanceOrderResource extends JsonResource
             'fecha' => $this->fecha?->format('Y-m-d'),
             'tipo_mantto' => $this->tipo_mantto?->value ?? $this->tipo_mantto,
             'desc_problema' => $this->desc_problema,
+            'tipo_problema' => $this->tipo_problema?->value ?? null,
+            'severidad' => $this->severidad?->value ?? null,
             'trabajo_realizado' => $this->trabajo_realizado,
             'costo_mano_obra' => $this->costo_mano_obra,
             'costo_total' => $this->costo_total,

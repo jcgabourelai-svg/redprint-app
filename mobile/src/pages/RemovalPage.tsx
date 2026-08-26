@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
@@ -21,6 +21,7 @@ export default function RemovalPage() {
   const { id } = useParams()
   const visitId = Number(id)
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const online = useOnline()
@@ -32,7 +33,7 @@ export default function RemovalPage() {
   const [visitError, setVisitError] = useState<string | null>(null)
   const [warehouses, setWarehouses] = useState<Warehouse[] | null>(null)
   const [warehousesError, setWarehousesError] = useState<string | null>(null)
-  const [printerId, setPrinterId] = useState<string | null>(null)
+  const [printerId, setPrinterId] = useState<string | null>(searchParams.get('impresora'))
   const [warehouseId, setWarehouseId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -60,6 +61,8 @@ export default function RemovalPage() {
   }, [visitId])
 
   const contratoId = visit?.contrato_id ?? null
+  const printers = visit?.impresoras ?? []
+  const selectedPrinter = printers.find((p) => p.impresora_id === printerId) ?? null
 
   useEffect(() => {
     if (!canRemove || !contratoId) return
@@ -80,12 +83,12 @@ export default function RemovalPage() {
   }, [canRemove, contratoId])
 
   async function handleSubmit() {
-    if (!contratoId || printerId === null || warehouseId === null) return
+    if (!contratoId || selectedPrinter === null || warehouseId === null) return
     setSubmitting(true)
     setSubmitError(null)
     try {
       await api.post(`/contracts/${contratoId}/release-printer`, {
-        impresora_id: Number(printerId),
+        impresora_id: Number(selectedPrinter.impresora_id),
         almacen_destino_id: warehouseId,
         visita_id: visitId,
       })
@@ -99,7 +102,6 @@ export default function RemovalPage() {
   }
 
   const title = visit ? (visit.cliente_nombre ?? 'Retiro') : 'Retiro'
-  const printers = visit?.impresoras ?? []
   const showForm = canRemove && contratoId !== null
 
   return (
@@ -197,7 +199,7 @@ export default function RemovalPage() {
             <Button
               block
               className="mt-4"
-              disabled={printerId === null || warehouseId === null || !online || submitting}
+              disabled={selectedPrinter === null || warehouseId === null || !online || submitting}
               loading={submitting}
               onClick={() => void handleSubmit()}
             >

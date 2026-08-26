@@ -29,6 +29,12 @@ class MaintenanceOrderController extends Controller
         if ($request->has('tipo_mantto')) {
             $query->where('tipo_mantto', $request->tipo_mantto);
         }
+        if ($request->has('tipo_problema')) {
+            $query->where('tipo_problema', $request->tipo_problema);
+        }
+        if ($request->has('severidad')) {
+            $query->where('severidad', $request->severidad);
+        }
         if ($request->has('impresora_id')) {
             $query->where('impresora_id', $request->impresora_id);
         }
@@ -42,7 +48,7 @@ class MaintenanceOrderController extends Controller
         $query->search($request->search, ['desc_problema']);
 
         $this->applySorting($query, $request, [
-            'id', 'fecha', 'estado', 'tipo_mantto', 'impresora_id', 'costo_mano_obra', 'created_at',
+            'id', 'fecha', 'estado', 'tipo_mantto', 'tipo_problema', 'severidad', 'impresora_id', 'costo_mano_obra', 'created_at',
         ], 'fecha', 'desc');
 
         $orders = $query->paginate($request->per_page ?? 20);

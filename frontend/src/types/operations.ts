@@ -29,6 +29,8 @@ export interface VisitMaintenanceOrder {
   fecha: string | null
   tipo_mantto: string | null
   desc_problema: string | null
+  tipo_problema: string | null
+  severidad: string | null
   trabajo_realizado: string | null
   estado: string | null
   visita_id: number | null

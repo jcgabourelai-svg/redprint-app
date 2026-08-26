@@ -22,6 +22,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import { useMaintenanceOrder, useUpdateMaintenanceOrder, useCompleteMaintenanceOrder, useCancelMaintenanceOrder, useDeleteMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
 import { formatCurrency, formatDate, getMaintenanceStatusColor } from '@/lib/formatters'
+import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { parseApiError } from '@/lib/api-errors'
 import { useIsAdmin } from '@/contexts/AuthContext'
 
@@ -194,6 +195,25 @@ export default function MaintenanceDetail() {
                       {orderData.tipo_mantto === 'PREVENTIVO' ? 'PREVENTIVO' : 'CORRECTIVO'}
                     </Badge>
                   </div>
+                  {orderData.tipo_problema && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Tipo de problema</p>
+                      <p className="text-foreground">
+                        {problemTypeLabels[orderData.tipo_problema] ?? orderData.tipo_problema}
+                      </p>
+                    </div>
+                  )}
+                  {orderData.severidad && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Severidad</p>
+                      <Badge
+                        variant={severityBadgeVariant(orderData.severidad)}
+                        className={orderData.severidad === 'CRITICA' ? 'ring-2 ring-red-300' : ''}
+                      >
+                        {severityLabels[orderData.severidad] ?? orderData.severidad}
+                      </Badge>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Fecha</p>
                     <p className="text-foreground">{formatDate(orderData.fecha)}</p>

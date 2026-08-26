@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatDate, formatCurrency, getMaintenanceStatusColor } from '@/lib/formatters'
+import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import type { MaintenanceOrder } from '@/types/maintenance-order'
 
@@ -52,6 +53,33 @@ export default function MaintenanceList() {
           {value === 'PREVENTIVO' ? 'PREVENTIVO' : 'CORRECTIVO'}
         </Badge>
       ),
+    },
+    {
+      key: 'tipo_problema',
+      label: 'Problema',
+      sortable: true,
+      render: (_value: string, row: any) => {
+        if (!row.tipo_problema && !row.severidad) {
+          return <span className="text-muted-foreground">-</span>
+        }
+        return (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {row.tipo_problema && (
+              <span className="text-sm">
+                {problemTypeLabels[row.tipo_problema] ?? row.tipo_problema}
+              </span>
+            )}
+            {row.severidad && (
+              <Badge
+                variant={severityBadgeVariant(row.severidad)}
+                className={row.severidad === 'CRITICA' ? 'ring-2 ring-red-300' : ''}
+              >
+                {severityLabels[row.severidad] ?? row.severidad}
+              </Badge>
+            )}
+          </div>
+        )
+      },
     },
     {
       key: 'desc_problema',

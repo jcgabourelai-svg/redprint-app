@@ -6,7 +6,7 @@ import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
 import { formatDateLong, formatDateTime, formatMoney, formatNumber } from '../lib/format'
-import type { TipoVisita, Visit } from '../types/api'
+import type { Visit } from '../types/api'
 import {
   Banner,
   Badge,
@@ -51,12 +51,9 @@ export default function VisitDetailPage() {
   const [motivoCierre, setMotivoCierre] = useState('')
   const [tick, setTick] = useState(0)
 
-  const canLecturas = hasPermission('operaciones.lecturas')
   const canContratos = hasPermission('contratos')
   const canInsumos = hasPermission('inventario.articulos')
-  const canMantenimiento = hasPermission('inventario.mantenimiento')
   const canInstalar = canContratos && hasPermission('inventario.impresoras')
-  const canRetirar = canContratos && hasPermission('inventario.almacenes')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -171,10 +168,6 @@ export default function VisitDetailPage() {
             capturedIds.has(p.impresora_id) || queuedKeys.has(`${visit.id}:${p.impresora_id}`)
         ).length
       : 0
-  const nextPrinter =
-    printers.find(
-      (p) => !capturedIds.has(p.impresora_id) && !queuedKeys.has(`${visit.id}:${p.impresora_id}`)
-    ) ?? null
   const tipo = visit.tipo_visita
   const client = visit.client
   const hasContacto = Boolean(
@@ -184,9 +177,6 @@ export default function VisitDetailPage() {
         client.correo ||
         client.direccion_instalacion)
   )
-
-  const motivoButtonVariant = (accion: TipoVisita): 'primary' | 'secondary' =>
-    tipo === accion ? 'primary' : 'secondary'
 
   const motivoCierreValido = motivoCierre.trim().length >= 5
   const canConfirmComplete = totalActividades > 0 || motivoCierreValido
@@ -254,42 +244,67 @@ export default function VisitDetailPage() {
           </div>
         )}
 
+        <section className="mb-6">
+          <SectionTitle hint={isEditable ? '👆 Toca una impresora para ver acciones disponibles' : undefined}>
+            Impresoras del contrato {printers.length > 0 && `(${progress}/${printers.length})`}
+          </SectionTitle>
+          {printers.length === 0 && (
+            <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas" />
+          )}
+          {printers.map((p) => {
+            const captured = capturedIds.has(p.impresora_id)
+            const queued = queuedKeys.has(`${visit.id}:${p.impresora_id}`)
+            const failed = errorKeys.has(`${visit.id}:${p.impresora_id}`)
+            const reading = readings.find((r) => String(r.impresora_id) === p.impresora_id)
+            return (
+              <Card
+                key={p.id}
+                className="mb-3"
+                onClick={
+                  isEditable
+                    ? () => navigate(`/visita/${visitId}/impresora/${p.impresora_id}`)
+                    : undefined
+                }
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-800">
+                      {p.marca} {p.modelo}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      Última lectura: {formatNumber(p.lectura_anterior)}
+                      {p.fecha_lectura_anterior && ` (${p.fecha_lectura_anterior})`}
+                    </p>
+                  </div>
+                  <span className="text-xl leading-none">🖨️</span>
+                </div>
+                <div className="mt-2.5">
+                  {captured ? (
+                    <Badge tone="emerald">
+                      ✓ Capturada · {formatNumber(reading?.paginas_periodo)} págs
+                    </Badge>
+                  ) : queued ? (
+                    <Badge tone="amber">⟳ Pendiente de sincronizar</Badge>
+                  ) : failed ? (
+                    <Badge tone="red">⚠ Error de sincronización</Badge>
+                  ) : isEditable ? (
+                    <Badge tone="blue">Ver acciones →</Badge>
+                  ) : null}
+                </div>
+              </Card>
+            )
+          })}
+        </section>
+
         {isEditable && (
           <section className="mb-6">
-            <SectionTitle hint="El motivo es la actividad principal; el resto son opcionales">
-              Actividades
+            <SectionTitle hint="No requieren seleccionar una impresora">
+              Acciones de visita
             </SectionTitle>
             <div className="space-y-2.5">
               <Button
-                variant={motivoButtonVariant('LECTURA')}
-                block
-                disabled={!canLecturas || printers.length === 0 || !nextPrinter}
-                onClick={() =>
-                  nextPrinter && navigate(`/visita/${visitId}/captura/${nextPrinter.impresora_id}`)
-                }
-              >
-                📊 {printers.length > 0 && progress >= printers.length
-                  ? `Tomar lectura (${progress}/${printers.length} capturadas)`
-                  : 'Tomar lectura'}
-              </Button>
-              <Button
-                variant={motivoButtonVariant('ENTREGA_INSUMOS')}
-                block
-                disabled={!canInsumos}
-                onClick={() => navigate(`/visita/${visitId}/entrega`)}
-              >
-                📦 Entregar insumos
-              </Button>
-              <Button
-                variant={motivoButtonVariant('MANTENIMIENTO')}
-                block
-                disabled={!canMantenimiento || printers.length === 0}
-                onClick={() => navigate(`/visita/${visitId}/falla`)}
-              >
-                🔧 Reportar falla
-              </Button>
-              <Button
-                variant={motivoButtonVariant('INSTALACION')}
+                variant="secondary"
                 block
                 disabled={!canInstalar || !visit.contrato_id}
                 onClick={() => navigate(`/visita/${visitId}/instalacion`)}
@@ -297,88 +312,14 @@ export default function VisitDetailPage() {
                 📥 Instalar impresora
               </Button>
               <Button
-                variant={motivoButtonVariant('RETIRO')}
+                variant="secondary"
                 block
-                disabled={!canRetirar || !visit.contrato_id}
-                onClick={() => navigate(`/visita/${visitId}/retiro`)}
+                disabled={!canInsumos}
+                onClick={() => navigate(`/visita/${visitId}/entrega`)}
               >
-                📤 Retirar impresora
+                📦 Entregar insumos
               </Button>
             </div>
-          </section>
-        )}
-
-        {tipo === 'LECTURA' && (
-          <section className="mb-6">
-            <SectionTitle hint="👆 Toca una impresora para capturar su lectura">
-              Impresoras del contrato {printers.length > 0 && `(${progress}/${printers.length})`}
-            </SectionTitle>
-            {!canLecturas && (
-              <div className="mb-3">
-                <Banner tone="warn">No tienes permiso de capturar lecturas</Banner>
-              </div>
-            )}
-            {printers.length === 0 && (
-              <EmptyState icon="🖨️" text="El contrato no tiene impresoras activas" />
-            )}
-            {printers.map((p) => {
-              const captured = capturedIds.has(p.impresora_id)
-              const queued = queuedKeys.has(`${visit.id}:${p.impresora_id}`)
-              const failed = errorKeys.has(`${visit.id}:${p.impresora_id}`)
-              const reading = readings.find((r) => String(r.impresora_id) === p.impresora_id)
-              return (
-                <Card
-                  key={p.id}
-                  className="mb-3"
-                  onClick={
-                    captured || (!canLecturas && !queued && !failed)
-                      ? undefined
-                      : () => navigate(`/visita/${visitId}/captura/${p.impresora_id}`)
-                  }
-                >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-gray-800">
-                        {p.marca} {p.modelo}
-                      </p>
-                      <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Última lectura: {formatNumber(p.lectura_anterior)}
-                        {p.fecha_lectura_anterior && ` (${p.fecha_lectura_anterior})`}
-                      </p>
-                    </div>
-                    <span className="text-xl leading-none">🖨️</span>
-                  </div>
-                  <div className="mt-2.5">
-                    {captured ? (
-                      <Badge tone="emerald">
-                        ✓ Capturada · {formatNumber(reading?.paginas_periodo)} págs
-                      </Badge>
-                    ) : queued ? (
-                      <Badge tone="amber">⟳ Pendiente de sincronizar</Badge>
-                    ) : failed ? (
-                      <Badge tone="red">⚠ Error de sincronización</Badge>
-                    ) : (
-                      <Badge tone="blue">Tomar lectura →</Badge>
-                    )}
-                  </div>
-                </Card>
-              )
-            })}
-          </section>
-        )}
-
-        {tipo !== 'LECTURA' && printers.length > 0 && (
-          <section className="mb-6">
-            <SectionTitle>Impresoras activas del contrato</SectionTitle>
-            {printers.map((p) => (
-              <Card key={p.id} className="mb-3">
-                <p className="font-semibold text-gray-800">
-                  {p.marca} {p.modelo}
-                </p>
-                <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
-              </Card>
-            ))}
           </section>
         )}
 

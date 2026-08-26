@@ -52,12 +52,17 @@ export interface Reading {
   evidencia_foto: string | null
 }
 
+export type TipoProblema = 'NO_IMPRIME' | 'CALIDAD_DEFICIENTE' | 'ATASCOS' | 'ERROR_PANTALLA' | 'OTRO'
+export type Severidad = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
+
 export interface MaintenanceOrder {
   id: number
   impresora_id: number
   fecha: string | null
   tipo_mantto: 'PREVENTIVO' | 'CORRECTIVO' | null
   desc_problema: string | null
+  tipo_problema: TipoProblema | null
+  severidad: Severidad | null
   trabajo_realizado: string | null
   estado: string | null
   visita_id: number | null

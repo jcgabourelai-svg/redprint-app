@@ -11,6 +11,8 @@ export interface MaintenanceOrder {
   fecha: string | null
   tipo_mantto: MaintenanceType
   desc_problema: string | null
+  tipo_problema: string | null
+  severidad: string | null
   trabajo_realizado: string | null
   costo_mano_obra: number
   costo_total: number

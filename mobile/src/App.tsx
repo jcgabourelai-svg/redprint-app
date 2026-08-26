@@ -9,6 +9,7 @@ import LoginPage from './pages/LoginPage'
 import TodayPage from './pages/TodayPage'
 import CalendarPage from './pages/CalendarPage'
 import VisitDetailPage from './pages/VisitDetailPage'
+import PrinterDetailPage from './pages/PrinterDetailPage'
 import CaptureReadingPage from './pages/CaptureReadingPage'
 import InstallationPage from './pages/InstallationPage'
 import RemovalPage from './pages/RemovalPage'
@@ -64,6 +65,7 @@ export default function App() {
               {/* Ruta estática antes de visita/:id para que "nueva" no se capture como id */}
               <Route path="visita/nueva" element={<NewVisitPage />} />
               <Route path="visita/:id" element={<VisitDetailPage />} />
+              <Route path="visita/:id/impresora/:printerId" element={<PrinterDetailPage />} />
               <Route path="visita/:id/captura/:printerId" element={<CaptureReadingPage />} />
               <Route path="visita/:id/instalacion" element={<InstallationPage />} />
               <Route path="visita/:id/retiro" element={<RemovalPage />} />

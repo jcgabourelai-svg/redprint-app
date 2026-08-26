@@ -18,6 +18,8 @@ class StoreMaintenanceOrderRequest extends FormRequest
             'fecha' => 'required|date',
             'tipo_mantto' => 'required|in:PREVENTIVO,CORRECTIVO',
             'desc_problema' => 'nullable|string',
+            'tipo_problema' => 'nullable|in:NO_IMPRIME,CALIDAD_DEFICIENTE,ATASCOS,ERROR_PANTALLA,OTRO',
+            'severidad' => 'nullable|in:BAJA,MEDIA,ALTA,CRITICA',
             'trabajo_realizado' => 'nullable|string',
             'costo_mano_obra' => 'nullable|numeric|min:0',
             'visita_id' => 'nullable|exists:visits,id',
