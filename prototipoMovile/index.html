@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#3B82F6">
+    <title>RedPrint Operativo</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/components.css">
+    <link rel="stylesheet" href="css/screens.css">
+</head>
+<body>
+    <div id="app">
+        <div id="sync-indicator" class="sync-indicator hidden">
+            <span class="sync-icon">⟳</span>
+            <span class="sync-badge hidden">0</span>
+        </div>
+
+        <div id="toast-container"></div>
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div id="modal-content" class="modal-content"></div>
+        </div>
+
+        <div id="login-screen" class="screen active">
+            <div class="screen-content centered">
+                <div class="login-logo">
+                    <div class="logo-icon">🖨️</div>
+                    <h1 class="logo-title">RedPrint</h1>
+                    <p class="logo-subtitle">Operativo</p>
+                    <p class="logo-tagline">Sistema de operaciones de campo</p>
+                </div>
+                <div class="login-form">
+                    <div class="input-group">
+                        <label for="login-email">Correo electrónico</label>
+                        <input type="email" id="login-email" placeholder="juan@operador.com" autocomplete="email">
+                        <span class="input-error" id="login-email-error"></span>
+                    </div>
+                    <div class="input-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" id="login-password" placeholder="••••••••" autocomplete="current-password">
+                        <span class="input-error" id="login-password-error"></span>
+                    </div>
+                    <a href="#" class="link-text" id="forgot-password">¿Olvidaste tu contraseña?</a>
+                    <button class="btn btn-primary btn-block" id="login-btn" disabled>Iniciar Sesión</button>
+                </div>
+                <p class="version-text">Versión 1.0.0</p>
+            </div>
+        </div>
+
+        <div id="home-screen" class="screen">
+            <div class="screen-header">
+                <h1 class="header-title">RedPrint Operativo</h1>
+                <button class="icon-btn" id="home-notifications-btn">
+                    🔔
+                    <span class="badge hidden" id="home-notif-badge">0</span>
+                </button>
+            </div>
+            <div class="screen-content">
+                <p class="date-text" id="home-date"></p>
+                <div class="section">
+                    <div class="section-header">
+                        <h2 class="section-title">Visitas de Hoy</h2>
+                        <div class="filter-group">
+                            <button class="filter-chip active" data-filter="today">Hoy</button>
+                            <button class="filter-chip" data-filter="week">7 días</button>
+                            <button class="filter-chip" data-filter="all">Todas</button>
+                        </div>
+                    </div>
+                    <div id="home-visits-list" class="card-list"></div>
+                    <div id="home-empty-state" class="empty-state hidden">
+                        <div class="empty-icon">📅</div>
+                        <p class="empty-text">No tienes visitas programadas para hoy</p>
+                        <button class="btn btn-outline" id="home-view-next">Ver próximas visitas →</button>
+                    </div>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Alertas Recientes</h2>
+                    <div id="home-alerts-list" class="alert-list"></div>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item active" data-screen="home-screen">
+                    <span class="nav-icon">🏠</span>
+                    <span class="nav-label">Home</span>
+                </button>
+                <button class="nav-item" data-screen="calendar-screen">
+                    <span class="nav-icon">📅</span>
+                    <span class="nav-label">Visitas</span>
+                </button>
+                <button class="nav-item" data-screen="alerts-screen">
+                    <span class="nav-icon">🔔</span>
+                    <span class="nav-label">Alertas</span>
+                </button>
+                <button class="nav-item" data-screen="profile-screen">
+                    <span class="nav-icon">👤</span>
+                    <span class="nav-label">Perfil</span>
+                </button>
+            </nav>
+        </div>
+
+        <div id="calendar-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Calendario</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="section-header">
+                    <div class="filter-group">
+                        <button class="filter-chip active" data-filter="today">Hoy</button>
+                        <button class="filter-chip" data-filter="week">7 días</button>
+                        <button class="filter-chip" data-filter="all">Todas</button>
+                    </div>
+                    <button class="btn btn-outline btn-sm" id="cal-filter-btn">🔍 Filtro</button>
+                </div>
+                <div id="calendar-visits-list" class="card-list"></div>
+                <div id="calendar-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">📅</div>
+                    <p class="empty-text">No tienes visitas programadas en este período</p>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="visit-detail-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title" id="vd-client-name">Empresa</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="section">
+                    <h2 class="section-title">Información del Cliente</h2>
+                    <div class="info-card" id="vd-client-info">
+                        <p class="info-time" id="vd-time">🕐 14:00 - 15:30</p>
+                    </div>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Impresoras del Contrato</h2>
+                    <p class="section-hint">👆 Toca una impresora para ver acciones disponibles</p>
+                    <div id="vd-printers-list" class="card-list"></div>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Acciones de Visita</h2>
+                    <button class="btn btn-secondary btn-block" id="vd-btn-install">📥 Instalar Impresora</button>
+                    <button class="btn btn-secondary btn-block" id="vd-btn-toner">📦 Entregar Toner</button>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="printer-select-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title" id="ps-printer-name">Impresora</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="info-card">
+                    <p class="info-model" id="ps-model"></p>
+                    <p class="info-serial" id="ps-serial"></p>
+                    <p class="info-reading" id="ps-last-reading"></p>
+                    <p class="info-date" id="ps-last-date"></p>
+                    <p class="info-status" id="ps-status"></p>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Acciones Disponibles</h2>
+                    <div class="action-grid">
+                        <button class="action-card" data-action="reading">
+                            <span class="action-icon">🖨️</span>
+                            <span class="action-label">Registrar Conteo</span>
+                        </button>
+                        <button class="action-card" data-action="problem">
+                            <span class="action-icon">⚠️</span>
+                            <span class="action-label">Reportar Problema</span>
+                        </button>
+                        <button class="action-card" data-action="history">
+                            <span class="action-icon">⏱️</span>
+                            <span class="action-label">Ver Historial</span>
+                        </button>
+                        <button class="action-card action-card-danger" data-action="removal">
+                            <span class="action-icon">📤</span>
+                            <span class="action-label">Retirar Impresora</span>
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="reading-capture-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title" id="rc-printer-name">Lectura</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="info-card">
+                    <p class="info-serial" id="rc-serial"></p>
+                    <p class="info-reading">Última lectura: <strong id="rc-last-value"></strong> hojas</p>
+                    <p class="info-date" id="rc-last-date"></p>
+                </div>
+                <div class="section">
+                    <div class="input-group">
+                        <label for="rc-current">Contador actual</label>
+                        <input type="number" id="rc-current" placeholder="0" inputmode="numeric">
+                        <span class="input-error" id="rc-error"></span>
+                    </div>
+                    <div id="rc-result" class="result-card hidden">
+                        <p class="result-pages">✅ Páginas del periodo: <strong id="rc-pages"></strong></p>
+                        <p class="result-cost">💰 Consumo estimado: <strong id="rc-cost"></strong></p>
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="rc-photo-btn">📷 Tomar foto del contador</button>
+                    <input type="file" id="rc-photo-input" accept="image/*" class="hidden">
+                    <div id="rc-photo-preview" class="photo-preview hidden"></div>
+                </div>
+                <button class="btn btn-primary btn-block" id="rc-save-btn" disabled>Guardar y Continuar</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="problem-report-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Reportar Problema</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="info-card" id="pr-printer-info">
+                    <p class="info-model" id="pr-printer-name"></p>
+                    <p class="info-serial" id="pr-printer-serial"></p>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Tipo de Problema</h2>
+                    <div class="selection-grid" id="pr-type-grid">
+                        <button class="selection-card" data-type="No imprime"><span class="sel-icon">🖨️</span><span class="sel-label">No imprime</span></button>
+                        <button class="selection-card" data-type="Calidad deficiente"><span class="sel-icon">📄</span><span class="sel-label">Calidad deficiente</span></button>
+                        <button class="selection-card" data-type="Atascos"><span class="sel-icon">📎</span><span class="sel-label">Atascos</span></button>
+                        <button class="selection-card" data-type="Error"><span class="sel-icon">⚠️</span><span class="sel-label">Error</span></button>
+                        <button class="selection-card" data-type="Otro"><span class="sel-icon">❓</span><span class="sel-label">Otro</span></button>
+                    </div>
+                    <span class="input-error" id="pr-type-error"></span>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Severidad</h2>
+                    <div class="severity-grid" id="pr-severity-grid">
+                        <button class="severity-btn severity-low" data-severity="Baja">🟢<span>Baja</span></button>
+                        <button class="severity-btn severity-medium" data-severity="Media">🟡<span>Media</span></button>
+                        <button class="severity-btn severity-high" data-severity="Alta">🔴<span>Alta</span></button>
+                        <button class="severity-btn severity-critical" data-severity="Crítica">⚠️<span>Crítica</span></button>
+                    </div>
+                    <span class="input-error" id="pr-severity-error"></span>
+                </div>
+                <div class="section">
+                    <div class="input-group">
+                        <label for="pr-description">Descripción del problema *</label>
+                        <textarea id="pr-description" rows="3" placeholder="Describe el problema en detalle..."></textarea>
+                        <span class="input-error" id="pr-desc-error"></span>
+                    </div>
+                    <div class="toggle-group">
+                        <span>¿Requiere visita técnica?</span>
+                        <div class="toggle-switch" id="pr-visit-toggle">
+                            <button class="toggle-opt active" data-value="no">No</button>
+                            <button class="toggle-opt" data-value="yes">Sí</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="pr-photo-btn">📷 Adjuntar foto</button>
+                    <input type="file" id="pr-photo-input" accept="image/*" class="hidden">
+                </div>
+                <button class="btn btn-primary btn-block" id="pr-submit-btn" disabled>Confirmar Reporte</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="printer-history-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Historial</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="info-card">
+                    <p class="info-model" id="ph-printer-name"></p>
+                    <p class="info-serial" id="ph-serial"></p>
+                </div>
+                <div class="filter-group">
+                    <select class="select-control" id="ph-type-filter">
+                        <option value="all">Todos</option>
+                        <option value="Lectura">Lecturas</option>
+                        <option value="Visita">Visitas</option>
+                        <option value="Entrega toner">Entregas toner</option>
+                        <option value="Problema">Problemas</option>
+                        <option value="Instalación">Instalaciones</option>
+                        <option value="Retiro">Retiros</option>
+                    </select>
+                </div>
+                <div id="ph-timeline" class="timeline"></div>
+                <div id="ph-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">📋</div>
+                    <p class="empty-text">No hay eventos registrados en este periodo</p>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="toner-delivery-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Entregar Toner</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="info-card">
+                    <p class="info-model" id="td-printer-name"></p>
+                    <p class="info-serial" id="td-serial"></p>
+                </div>
+                <div class="section">
+                    <h2 class="section-title">Seleccionar Toner Compatible</h2>
+                    <div id="td-toner-list" class="card-list"></div>
+                    <div id="td-no-toners" class="empty-state hidden">
+                        <div class="empty-icon">📦</div>
+                        <p class="empty-text">No hay toners registrados para esta impresora</p>
+                    </div>
+                </div>
+                <div class="section" id="td-form-section" class="hidden">
+                    <div class="input-group">
+                        <label for="td-quantity">Cantidad</label>
+                        <input type="number" id="td-quantity" value="1" min="1" inputmode="numeric">
+                        <span class="input-help" id="td-stock-info"></span>
+                        <span class="input-error" id="td-quantity-error"></span>
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="td-photo-btn">📷 Tomar foto de la entrega</button>
+                    <input type="file" id="td-photo-input" accept="image/*" class="hidden">
+                    <div class="input-group">
+                        <label for="td-observations">Observaciones</label>
+                        <textarea id="td-observations" rows="2" placeholder="Notas adicionales..."></textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" id="td-submit-btn" disabled>Confirmar Entrega</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="installation-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Instalar Impresora</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="section">
+                    <h2 class="section-title">Seleccionar Impresora (Almacén)</h2>
+                    <div id="inst-printer-list" class="card-list"></div>
+                    <div id="inst-no-printers" class="empty-state hidden">
+                        <div class="empty-icon">🖨️</div>
+                        <p class="empty-text">No hay impresoras disponibles para instalación</p>
+                    </div>
+                </div>
+                <div class="section" id="inst-contract-section" class="hidden">
+                    <h2 class="section-title">Seleccionar Contrato</h2>
+                    <div id="inst-contract-list" class="card-list"></div>
+                </div>
+                <div class="section" id="inst-form-section" class="hidden">
+                    <div class="input-group">
+                        <label for="inst-initial-reading">Lectura inicial (opcional)</label>
+                        <input type="number" id="inst-initial-reading" placeholder="0" inputmode="numeric">
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="inst-photo-btn">📷 Tomar foto de instalación</button>
+                    <input type="file" id="inst-photo-input" accept="image/*" class="hidden">
+                    <h2 class="section-title">Estado de Instalación</h2>
+                    <div class="selection-grid" id="inst-status-grid">
+                        <button class="selection-card selected" data-status="Completada"><span class="sel-icon">✅</span><span class="sel-label">Completada</span></button>
+                        <button class="selection-card" data-status="Parcial"><span class="sel-icon">🔧</span><span class="sel-label">Parcial</span></button>
+                        <button class="selection-card" data-status="Fallida"><span class="sel-icon">❌</span><span class="sel-label">Fallida</span></button>
+                    </div>
+                    <div class="input-group" id="inst-obs-group" class="hidden">
+                        <label for="inst-observations">Observaciones *</label>
+                        <textarea id="inst-observations" rows="2" placeholder="Describe el problema..."></textarea>
+                        <span class="input-error" id="inst-obs-error"></span>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" id="inst-submit-btn" disabled>Confirmar Instalación</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="removal-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Retirar Impresora</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div class="section">
+                    <div class="info-card" id="rem-printer-info">
+                        <p class="info-model" id="rem-printer-name"></p>
+                        <p class="info-serial" id="rem-printer-serial"></p>
+                        <p id="rem-contract-info"></p>
+                    </div>
+                    <h2 class="section-title">Motivo del Retiro</h2>
+                    <div class="selection-grid" id="rem-reason-grid">
+                        <button class="selection-card" data-reason="Fin de contrato"><span class="sel-icon">📋</span><span class="sel-label">Fin de contrato</span></button>
+                        <button class="selection-card" data-reason="Falla técnica"><span class="sel-icon">🔧</span><span class="sel-label">Falla técnica</span></button>
+                        <button class="selection-card" data-reason="Sustitución"><span class="sel-icon">🔄</span><span class="sel-label">Sustitución</span></button>
+                        <button class="selection-card" data-reason="Otro"><span class="sel-icon">❓</span><span class="sel-label">Otro</span></button>
+                    </div>
+                    <div class="input-group">
+                        <label for="rem-final-reading">Lectura final *</label>
+                        <input type="number" id="rem-final-reading" placeholder="0" inputmode="numeric">
+                        <span class="input-error" id="rem-reading-error"></span>
+                    </div>
+                    <h2 class="section-title">Almacén Destino</h2>
+                    <div id="rem-warehouse-list" class="card-list"></div>
+                    <button class="btn btn-secondary btn-block" id="rem-photo-btn">📷 Tomar foto del retiro</button>
+                    <input type="file" id="rem-photo-input" accept="image/*" class="hidden">
+                    <div class="input-group">
+                        <label for="rem-observations">Observaciones</label>
+                        <textarea id="rem-observations" rows="2" placeholder="Notas adicionales..."></textarea>
+                    </div>
+                </div>
+                <button class="btn btn-primary btn-block" id="rem-submit-btn" disabled>Confirmar Retiro</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item active" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="alerts-screen" class="screen">
+            <div class="screen-header">
+                <button class="icon-btn back-btn" data-back>←</button>
+                <h1 class="header-title">Alertas</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content">
+                <div id="alerts-list" class="alert-list"></div>
+                <div id="alerts-empty-state" class="empty-state hidden">
+                    <div class="empty-icon">🔔</div>
+                    <p class="empty-text">No hay alertas pendientes</p>
+                </div>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item active" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+
+        <div id="profile-screen" class="screen">
+            <div class="screen-header">
+                <h1 class="header-title">Perfil</h1>
+                <div class="header-spacer"></div>
+            </div>
+            <div class="screen-content centered">
+                <div class="profile-card">
+                    <div class="profile-avatar">👤</div>
+                    <h2 class="profile-name" id="profile-name">Operador</h2>
+                    <p class="profile-email" id="profile-email">operador@redprint.com</p>
+                    <p class="profile-role">Operador de Campo</p>
+                </div>
+                <button class="btn btn-outline btn-block" id="profile-logout">Cerrar Sesión</button>
+            </div>
+            <nav class="bottom-nav">
+                <button class="nav-item" data-screen="home-screen"><span class="nav-icon">🏠</span><span class="nav-label">Home</span></button>
+                <button class="nav-item" data-screen="calendar-screen"><span class="nav-icon">📅</span><span class="nav-label">Visitas</span></button>
+                <button class="nav-item" data-screen="alerts-screen"><span class="nav-icon">🔔</span><span class="nav-label">Alertas</span></button>
+                <button class="nav-item active" data-screen="profile-screen"><span class="nav-icon">👤</span><span class="nav-label">Perfil</span></button>
+            </nav>
+        </div>
+    </div>
+
+    <script src="js/data/dummy-data.js"></script>
+    <script src="js/data/state.js"></script>
+    <script src="js/data/api-simulator.js"></script>
+    <script src="js/toast.js"></script>
+    <script src="js/modal.js"></script>
+    <script src="js/offline.js"></script>
+    <script src="js/navigation.js"></script>
+    <script src="js/screens/login.js"></script>
+    <script src="js/screens/home.js"></script>
+    <script src="js/screens/calendar.js"></script>
+    <script src="js/screens/visit-detail.js"></script>
+    <script src="js/screens/printer-select.js"></script>
+    <script src="js/screens/reading-capture.js"></script>
+    <script src="js/screens/problem-report.js"></script>
+    <script src="js/screens/printer-history.js"></script>
+    <script src="js/screens/toner-delivery.js"></script>
+    <script src="js/screens/installation.js"></script>
+    <script src="js/screens/removal.js"></script>
+    <script src="js/screens/alerts.js"></script>
+    <script src="js/screens/profile.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
