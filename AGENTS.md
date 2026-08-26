@@ -2,6 +2,11 @@
 
 > **LEE ESTO PRIMERO.** Este archivo describe cómo se ejecuta y se itera en este
 > proyecto. No asumas el entorno de desarrollo típico (npm run dev en el host).
+>
+> **Antes de opinar, sugerir o evaluar el sistema**, lee también [`PROJECT.md`](PROJECT.md):
+> ahí están el propósito del negocio, el alcance, la filosofía de diseño, las máquinas de
+> estado, los flujos de extremo a extremo, la deuda conocida y un **marco de evaluación**
+> (checklists, preguntas de negocio/UX, smells y plantilla de sugerencias).
 
 ## Entorno de desarrollo: TODO corre en Docker
 
