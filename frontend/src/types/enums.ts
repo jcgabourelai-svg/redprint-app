@@ -41,6 +41,14 @@ export const VisitType = {
 } as const
 export type VisitType = (typeof VisitType)[keyof typeof VisitType]
 
+export const VisitTypeLabels: Record<VisitType, string> = {
+  LECTURA: 'Lectura de contador',
+  MANTENIMIENTO: 'Mantenimiento',
+  INSTALACION: 'Instalación',
+  RETIRO: 'Retiro',
+  ENTREGA_INSUMOS: 'Entrega de insumos',
+}
+
 export const MaintenanceType = {
   PREVENTIVO: 'PREVENTIVO',
   CORRECTIVO: 'CORRECTIVO',
@@ -159,4 +167,30 @@ export type EstadoCliente = (typeof EstadoCliente)[keyof typeof EstadoCliente]
 export const EstadoClienteLabels: Record<EstadoCliente, string> = {
   asignado: 'Asignado',
   sin_cliente: 'Sin cliente',
+}
+
+export const FieldRecordStatus = {
+  PENDIENTE: 'PENDIENTE',
+  VINCULADO: 'VINCULADO',
+  DESCARTADO: 'DESCARTADO',
+} as const
+export type FieldRecordStatus = (typeof FieldRecordStatus)[keyof typeof FieldRecordStatus]
+
+export const FieldRecordType = {
+  LECTURA: 'LECTURA',
+  ENTREGA_INSUMOS: 'ENTREGA_INSUMOS',
+  OTRO: 'OTRO',
+} as const
+export type FieldRecordType = (typeof FieldRecordType)[keyof typeof FieldRecordType]
+
+export const FieldRecordStatusLabels: Record<FieldRecordStatus, string> = {
+  PENDIENTE: 'Pendiente',
+  VINCULADO: 'Vinculado',
+  DESCARTADO: 'Descartado',
+}
+
+export const FieldRecordTypeLabels: Record<FieldRecordType, string> = {
+  LECTURA: 'Lectura',
+  ENTREGA_INSUMOS: 'Entrega de insumos',
+  OTRO: 'Otro',
 }

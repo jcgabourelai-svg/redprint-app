@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
@@ -201,7 +201,16 @@ export default function NewVisitPage() {
                       <EmptyState
                         icon="🏢"
                         text="No hay clientes con contrato activo que coincidan con la búsqueda"
-                      />
+                      >
+                        {hasPermission('operaciones.registros-campo') && busqueda.trim() !== '' && (
+                          <Link
+                            to="/registro-campo"
+                            className="text-sm font-semibold text-blue-600"
+                          >
+                            ¿El cliente no está en sistema? Registrar visita no catalogada →
+                          </Link>
+                        )}
+                      </EmptyState>
                     )}
                     {filtrados.map((c) => (
                       <Card

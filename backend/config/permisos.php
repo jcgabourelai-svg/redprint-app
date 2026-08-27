@@ -40,6 +40,7 @@ return [
     'operaciones' => [
         ['clave' => 'operaciones.calendario', 'etiqueta' => 'Calendario'],
         ['clave' => 'operaciones.lecturas', 'etiqueta' => 'Lecturas'],
+        ['clave' => 'operaciones.registros-campo', 'etiqueta' => 'Registros de campo'],
     ],
 
     'finanzas' => [

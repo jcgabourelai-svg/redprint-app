@@ -9,6 +9,7 @@ use App\Http\Controllers\CfdiController;
 use App\Http\Controllers\ContractController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\FieldRecordController;
 use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InventoryMovementController;
@@ -129,6 +130,15 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('readings', ReadingController::class)->only(['index', 'store', 'show']);
             Route::get('readings/visit/{visitId}', [ReadingController::class, 'getByVisit']);
             Route::get('readings/printer/{printerId}', [ReadingController::class, 'getByPrinter']);
+        });
+
+        // =====================================================
+        // Registros de campo (staging) + bandeja de regularización
+        // =====================================================
+        Route::middleware('permission:operaciones.registros-campo')->group(function () {
+            Route::apiResource('field-records', FieldRecordController::class)->only(['index', 'show', 'store']);
+            Route::post('field-records/{fieldRecord}/link', [FieldRecordController::class, 'link']);
+            Route::post('field-records/{fieldRecord}/discard', [FieldRecordController::class, 'discard']);
         });
 
         // =====================================================

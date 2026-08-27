@@ -88,9 +88,10 @@ export interface Socio {
   nombre: string
 }
 
-export function useSocios() {
+export function useSocios(enabled = true) {
   return useQuery<Socio[]>({
     queryKey: ['visits', 'socios'],
     queryFn: () => api.get('/visits/socios').then(r => r.data),
+    enabled,
   })
 }

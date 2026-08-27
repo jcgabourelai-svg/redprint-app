@@ -16,9 +16,15 @@ class ReadingService
         private VisitService $visitService
     ) {}
 
-    public function captureReading(array $data, User $creator): Reading
+    /**
+     * $creator es el socio que capturó la lectura (dueño del negocio);
+     * $creadoPor (opcional) es quien registró la fila — difiere cuando la
+     * lectura se regulariza desde un registro de campo: el socio es el
+     * operador de campo y el creador el admin que vinculó.
+     */
+    public function captureReading(array $data, User $creator, ?User $creadoPor = null): Reading
     {
-        return DB::transaction(function () use ($data, $creator) {
+        return DB::transaction(function () use ($data, $creator, $creadoPor) {
             $printer = Printer::findOrFail($data['impresora_id']);
             $previousReading = $this->getPreviousReading($printer->id, $data['contrato_id']);
             $pagesConsumed = $data['valor_contador'] - $previousReading;
@@ -30,7 +36,7 @@ class ReadingService
 
             $data['paginas_periodo'] = max(0, $pagesConsumed);
             $data['socio_id'] = $creator->id;
-            $data['creado_por'] = $creator->id;
+            $data['creado_por'] = ($creadoPor ?? $creator)->id;
             $data['es_anomalia'] = $isAnomaly;
             $data['fecha_creacion'] = now();
 

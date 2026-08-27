@@ -157,11 +157,13 @@ export default function PrinterDetailPage() {
   const captured = readings.some((r) => String(r.impresora_id) === printerId)
   const queued = queueItems.some(
     (i) =>
+      i.type === 'reading' &&
       i.estado === 'pendiente' &&
       `${i.payload.visita_id}:${i.payload.impresora_id}` === `${visit.id}:${printerId}`
   )
   const failed = queueItems.some(
     (i) =>
+      i.type === 'reading' &&
       i.estado === 'error' &&
       `${i.payload.visita_id}:${i.payload.impresora_id}` === `${visit.id}:${printerId}`
   )

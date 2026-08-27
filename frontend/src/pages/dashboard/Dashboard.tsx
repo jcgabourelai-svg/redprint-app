@@ -28,6 +28,7 @@ export default function Dashboard() {
   const tieneCalendario = useTienePermiso('operaciones.calendario')
   const tieneCompras = useTienePermiso('finanzas.compras')
   const tieneCuentasPagar = useTienePermiso('finanzas.cuentas-por-pagar')
+  const tieneRegistrosCampo = useTienePermiso('operaciones.registros-campo')
 
   if (isLoading) {
     return (
@@ -139,7 +140,7 @@ export default function Dashboard() {
   const showRow2 = (tieneFacturas && series) || tieneImpresoras
   const showRow3 = tieneFlujoCaja || tieneRentabilidad
   const showRow4 = tieneFacturas || tieneCalendario
-  const showRow5 = tieneArticulos || tieneCuentasPagar || tieneMantenimiento
+  const showRow5 = tieneArticulos || tieneCuentasPagar || tieneMantenimiento || tieneRegistrosCampo
 
   return (
     <PageLayout title="Dashboard" showSearch>
@@ -235,6 +236,19 @@ export default function Dashboard() {
                 }
                 action="Ver mantenimientos"
                 onActionClick={() => navigate('/inventario/mantenimiento')}
+              />
+            )}
+            {tieneRegistrosCampo && (
+              <AlertCard
+                type={(kpis?.registros_campo_pendientes ?? 0) > 0 ? 'warning' : 'success'}
+                title="Registros de campo"
+                message={
+                  (kpis?.registros_campo_pendientes ?? 0) > 0
+                    ? `${kpis?.registros_campo_pendientes} registro(s) capturado(s) en campo pendiente(s) de regularizar`
+                    : 'Sin registros de campo pendientes'
+                }
+                action="Ver bandeja"
+                onActionClick={() => navigate('/operaciones/registros-campo')}
               />
             )}
           </div>

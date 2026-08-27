@@ -13,6 +13,7 @@ import CaptureReadingPage from './pages/CaptureReadingPage'
 import InstallationPage from './pages/InstallationPage'
 import RemovalPage from './pages/RemovalPage'
 import NewVisitPage from './pages/NewVisitPage'
+import NewFieldRecordPage from './pages/NewFieldRecordPage'
 import DeliveryPage from './pages/DeliveryPage'
 import ReportFailurePage from './pages/ReportFailurePage'
 import NotificationsPage from './pages/NotificationsPage'
@@ -63,6 +64,8 @@ export default function App() {
               <Route path="calendario" element={<Navigate to="/" replace />} />
               {/* Ruta estática antes de visita/:id para que "nueva" no se capture como id */}
               <Route path="visita/nueva" element={<NewVisitPage />} />
+              {/* Igual: registro de campo es estático y vive fuera de visita/:id */}
+              <Route path="registro-campo" element={<NewFieldRecordPage />} />
               <Route path="visita/:id" element={<VisitDetailPage />} />
               <Route path="visita/:id/impresora/:printerId" element={<PrinterDetailPage />} />
               <Route path="visita/:id/captura/:printerId" element={<CaptureReadingPage />} />

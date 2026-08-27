@@ -8,6 +8,7 @@ use App\Enums\PrinterStatus;
 use App\Enums\PurchaseStatus;
 use App\Enums\VisitStatus;
 use App\Models\Article;
+use App\Models\FieldRecord;
 use App\Models\Invoice;
 use App\Models\MaintenanceOrder;
 use App\Models\Printer;
@@ -102,6 +103,8 @@ class DashboardController extends Controller
             ->whereBetween('fecha_vto_pago', [now(), now()->addDays(7)])
             ->count();
 
+        $fieldRecordsPendientes = FieldRecord::where('estado', \App\Enums\FieldRecordStatus::PENDIENTE)->count();
+
         $mesActual = now()->format('Y-m');
         $flujoCaja6m = Cache::remember(
             "dashboard.flujo_caja.6",
@@ -138,6 +141,7 @@ class DashboardController extends Controller
                 'impresoras_en_mantenimiento' => $printersInMaintenance,
                 'compras_vencidas' => $pendingPurchasesOverdue,
                 'compras_por_vencer' => $pendingPurchasesDueSoon,
+                'registros_campo_pendientes' => $fieldRecordsPendientes,
             ],
             'impresoras_por_estado' => $printersByStatus,
             'series' => [

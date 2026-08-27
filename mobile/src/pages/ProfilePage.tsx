@@ -15,6 +15,12 @@ export default function ProfilePage() {
 
   const pending = items.filter((i) => i.estado === 'pendiente').length
   const errors = items.filter((i) => i.estado === 'error').length
+  const lecturasPendientes = items.filter(
+    (i) => i.type === 'reading' && i.estado === 'pendiente'
+  ).length
+  const registrosCampoPendientes = items.filter(
+    (i) => i.type === 'field_record' && i.estado === 'pendiente'
+  ).length
 
   async function handleLogout() {
     setLoggingOut(true)
@@ -41,7 +47,8 @@ export default function ProfilePage() {
           <Card className="mb-6">
             <p className="text-sm font-semibold text-gray-800">Sincronización</p>
             <p className="mt-1 text-xs text-gray-500">
-              {pending} lectura(s) pendiente(s) · {errors} con error
+              {lecturasPendientes} lectura(s) · {registrosCampoPendientes} registro(s) de campo ·{' '}
+              {pending} pendiente(s) en total · {errors} con error
             </p>
           </Card>
         )}

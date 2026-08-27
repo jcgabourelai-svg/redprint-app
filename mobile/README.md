@@ -68,7 +68,17 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
   (`valor_contador < lectura_anterior` exige justificación), foto del contador
   comprimida vía canvas (JPEG ≤1280px q0.7, data-URI en `foto_evidencia`),
   GPS opcional, respuesta con `paginas_consumidas` + `monto_estimado`
-- **Notificaciones** y **perfil** (logout, permisos)
+- **Registro de campo** (`/registro-campo`, permiso `operaciones.registros-campo`):
+  captura de una **visita no catalogada** (cliente o impresora fuera de sistema).
+  Tipo (contador / entrega de insumos / otro), nombre del lugar, dirección,
+  marca/modelo/serie en texto libre, contador, filas de insumos (texto libre),
+  notas, foto de evidencia y GPS opcional. **Offline desde el MVP**: siempre
+  pasa por la cola del `SyncManager` (un solo code path online/offline).
+  Entradas: CTA "¿El cliente no está en sistema?" en el `EmptyState` de Nueva
+  visita cuando la búsqueda no arroja resultados, y botón "📋 Registro" en el
+  encabezado de la pantalla de visitas.
+- **Notificaciones** y **perfil** (logout, permisos, conteo de la cola: lecturas
+  y registros de campo pendientes)
 
 ### Comportamientos del backend a tener en cuenta
 
@@ -85,26 +95,36 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
 - `GET /visits` es paginado (default 15): la app siempre manda `per_page=100`
   y pagina vía helper `fetchAll`.
 
-## Cola offline (solo captura de lecturas)
+## Cola offline (capturas de campo: lecturas y registros)
 
 - IndexedDB `redprint_mobile` → store `sync_queue`; los items se sincronizan
   FIFO secuencialmente al montar la app, al volver la conexión y con el botón
-  manual del indicador (⟳).
+  manual del indicador (⟳). Cada item tiene `type` y el `SyncManager` hace
+  dispatch al endpoint correspondiente: `reading → POST /readings`,
+  `field_record → POST /field-records`.
 - Clasificación de errores: **error de red** → se mantiene y reintenta;
   **4xx del servidor** (p. ej. la 422 de anomalía sin justificación) → se marca
   `error` permanente, visible y descartable/reintentable desde el indicador.
-- Dedup client-side por `(visita_id, impresora_id)` en tres estados: en cola,
-  sincronizada (viene en `visit.readings`) y con error. La captura duplicada
-  queda bloqueada con estado visible.
+- Dedup de lecturas client-side por `(visita_id, impresora_id)` en tres estados:
+  en cola, sincronizada (viene en `visit.readings`) y con error. La captura
+  duplicada queda bloqueada con estado visible.
+- Dedup de registros de campo **server-side** por `client_uuid` (idempotente):
+  un reintento tras timeout ambiguo no duplica la fila (la respuesta 200
+  devuelve el registro existente).
 
 ### Limitaciones conocidas (aceptadas para el prototipo)
 
-- El backend **no tiene unicidad** por (visita, impresora): un sync duplicado
-  crearía una lectura doble. El único guard es el client-side.
-- No hay service worker: sin conexión solo funciona la captura de lecturas
-  (no la navegación por páginas no visitadas).
+- El backend **no tiene unicidad** por (visita, impresora) en lecturas: un sync
+  duplicado crearía una lectura doble. El único guard es el client-side (los
+  registros de campo sí tienen dedup server-side por `client_uuid`).
+- No hay service worker: sin conexión solo funcionan las capturas (lecturas y
+  registros de campo), no la navegación por páginas no visitadas.
 - Entregas, reporte de fallas e instalación/retiro requieren conexión
-  (operaciones online-only); la cola offline sigue siendo solo para lecturas.
+  (operaciones online-only).
+- La **regularización de registros de campo es web-only**: vincular el registro
+  a cliente/contrato/impresora reales (o descartarlo) se hace desde la bandeja
+  web "Operaciones › Registros de campo"; el móvil no crea clientes, contratos
+  ni impresoras.
 - El reporte de fallas no adjunta foto: `maintenance_orders` no tiene columna
   de evidencia en la API (la descripción del problema es el registro).
 - La sesión depende de cookies de Sanctum: para probar desde el teléfono vía
@@ -120,8 +140,8 @@ mobile/
 └── src/
     ├── lib/
     │   ├── api.ts          # axios /api/v1 + CSRF + 401 → /m/login (patrón del frontend)
-    │   ├── db.ts           # wrapper IndexedDB mínimo (sin dependencias)
-    │   ├── sync.ts         # gestor de sincronización + cola offline
+    │   ├── db.ts           # wrapper IndexedDB mínimo (items: reading | field_record)
+    │   ├── sync.ts         # gestor de sincronización + cola offline (dispatch por tipo)
     │   ├── photo.ts        # compresión canvas JPEG data-URI
     │   └── format.ts       # fechas/números es-MX
     ├── types/api.ts        # tipos snake_case 1:1 con los Resources del backend
@@ -129,5 +149,5 @@ mobile/
     ├── components/         # Layout (nav inferior), SyncIndicator, Toast, ui
     └── pages/              # Login, Hoy, Calendario, VisitDetail, CaptureReading,
                             # Installation, Removal, Delivery, ReportFailure,
-                            # NewVisit, Notifications, Profile
+                            # NewVisit, NewFieldRecord, Notifications, Profile
 ```

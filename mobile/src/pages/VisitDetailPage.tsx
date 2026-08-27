@@ -8,6 +8,7 @@ import api, { apiErrorMessage } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
 import { formatDateLong, formatDateTime, formatMoney, formatNumber } from '../lib/format'
 import type { Visit } from '../types/api'
+import type { ReadingQueueItem } from '../lib/db'
 import {
   Banner,
   Badge,
@@ -155,12 +156,16 @@ export default function VisitDetailPage() {
   const capturedIds = new Set(readings.map((r) => String(r.impresora_id)))
   const queuedKeys = new Set(
     queueItems
-      .filter((i) => i.estado === 'pendiente')
+      .filter(
+        (i): i is ReadingQueueItem => i.type === 'reading' && i.estado === 'pendiente'
+      )
       .map((i) => `${i.payload.visita_id}:${i.payload.impresora_id}`)
   )
   const errorKeys = new Set(
     queueItems
-      .filter((i) => i.estado === 'error')
+      .filter(
+        (i): i is ReadingQueueItem => i.type === 'reading' && i.estado === 'error'
+      )
       .map((i) => `${i.payload.visita_id}:${i.payload.impresora_id}`)
   )
   const progress =

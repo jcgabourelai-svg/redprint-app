@@ -1,7 +1,7 @@
 import axios from 'axios'
 import api, { apiErrorMessage, isNetworkError } from './api'
 import { deleteItem, getAllQueue, putItem } from './db'
-import type { QueueItem, ReadingPayload } from './db'
+import type { QueueItem, ReadingPayload, FieldRecordPayload } from './db'
 
 export const SYNC_DONE_EVENT = 'redprint:sync-done'
 
@@ -69,6 +69,19 @@ export const SyncManager = {
     void this.sync()
   },
 
+  async enqueueFieldRecord(payload: FieldRecordPayload): Promise<void> {
+    const item: QueueItem = {
+      id: uuid(),
+      type: 'field_record',
+      payload,
+      created_at: new Date().toISOString(),
+      estado: 'pendiente',
+    }
+    await putItem(item)
+    await refresh()
+    void this.sync()
+  },
+
   async discard(id: string): Promise<void> {
     await deleteItem(id)
     await refresh()
@@ -101,7 +114,13 @@ export const SyncManager = {
         const item = items.find((i) => i.estado === 'pendiente')
         if (!item) break
         try {
-          await api.post('/readings', item.payload)
+          // Dispatch por tipo de item: cada entidad tiene su endpoint.
+          // El dedup de field_record lo hace el server por client_uuid.
+          if (item.type === 'reading') {
+            await api.post('/readings', item.payload)
+          } else {
+            await api.post('/field-records', item.payload)
+          }
           await deleteItem(item.id)
         } catch (err) {
           if (isNetworkError(err)) break

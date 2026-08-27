@@ -10,16 +10,47 @@ export interface ReadingPayload {
   ubicacion_lng?: number | null
 }
 
+/** Registro de campo (staging): datos crudos + evidencia de una visita
+ *  no catalogada. Se regulariza desde la bandeja web, nunca desde el móvil. */
+export interface FieldRecordPayload {
+  tipo: 'LECTURA' | 'ENTREGA_INSUMOS' | 'OTRO'
+  nombre_cliente_reportado: string
+  direccion_reportada?: string | null
+  marca_reportada?: string | null
+  modelo_reportada?: string | null
+  num_serie_reportado?: string | null
+  valor_contador?: number | null
+  articulos_entregados?: { descripcion: string; cantidad: number }[] | null
+  notas?: string | null
+  foto_evidencia?: string | null
+  ubicacion_lat?: number | null
+  ubicacion_lng?: number | null
+  capturado_en: string
+  client_uuid: string
+}
+
 export type QueueEstado = 'pendiente' | 'error'
 
-export interface QueueItem {
-  id: string
-  type: 'reading'
-  payload: ReadingPayload
-  created_at: string
-  estado: QueueEstado
-  error_msg?: string
-}
+export type ReadingQueueItem = Extract<QueueItem, { type: 'reading' }>
+export type FieldRecordQueueItem = Extract<QueueItem, { type: 'field_record' }>
+
+export type QueueItem =
+  | {
+      id: string
+      type: 'reading'
+      payload: ReadingPayload
+      created_at: string
+      estado: QueueEstado
+      error_msg?: string
+    }
+  | {
+      id: string
+      type: 'field_record'
+      payload: FieldRecordPayload
+      created_at: string
+      estado: QueueEstado
+      error_msg?: string
+    }
 
 const DB_NAME = 'redprint_mobile'
 const DB_VERSION = 1

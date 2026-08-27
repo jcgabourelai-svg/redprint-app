@@ -59,9 +59,9 @@ function ErrorPanel({ items, onClose }: { items: QueueItem[]; onClose: () => voi
         onClick={(e) => e.stopPropagation()}
       >
         <div className="border-b border-gray-100 px-4 py-3">
-          <h2 className="text-base font-bold text-gray-800">Lecturas con error</h2>
+          <h2 className="text-base font-bold text-gray-800">Envíos con error</h2>
           <p className="mt-0.5 text-xs text-gray-500">
-            El servidor rechazó estas lecturas. Revísalas, reinténtalas o descártalas.
+            El servidor rechazó estos elementos. Revísalos, reíntentalos o descártalos.
           </p>
         </div>
         <ul className="max-h-72 divide-y divide-gray-100 overflow-y-auto">
@@ -69,7 +69,9 @@ function ErrorPanel({ items, onClose }: { items: QueueItem[]; onClose: () => voi
             <li key={item.id} className="px-4 py-3">
               <div className="mb-1 flex items-center justify-between gap-2">
                 <span className="text-sm font-semibold text-gray-800">
-                  Impresora #{item.payload.impresora_id} · Visita #{item.payload.visita_id}
+                  {item.type === 'reading'
+                    ? `Impresora #${item.payload.impresora_id} · Visita #${item.payload.visita_id}`
+                    : `Registro de campo · ${item.payload.nombre_cliente_reportado}`}
                 </span>
                 <span className="text-[11px] text-gray-400">
                   {formatDateTime(item.created_at)}
@@ -77,10 +79,13 @@ function ErrorPanel({ items, onClose }: { items: QueueItem[]; onClose: () => voi
               </div>
               <p className="mb-2 text-xs text-red-600">{item.error_msg ?? 'Error desconocido'}</p>
               <p className="mb-2 text-xs text-gray-500">
-                Contador: {item.payload.valor_contador}
-                {item.payload.justificacion_anomalia
-                  ? ` · Justificación: ${item.payload.justificacion_anomalia}`
-                  : ''}
+                {item.type === 'reading'
+                  ? `Contador: ${item.payload.valor_contador}${
+                      item.payload.justificacion_anomalia
+                        ? ` · Justificación: ${item.payload.justificacion_anomalia}`
+                        : ''
+                    }`
+                  : `Tipo: ${item.payload.tipo}`}
               </p>
               <div className="flex gap-2">
                 <Button

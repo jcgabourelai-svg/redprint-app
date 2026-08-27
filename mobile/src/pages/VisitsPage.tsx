@@ -161,13 +161,24 @@ export default function VisitsPage() {
               Mes
             </Chip>
           </div>
-          <Link
-            to="/visita/nueva"
-            aria-label="Nueva visita"
-            className="shrink-0 rounded-full bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white active:bg-blue-600"
-          >
-            + Visita
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            {hasPermission('operaciones.registros-campo') && (
+              <Link
+                to="/registro-campo"
+                aria-label="Registro de campo"
+                className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600 active:bg-gray-200"
+              >
+                📋 Registro
+              </Link>
+            )}
+            <Link
+              to="/visita/nueva"
+              aria-label="Nueva visita"
+              className="shrink-0 rounded-full bg-blue-500 px-3 py-1.5 text-xs font-semibold text-white active:bg-blue-600"
+            >
+              + Visita
+            </Link>
+          </div>
         </div>
 
         {filter === 'mes' && (

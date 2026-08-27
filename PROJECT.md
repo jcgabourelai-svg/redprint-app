@@ -240,6 +240,8 @@ erDiagram
     BankMovement }o--o| Payment : "concilia (o SupplierPayment)"
     User }o--|| Role : "rol_id (RBAC)"
     Role }o--o{ Permission : "permission_role"
+    User ||--o{ FieldRecord : "captura en campo (staging)"
+    FieldRecord o|--o| Visit : "se regulariza en (vinculación opcional)"
 ```
 
 ### Entidades que debes dominar para opinar
@@ -255,6 +257,7 @@ erDiagram
 | **XmlComprobante** | CFDI importado del SAT | Match de cliente por RFC exacto (nunca crea clientes); auto-enlace por serie+folio |
 | **PeriodClose** | Cierre mensual | Snapshot de KPIs + 3 validaciones; **no bloquea escritura** del periodo |
 | **PrinterHistory** | Bitácora inmutable | Toda transición de estado de impresora deja evento |
+| **FieldRecord** | Registro de campo (staging): visita no catalogada (cliente/impresora fuera de sistema) con datos crudos + evidencia (foto/GPS/`capturado_en`) | Capturar ≠ registrar: se regulariza desde la bandeja web (visita + lectura + entregas en una transacción); VINCULADO/DESCARTADO son **inmutables**; dedup idempotente por `client_uuid`; la salida de stock nace solo al vincular |
 
 ### Glosario mínimo (español del dominio)
 
@@ -395,12 +398,13 @@ propuesto contradice una decisión consciente (malo) o corrige una omisión (bue
 | D6 | **Doble validación de anomalías (cliente + servidor)** | El móvil puede tener `lectura_anterior` desactualizada | El servidor sigue siendo árbitro |
 | D7 | **Baja ≠ eliminación de impresora** | Conservar historia fiscal/operativa | Eliminar es operación excepcional con guard `esEliminable()` |
 | D8 | **Scheduler rolling de 1 mes, idempotente** | Evitar regeneración masiva/duplicada; guard anticopia por (contrato, cliente, fecha) | Cambios de frecuencia/horizonte deben razonar sobre idempotencia |
-| D9 | **RBAC por permiso granular (19 claves / 6 módulos)** | Menú y API comparten catálogo | Nueva feature ⇒ decidir permiso nuevo o reutilizar |
+| D9 | **RBAC por permiso granular (20 claves / 6 módulos)** | Menú y API comparten catálogo | Nueva feature ⇒ decidir permiso nuevo o reutilizar |
 | D10 | **UI 100% español (México), formatos es-MX/MXN** | Usuarios finales mexicanos | No introducir textos en inglés ni formatos gringos |
 | D11 | **Auth Sanctum por cookie same-origin** | Simplifica web+móvil bajo un dominio | Rompe si se separan dominios de API y SPA (hoy aceptado) |
 | D12 | **Estados calculados de CFDI en vez de columnas** | Menos sincronización manual | Evaluar si escala (filtros/contadores derivan de relaciones) |
 | D13 | **Cierre de periodo como snapshot informativo** | Cerrar rápido, sin bloquear operación | Pregunta abierta: ¿debería congelar? (ver §11.2) |
 | D14 | **Build de frontends que vacía `dist` sin borrar la carpeta** | Bind mount de nginx en Windows/OneDrive se rompe si cambia el inodo | No cambiar por `rm -rf dist` (detalles en AGENTS.md) |
+| D15 | **Registros de campo: staging móvil + regularización web diferida** | El contrato toca dinero y la impresora toca catálogo: no se dan de alta desde el móvil (extiende D4/D5). El hecho físico se captura como evidencia cruda y un admin la vincula a entidades reales en una sola transacción | Al vincular, instalación implícita con `lectura_inicial = contador capturado` (línea base, no se cobra histórico previo) y la salida de stock (kardex) nace solo ahí; los registros vinculados/descartados son inmutables |
 
 ---
 
@@ -477,7 +481,12 @@ para detectar sugerencias de "terminar lo empezado" (suelen ser de alto valor).
 
 - **Sin unicidad server-side por (visita, impresora) en lecturas**: un sync duplicado
   (reintento tras timeout ambiguo) puede crear lectura doble; la dedup es solo client-side.
-- Offline solo lecturas; sin service worker/PWA (la navegación offline no funciona).
+  Los **registros de campo SÍ resuelven este hueco**: dedup idempotente server-side por
+  `client_uuid` (`FieldRecordService::create`).
+- Offline: lecturas y registros de campo (ambos por la cola del `SyncManager`); sin service
+  worker/PWA (la navegación offline no funciona).
+- La **regularización de registros de campo es web-only**: el móvil solo captura; vincular a
+  cliente/contrato/impresora y descartar viven en "Operaciones › Registros de campo".
 - Completar la orden correctiva queda solo en el panel web (el móvil solo la crea).
 - `tipo_visita` es motivo, no restricción: todas las acciones están disponibles en cualquier
   visita editable.
@@ -653,7 +662,8 @@ rg -n "users.rol|->rol\b" backend/app/Services              # usos de columna le
 | Scheduler rolling | `backend/app/Services/VisitSchedulerService.php`, `backend/routes/console.php` |
 | OMITIDA vs CANCELADA | `VisitService` + `VisitSchedulerService` (guard anticopia) |
 | Cola offline móvil | `mobile/src/lib/sync.ts`, `lib/db.ts`, README de `mobile/` |
-| Catálogo de permisos | `backend/config/permisos.php` (19 claves / 6 módulos) |
+| Catálogo de permisos | `backend/config/permisos.php` (20 claves / 6 módulos) |
+| Registros de campo (staging + bandeja) | `backend/app/Services/FieldRecordService.php`, bandeja `frontend/src/pages/operations/fieldrecords/`, captura `mobile/src/pages/NewFieldRecordPage.tsx` |
 | Mocks del frontend | §10 + grep `mock` en `frontend/src/pages/finance`, `components/layout/Header.tsx` |
 | Bug legacy `users.rol` | `backend/app/Services/InventoryService.php::generateLowStockNotification` |
 | Resumen de cierre por `tipo` | `backend/app/Http/Controllers/PeriodController.php` |

@@ -44,6 +44,7 @@ export interface DashboardKpis {
   impresoras_en_mantenimiento: number
   compras_vencidas: number
   compras_por_vencer: number
+  registros_campo_pendientes: number
 }
 
 export type PrinterEstado = 'RENTADA' | 'EN_ALMACEN' | 'EN_MANTENIMIENTO' | 'DADA_DE_BAJA'

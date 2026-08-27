@@ -16,6 +16,7 @@ import {
   ArrowLeftRight,
   FileCheck2,
   HelpCircle,
+  ClipboardList,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -76,6 +77,7 @@ export const navItems: NavItem[] = [
     children: [
       { id: 'calendario', label: 'Visitas', icon: Calendar, path: '/operaciones/visitas', permiso: 'operaciones.calendario' },
       { id: 'lecturas', label: 'Lecturas', icon: FileText, path: '/operaciones/lecturas', permiso: 'operaciones.lecturas' },
+      { id: 'registros-campo', label: 'Registros de campo', icon: ClipboardList, path: '/operaciones/registros-campo', permiso: 'operaciones.registros-campo' },
     ],
   },
   {

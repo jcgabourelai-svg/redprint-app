@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             SupplierPaymentSeeder::class,
             PrinterExpenseSeeder::class,
             BankAccountSeeder::class,
+            FieldRecordSeeder::class,
         ]);
     }
 }

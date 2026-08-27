@@ -10,7 +10,7 @@ import api, { apiErrorMessage, isNetworkError } from '../lib/api'
 import { SyncManager } from '../lib/sync'
 import { compressImage } from '../lib/photo'
 import { formatMoney, formatNumber, todayISO } from '../lib/format'
-import type { ReadingPayload } from '../lib/db'
+import type { ReadingPayload, ReadingQueueItem } from '../lib/db'
 import type { StoreReadingResponse, Visit } from '../types/api'
 import {
   Banner,
@@ -86,7 +86,10 @@ export default function CaptureReadingPage() {
   const queueItem = useMemo(
     () =>
       queueItems.find(
-        (i) => i.payload.visita_id === visitId && String(i.payload.impresora_id) === printerId
+        (i): i is ReadingQueueItem =>
+          i.type === 'reading' &&
+          i.payload.visita_id === visitId &&
+          String(i.payload.impresora_id) === printerId
       ) ?? null,
     [queueItems, visitId, printerId]
   )
