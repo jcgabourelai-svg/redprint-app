@@ -63,6 +63,7 @@ export interface MaintenanceOrder {
   desc_problema: string | null
   tipo_problema: TipoProblema | null
   severidad: Severidad | null
+  foto_evidencia: string | null
   trabajo_realizado: string | null
   estado: string | null
   visita_id: number | null

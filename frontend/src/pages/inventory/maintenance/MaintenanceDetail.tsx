@@ -226,6 +226,18 @@ export default function MaintenanceDetail() {
                     <p className="text-sm font-medium text-muted-foreground">Descripción</p>
                     <p className="text-foreground">{orderData.desc_problema || '-'}</p>
                   </div>
+                  {orderData.foto_evidencia && (
+                    <div className="sm:col-span-2">
+                      <p className="text-sm font-medium text-muted-foreground">Evidencia fotográfica</p>
+                      <a href={orderData.foto_evidencia} target="_blank" rel="noopener noreferrer">
+                        <img
+                          src={orderData.foto_evidencia}
+                          alt="Foto de evidencia de la falla"
+                          className="mt-2 max-h-64 rounded-lg border border-border object-cover"
+                        />
+                      </a>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>

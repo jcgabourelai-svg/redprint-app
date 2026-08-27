@@ -90,6 +90,27 @@ class MaintenanceProblemFieldsTest extends TestCase
         ]);
     }
 
+    public function test_store_con_foto_evidencia_lo_persiste_y_expone(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $printer = $this->createPrinter($admin);
+
+        $foto = 'data:image/jpeg;base64,' . str_repeat('A', 5000);
+
+        $response = $this->postJson('/api/v1/maintenance-orders', $this->orderPayload($printer, [
+            'foto_evidencia' => $foto,
+        ]));
+
+        $response->assertCreated()
+            ->assertJsonPath('foto_evidencia', $foto);
+
+        $this->assertDatabaseHas('maintenance_orders', [
+            'id' => $response->json('id'),
+            'foto_evidencia' => $foto,
+        ]);
+    }
+
     public function test_store_correctivo_sigue_enviando_impresora_a_mantenimiento(): void
     {
         $admin = $this->adminUser();

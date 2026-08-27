@@ -18,6 +18,7 @@ class MaintenanceOrderResource extends JsonResource
             'desc_problema' => $this->desc_problema,
             'tipo_problema' => $this->tipo_problema?->value ?? null,
             'severidad' => $this->severidad?->value ?? null,
+            'foto_evidencia' => $this->foto_evidencia,
             'trabajo_realizado' => $this->trabajo_realizado,
             'costo_mano_obra' => $this->costo_mano_obra,
             'costo_total' => $this->costo_total,

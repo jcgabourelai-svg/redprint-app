@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
+import { compressImage } from '../lib/photo'
 import { formatNumber, todayISO } from '../lib/format'
 import type { Severidad, TipoProblema, Visit } from '../types/api'
 import {
@@ -75,6 +77,8 @@ export default function ReportFailurePage() {
   const [tipoProblema, setTipoProblema] = useState<TipoProblema | null>(null)
   const [severidad, setSeveridad] = useState<Severidad | null>(null)
   const [descProblema, setDescProblema] = useState('')
+  const [photo, setPhoto] = useState<string | null>(null)
+  const [photoBusy, setPhotoBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -113,6 +117,21 @@ export default function ReportFailurePage() {
     online &&
     !submitting
 
+  async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoBusy(true)
+    try {
+      const dataUri = await compressImage(file)
+      setPhoto(dataUri)
+    } catch {
+      toast.error('No se pudo procesar la foto')
+    } finally {
+      setPhotoBusy(false)
+    }
+  }
+
   async function handleSubmit() {
     if (!canSubmit || printerId === null || tipoProblema === null || severidad === null) return
     setSubmitting(true)
@@ -125,6 +144,7 @@ export default function ReportFailurePage() {
         desc_problema: descProblema.trim(),
         tipo_problema: tipoProblema,
         severidad: severidad,
+        foto_evidencia: photo,
         visita_id: visitId,
       })
       toast.success('Falla reportada: orden correctiva creada')
@@ -292,6 +312,43 @@ export default function ReportFailurePage() {
                       onChange={(e) => setDescProblema(e.target.value)}
                     />
                   </Field>
+                </div>
+
+                <div className="mt-4">
+                  {photo ? (
+                    <div>
+                      <img
+                        src={photo}
+                        alt="Foto de la falla"
+                        className="max-h-48 w-full rounded-xl object-cover"
+                      />
+                      <button
+                        onClick={() => setPhoto(null)}
+                        className="mt-2 text-xs font-semibold text-red-600"
+                      >
+                        Quitar foto
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        id="foto-falla"
+                        onChange={(e) => void handlePhoto(e)}
+                      />
+                      <Button
+                        variant="secondary"
+                        block
+                        loading={photoBusy}
+                        onClick={() => document.getElementById('foto-falla')?.click()}
+                      >
+                        📷 Adjuntar foto (opcional)
+                      </Button>
+                    </>
+                  )}
                 </div>
               </>
             )}

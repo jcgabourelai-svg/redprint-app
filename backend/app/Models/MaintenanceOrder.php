@@ -25,6 +25,7 @@ class MaintenanceOrder extends Model
         'desc_problema',
         'tipo_problema',
         'severidad',
+        'foto_evidencia',
         'trabajo_realizado',
         'costo_mano_obra',
         'costo_total',

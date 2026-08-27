@@ -20,6 +20,7 @@ class StoreMaintenanceOrderRequest extends FormRequest
             'desc_problema' => 'nullable|string',
             'tipo_problema' => 'nullable|in:NO_IMPRIME,CALIDAD_DEFICIENTE,ATASCOS,ERROR_PANTALLA,OTRO',
             'severidad' => 'nullable|in:BAJA,MEDIA,ALTA,CRITICA',
+            'foto_evidencia' => 'nullable|string',
             'trabajo_realizado' => 'nullable|string',
             'costo_mano_obra' => 'nullable|numeric|min:0',
             'visita_id' => 'nullable|exists:visits,id',
