@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
@@ -62,7 +63,7 @@ const severidadTone: Record<string, 'emerald' | 'amber' | 'red'> = {
 export default function ReportFailurePage() {
   const { id } = useParams()
   const visitId = Number(id)
-  const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const [searchParams] = useSearchParams()
   const { hasPermission } = useAuth()
   const toast = useToast()
@@ -148,7 +149,7 @@ export default function ReportFailurePage() {
         visita_id: visitId,
       })
       toast.success('Falla reportada: orden correctiva creada')
-      navigate(`/visita/${visitId}`)
+      goBackTo(`/visita/${visitId}`, 2)
     } catch (e) {
       setSubmitError(apiErrorMessage(e))
     } finally {
@@ -157,10 +158,15 @@ export default function ReportFailurePage() {
   }
 
   const title = visit ? (visit.cliente_nombre ?? 'Reportar falla') : 'Reportar falla'
+  const printerParam = searchParams.get('impresora')
+  const goBack = () =>
+    goBackTo(
+      printerParam ? `/visita/${visitId}/impresora/${printerParam}` : `/visita/${visitId}`
+    )
 
   return (
     <div>
-      <PageHeader title={title} onBack={() => navigate(`/visita/${visitId}`)} />
+      <PageHeader title={title} onBack={goBack} />
       <Page>
         {!canReport && (
           <Banner tone="error">

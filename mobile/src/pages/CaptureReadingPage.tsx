@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useSyncQueue } from '../hooks/useSyncQueue'
 import { useToast } from '../components/Toast'
@@ -29,7 +30,7 @@ import {
 export default function CaptureReadingPage() {
   const { id, printerId } = useParams()
   const visitId = Number(id)
-  const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const online = useOnline()
@@ -143,7 +144,7 @@ export default function CaptureReadingPage() {
   async function enqueueOffline(payload: ReadingPayload) {
     await SyncManager.enqueueReading(payload)
     toast.info('Guardada localmente, pendiente de sincronizar')
-    navigate(`/visita/${visitId}`)
+    goBackTo(`/visita/${visitId}`, 2)
   }
 
   async function handleSubmit() {
@@ -186,7 +187,7 @@ export default function CaptureReadingPage() {
   if (loading) {
     return (
       <div>
-        <PageHeader title="Lectura" onBack={() => navigate(-1)} />
+        <PageHeader title="Lectura" onBack={() => goBackTo(`/visita/${visitId}/impresora/${printerId}`)} />
         <Page>
           <SkeletonCard />
           <SkeletonCard />
@@ -198,7 +199,7 @@ export default function CaptureReadingPage() {
   if (error || !visit) {
     return (
       <div>
-        <PageHeader title="Lectura" onBack={() => navigate(-1)} />
+        <PageHeader title="Lectura" onBack={() => goBackTo(`/visita/${visitId}/impresora/${printerId}`)} />
         <Page>
           <Banner tone="error">{error ?? 'No se pudo cargar la visita'}</Banner>
         </Page>
@@ -209,7 +210,7 @@ export default function CaptureReadingPage() {
   if (!printer) {
     return (
       <div>
-        <PageHeader title="Lectura" onBack={() => navigate(-1)} />
+        <PageHeader title="Lectura" onBack={() => goBackTo(`/visita/${visitId}/impresora/${printerId}`)} />
         <Page>
           <EmptyState icon="🖨️" text="La impresora no pertenece al contrato de esta visita" />
         </Page>
@@ -217,7 +218,8 @@ export default function CaptureReadingPage() {
     )
   }
 
-  const backToVisit = () => navigate(`/visita/${visitId}`)
+  const backToVisit = () => goBackTo(`/visita/${visitId}`, 2)
+  const backToPrinter = () => goBackTo(`/visita/${visitId}/impresora/${printerId}`)
 
   if (result) {
     return (
@@ -340,7 +342,7 @@ export default function CaptureReadingPage() {
 
   return (
     <div>
-      <PageHeader title={`${printer.marca} ${printer.modelo}`} onBack={backToVisit} />
+      <PageHeader title={`${printer.marca} ${printer.modelo}`} onBack={backToPrinter} />
       <Page>
         {!online && (
           <div className="mb-4">

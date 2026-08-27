@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import api, { apiErrorMessage } from '../lib/api'
 import { todayISO } from '../lib/format'
@@ -29,6 +30,7 @@ const TIPO_VISITA_OPCIONES: { value: TipoVisita; label: string; requiereContrato
 
 export default function NewVisitPage() {
   const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { user, hasPermission } = useAuth()
   const online = useOnline()
 
@@ -111,9 +113,9 @@ export default function NewVisitPage() {
       })
       const creado = res.data?.id ?? (res.data as unknown as { data?: Visit })?.data?.id
       if (creado) {
-        navigate(`/visita/${creado}`)
+        navigate(`/visita/${creado}`, { replace: true })
       } else {
-        navigate('/')
+        navigate('/', { replace: true })
       }
     } catch (e) {
       setSubmitError(apiErrorMessage(e))
@@ -124,7 +126,7 @@ export default function NewVisitPage() {
 
   return (
     <div>
-      <PageHeader title="Nueva visita" onBack={() => navigate(-1)} />
+      <PageHeader title="Nueva visita" onBack={() => goBackTo('/')} />
       <Page>
         {!canCreate && (
           <Banner tone="error">

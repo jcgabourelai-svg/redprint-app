@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useSyncQueue } from '../hooks/useSyncQueue'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
@@ -37,6 +38,7 @@ export default function VisitDetailPage() {
   const { id } = useParams()
   const visitId = Number(id)
   const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const { items: queueItems } = useSyncQueue()
@@ -121,7 +123,7 @@ export default function VisitDetailPage() {
   if (loading && visit === null) {
     return (
       <div>
-        <PageHeader title="Visita" onBack={() => navigate(-1)} />
+        <PageHeader title="Visita" onBack={() => goBackTo('/')} />
         <Page>
           <SkeletonCard />
           <SkeletonCard />
@@ -133,7 +135,7 @@ export default function VisitDetailPage() {
   if (error || !visit) {
     return (
       <div>
-        <PageHeader title="Visita" onBack={() => navigate(-1)} />
+        <PageHeader title="Visita" onBack={() => goBackTo('/')} />
         <Page>
           <Banner tone="error">{error ?? 'No se pudo cargar la visita'}</Banner>
         </Page>
@@ -183,7 +185,7 @@ export default function VisitDetailPage() {
 
   return (
     <div>
-      <PageHeader title={visit.cliente_nombre ?? `Cliente #${visit.cliente_id}`} onBack={() => navigate(-1)} />
+      <PageHeader title={visit.cliente_nombre ?? `Cliente #${visit.cliente_id}`} onBack={() => goBackTo('/')} />
       <Page>
         <Card className="mb-5">
           <div className="mb-2 flex flex-wrap gap-1.5">

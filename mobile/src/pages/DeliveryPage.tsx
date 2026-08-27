@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
@@ -22,7 +23,7 @@ import {
 export default function DeliveryPage() {
   const { id } = useParams()
   const visitId = Number(id)
-  const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const online = useOnline()
@@ -154,7 +155,7 @@ export default function DeliveryPage() {
     <div>
       <PageHeader
         title={visit ? (visit.cliente_nombre ?? 'Entrega de insumos') : 'Entrega de insumos'}
-        onBack={() => navigate(`/visita/${visitId}`)}
+        onBack={() => goBackTo(`/visita/${visitId}`)}
       />
       <Page>
         {!canDeliver && (

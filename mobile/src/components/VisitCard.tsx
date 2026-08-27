@@ -5,6 +5,7 @@ import { Badge, estadoVisitaTone, tipoVisitaIcon, tipoVisitaTone } from './ui'
 
 export default function VisitCard({ visit }: { visit: Visit }) {
   const navigate = useNavigate()
+  const printerCount = visit.impresoras?.length ?? 0
 
   return (
     <button
@@ -16,7 +17,14 @@ export default function VisitCard({ visit }: { visit: Visit }) {
           <p className="truncate font-semibold text-gray-800">
             {visit.cliente_nombre ?? `Cliente #${visit.cliente_id}`}
           </p>
-          <p className="mt-0.5 text-xs text-gray-500">{formatDateLong(visit.fecha_programada)}</p>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {formatDateLong(visit.fecha_programada)}
+            {printerCount > 0 && (
+              <span className="text-gray-400">
+                {' · '}🖨️ {printerCount} {printerCount === 1 ? 'impresora' : 'impresoras'}
+              </span>
+            )}
+          </p>
         </div>
         <span className="text-xl leading-none">
           {tipoVisitaIcon[visit.tipo_visita ?? ''] ?? '📋'}

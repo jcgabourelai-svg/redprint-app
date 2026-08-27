@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useSyncQueue } from '../hooks/useSyncQueue'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
@@ -51,6 +52,7 @@ export default function PrinterDetailPage() {
   const { id, printerId } = useParams()
   const visitId = Number(id)
   const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { hasPermission } = useAuth()
   const { items: queueItems } = useSyncQueue()
 
@@ -112,10 +114,12 @@ export default function PrinterDetailPage() {
     void loadHistory()
   }
 
+  const goBack = () => goBackTo(`/visita/${visitId}`)
+
   if (loading && visit === null) {
     return (
       <div>
-        <PageHeader title="Impresora" onBack={() => navigate(`/visita/${visitId}`)} />
+        <PageHeader title="Impresora" onBack={goBack} />
         <Page>
           <SkeletonCard />
         </Page>
@@ -126,7 +130,7 @@ export default function PrinterDetailPage() {
   if (error || !visit) {
     return (
       <div>
-        <PageHeader title="Impresora" onBack={() => navigate(`/visita/${visitId}`)} />
+        <PageHeader title="Impresora" onBack={goBack} />
         <Page>
           <Banner tone="error">{error ?? 'No se pudo cargar la impresora'}</Banner>
         </Page>
@@ -139,7 +143,7 @@ export default function PrinterDetailPage() {
   if (!printer) {
     return (
       <div>
-        <PageHeader title="Impresora" onBack={() => navigate(`/visita/${visitId}`)} />
+        <PageHeader title="Impresora" onBack={goBack} />
         <Page>
           <EmptyState icon="🖨️" text="La impresora no pertenece a esta visita" />
         </Page>
@@ -175,7 +179,7 @@ export default function PrinterDetailPage() {
 
   return (
     <div>
-      <PageHeader title={`${printer.marca} ${printer.modelo}`} onBack={() => navigate(`/visita/${visitId}`)} />
+      <PageHeader title={`${printer.marca} ${printer.modelo}`} onBack={goBack} />
       <Page>
         <Card className="mb-5">
           <div className="flex items-start justify-between gap-2">

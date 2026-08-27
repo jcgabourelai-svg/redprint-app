@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
@@ -21,7 +22,7 @@ import {
 export default function InstallationPage() {
   const { id } = useParams()
   const visitId = Number(id)
-  const navigate = useNavigate()
+  const goBackTo = useGoBack()
   const { hasPermission } = useAuth()
   const toast = useToast()
   const online = useOnline()
@@ -92,7 +93,7 @@ export default function InstallationPage() {
         visita_id: visitId,
       })
       toast.success('Impresora asignada al contrato')
-      navigate(`/visita/${visitId}`)
+      goBackTo(`/visita/${visitId}`)
     } catch (e) {
       setSubmitError(apiErrorMessage(e))
     } finally {
@@ -104,7 +105,7 @@ export default function InstallationPage() {
 
   return (
     <div>
-      <PageHeader title={title} onBack={() => navigate(`/visita/${visitId}`)} />
+      <PageHeader title={title} onBack={() => goBackTo(`/visita/${visitId}`)} />
       <Page>
         {!canInstall && (
           <Banner tone="error">
