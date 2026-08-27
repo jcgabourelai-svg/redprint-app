@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Eye, ClipboardList, Calendar as CalendarIcon, List, RefreshCw } from 'lucide-react'
+import { Plus, ClipboardList, Calendar as CalendarIcon, List, RefreshCw } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Calendar from '@/components/ui/Calendar'
 import Table from '@/components/ui/Table'
@@ -154,34 +154,20 @@ export default function CalendarPage() {
     {
       key: 'acciones',
       label: 'Acciones',
-      render: (_value, row) => (
-        <div className="flex gap-2">
+      render: (_value, row) =>
+        row.estado === 'PENDIENTE' ? (
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={(e) => {
               e.stopPropagation()
-              navigate(`/operaciones/visitas/${row.id}`)
+              navigate(`/operaciones/lecturas/${row.id}`)
             }}
           >
-            <Eye className="mr-1 h-3 w-3" />
-            Ver
+            <ClipboardList className="mr-1 h-3 w-3" />
+            Capturar lecturas
           </Button>
-          {row.estado === 'PENDIENTE' && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation()
-                navigate(`/operaciones/lecturas/${row.id}`)
-              }}
-            >
-              <ClipboardList className="mr-1 h-3 w-3" />
-              Capturar lecturas
-            </Button>
-          )}
-        </div>
-      ),
+        ) : null,
     },
   ]
 

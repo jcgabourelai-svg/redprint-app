@@ -45,7 +45,6 @@ export default function CaptureReadingPage() {
   const [photo, setPhoto] = useState<string | null>(null)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null)
-  const [gpsBusy, setGpsBusy] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   const [forceJustification, setForceJustification] = useState(false)
@@ -74,6 +73,21 @@ export default function CaptureReadingPage() {
       cancelled = true
     }
   }, [visitId])
+
+  useEffect(() => {
+    if (!navigator.geolocation) return
+    let cancelled = false
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (!cancelled) setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      },
+      () => {},
+      { timeout: 10000, maximumAge: 60000 }
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const printer = useMemo(
     () => visit?.impresoras?.find((p) => p.impresora_id === printerId) ?? null,
@@ -123,25 +137,6 @@ export default function CaptureReadingPage() {
     } finally {
       setPhotoBusy(false)
     }
-  }
-
-  function handleGps() {
-    if (!navigator.geolocation) {
-      toast.error('Geolocalización no disponible en este dispositivo')
-      return
-    }
-    setGpsBusy(true)
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude })
-        setGpsBusy(false)
-      },
-      () => {
-        toast.error('No se pudo obtener la ubicación')
-        setGpsBusy(false)
-      },
-      { timeout: 10000, maximumAge: 60000 }
-    )
   }
 
   async function enqueueOffline(payload: ReadingPayload) {
@@ -464,18 +459,6 @@ export default function CaptureReadingPage() {
                 📷 Tomar foto del contador
               </Button>
             </>
-          )}
-
-          {gps ? (
-            <Card className="bg-emerald-50">
-              <p className="text-sm font-medium text-emerald-800">
-                ✓ Ubicación capturada ({gps.lat.toFixed(5)}, {gps.lng.toFixed(5)})
-              </p>
-            </Card>
-          ) : (
-            <Button variant="secondary" block loading={gpsBusy} onClick={handleGps} disabled={!canLecturas}>
-              📍 Capturar ubicación (opcional)
-            </Button>
           )}
         </div>
 

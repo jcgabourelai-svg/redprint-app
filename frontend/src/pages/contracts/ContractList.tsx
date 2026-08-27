@@ -78,13 +78,17 @@ export default function ContractList() {
       key: 'impresoras',
       label: 'Impresoras',
       render: (_value: unknown, row: Contract) => {
-        const impresoras = row.impresoras ?? []
+        const asignaciones = row.impresoras ?? []
+        const series =
+          asignaciones.length > 0
+            ? asignaciones.map((a) => a.impresora_serie)
+            : (row.printers ?? []).map((p) => p.num_serie)
         return (
           <div>
-            <p className="font-medium">{impresoras.length}</p>
+            <p className="font-medium">{series.length}</p>
             <div className="text-xs text-muted-foreground">
-              {impresoras.slice(0, 2).map((p) => p.impresora_id).join(', ')}
-              {impresoras.length > 2 && '...'}
+              {series.slice(0, 2).join(', ')}
+              {series.length > 2 && '...'}
             </div>
           </div>
         )

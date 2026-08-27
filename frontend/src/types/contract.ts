@@ -31,6 +31,12 @@ export interface Contract {
   dia_visita?: number | null
   estado: ContractStatus
   impresoras: PrinterAssignment[]
+  printers?: {
+    id: string
+    marca: string
+    modelo: string
+    num_serie: string
+  }[]
   codigo_negocio?: string
   dias_adelanto?: number
   rentabilidad?: number
