@@ -6,8 +6,7 @@ import { ToastProvider } from './components/Toast'
 import Layout from './components/Layout'
 import { SyncManager } from './lib/sync'
 import LoginPage from './pages/LoginPage'
-import TodayPage from './pages/TodayPage'
-import CalendarPage from './pages/CalendarPage'
+import VisitsPage from './pages/VisitsPage'
 import VisitDetailPage from './pages/VisitDetailPage'
 import PrinterDetailPage from './pages/PrinterDetailPage'
 import CaptureReadingPage from './pages/CaptureReadingPage'
@@ -60,8 +59,8 @@ export default function App() {
                 </RequireAuth>
               }
             >
-              <Route index element={<TodayPage />} />
-              <Route path="calendario" element={<CalendarPage />} />
+              <Route index element={<VisitsPage />} />
+              <Route path="calendario" element={<Navigate to="/" replace />} />
               {/* Ruta estática antes de visita/:id para que "nueva" no se capture como id */}
               <Route path="visita/nueva" element={<NewVisitPage />} />
               <Route path="visita/:id" element={<VisitDetailPage />} />

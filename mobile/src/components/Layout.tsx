@@ -12,8 +12,7 @@ interface NavItem {
 export default function Layout() {
   const { hasPermission } = useAuth()
   const items: NavItem[] = [
-    { to: '/', label: 'Hoy', icon: '🏠', show: hasPermission('operaciones.calendario') },
-    { to: '/calendario', label: 'Visitas', icon: '📅', show: hasPermission('operaciones.calendario') },
+    { to: '/', label: 'Visitas', icon: '📅', show: hasPermission('operaciones.calendario') },
     { to: '/notificaciones', label: 'Alertas', icon: '🔔', show: hasPermission('sistema.notificaciones') },
     { to: '/perfil', label: 'Perfil', icon: '👤', show: true },
   ].filter((i) => i.show)

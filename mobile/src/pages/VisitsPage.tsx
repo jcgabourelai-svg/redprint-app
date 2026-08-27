@@ -3,7 +3,15 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
-import { addDaysISO, formatDateLong, todayISO } from '../lib/format'
+import {
+  addDaysISO,
+  formatDateLong,
+  formatDayLabel,
+  formatMonthLabel,
+  nextMonth,
+  prevMonth,
+  todayISO,
+} from '../lib/format'
 import type { Paginated, Visit } from '../types/api'
 import VisitCard from '../components/VisitCard'
 import { Banner, Chip, EmptyState, Page, SkeletonCard } from '../components/ui'
@@ -24,21 +32,31 @@ async function loadVisits(): Promise<Visit[]> {
   return results.flat()
 }
 
-export default function TodayPage() {
+export default function VisitsPage() {
   const { hasPermission } = useAuth()
   const canOperaciones = hasPermission('operaciones.calendario')
   const canNotif = hasPermission('sistema.notificaciones')
 
+  const [filter, setFilter] = useState<Filter>('hoy')
+  const [cursor, setCursor] = useState(() => {
+    const n = new Date()
+    return { year: n.getFullYear(), month: n.getMonth() + 1 }
+  })
   const [visits, setVisits] = useState<Visit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [filter, setFilter] = useState<Filter>('hoy')
+  const [activeOnly, setActiveOnly] = useState(true)
   const [unread, setUnread] = useState(0)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
     if (!canOperaciones) return
     let cancelled = false
-    loadVisits()
+    setVisits(null)
+    const request =
+      filter === 'mes'
+        ? fetchAll<Visit>('/visits', { year: cursor.year, month: cursor.month })
+        : loadVisits()
+    request
       .then((v) => {
         if (!cancelled) {
           setVisits(v)
@@ -51,7 +69,7 @@ export default function TodayPage() {
     return () => {
       cancelled = true
     }
-  }, [canOperaciones, tick])
+  }, [canOperaciones, filter, cursor, tick])
 
   useEffect(() => {
     const handler = () => setTick((t) => t + 1)
@@ -75,16 +93,22 @@ export default function TodayPage() {
     }
   }, [canNotif])
 
-  const filtered = useMemo(() => {
+  const groups = useMemo(() => {
     const today = todayISO()
     const limit = addDaysISO(today, 7)
-    return (visits ?? []).filter((v) => {
+    const map = new Map<string, Visit[]>()
+    for (const v of visits ?? []) {
       const f = v.fecha_programada ?? ''
-      if (filter === 'hoy') return f === today
-      if (filter === 'semana') return f >= today && f <= limit
-      return true
-    })
-  }, [visits, filter])
+      if (filter === 'hoy' && f !== today) continue
+      if (filter === 'semana' && !(f >= today && f <= limit)) continue
+      if (activeOnly && v.estado !== 'PENDIENTE' && v.estado !== 'REPROGRAMADA') continue
+      const key = v.fecha_programada ?? 'sin-fecha'
+      const arr = map.get(key) ?? []
+      arr.push(v)
+      map.set(key, arr)
+    }
+    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [visits, filter, activeOnly])
 
   if (!canOperaciones) {
     return (
@@ -134,7 +158,7 @@ export default function TodayPage() {
               7 días
             </Chip>
             <Chip active={filter === 'mes'} onClick={() => setFilter('mes')}>
-              Mes actual
+              Mes
             </Chip>
           </div>
           <Link
@@ -144,6 +168,37 @@ export default function TodayPage() {
           >
             + Visita
           </Link>
+        </div>
+
+        {filter === 'mes' && (
+          <div className="mb-4 flex items-center justify-between">
+            <button
+              onClick={() => setCursor((c) => prevMonth(c))}
+              aria-label="Mes anterior"
+              className="h-9 w-9 rounded-full bg-gray-100 text-lg text-gray-600 active:bg-gray-200"
+            >
+              ‹
+            </button>
+            <p className="text-sm font-bold capitalize text-gray-800">
+              {formatMonthLabel(cursor.year, cursor.month)}
+            </p>
+            <button
+              onClick={() => setCursor((c) => nextMonth(c))}
+              aria-label="Mes siguiente"
+              className="h-9 w-9 rounded-full bg-gray-100 text-lg text-gray-600 active:bg-gray-200"
+            >
+              ›
+            </button>
+          </div>
+        )}
+
+        <div className="mb-5 flex gap-2">
+          <Chip active={activeOnly} onClick={() => setActiveOnly(true)}>
+            Activas
+          </Chip>
+          <Chip active={!activeOnly} onClick={() => setActiveOnly(false)}>
+            Todas
+          </Chip>
         </div>
 
         {error && (
@@ -166,7 +221,7 @@ export default function TodayPage() {
           </>
         )}
 
-        {visits !== null && filtered.length === 0 && !error && (
+        {visits !== null && groups.length === 0 && !error && (
           <EmptyState
             icon="📅"
             text={
@@ -177,14 +232,21 @@ export default function TodayPage() {
                   : 'No hay visitas este mes'
             }
           >
-            <Link to="/calendario" className="text-sm font-semibold text-blue-600">
-              Ver calendario →
+            <Link to="/visita/nueva" className="text-sm font-semibold text-blue-600">
+              Programar visita →
             </Link>
           </EmptyState>
         )}
 
-        {filtered.map((v) => (
-          <VisitCard key={v.id} visit={v} />
+        {groups.map(([day, dayVisits]) => (
+          <section key={day} className="mb-5">
+            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 capitalize">
+              {day === 'sin-fecha' ? 'Sin fecha' : formatDayLabel(day)}
+            </h3>
+            {dayVisits.map((v) => (
+              <VisitCard key={v.id} visit={v} />
+            ))}
+          </section>
         ))}
       </Page>
     </div>
