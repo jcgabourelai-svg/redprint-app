@@ -175,6 +175,10 @@ export default function VisitDetailPage() {
             capturedIds.has(p.impresora_id) || queuedKeys.has(`${visit.id}:${p.impresora_id}`)
         ).length
       : 0
+  const allReadingsCaptured =
+    isEditable &&
+    printers.length > 0 &&
+    printers.every((p) => capturedIds.has(String(p.impresora_id)))
   const tipo = visit.tipo_visita
   const client = visit.client
   const hasContacto = Boolean(
@@ -434,6 +438,14 @@ export default function VisitDetailPage() {
           )}
           {isEditable && (
             <div className="space-y-3">
+              {allReadingsCaptured && (
+                <Banner tone="success">
+                  ✅ Todas las lecturas del contrato están capturadas. Si ya
+                  terminaste en el sitio, completa la visita. Antes del cierre
+                  todavía puedes reportar fallas, entregar insumos o retirar
+                  impresoras.
+                </Banner>
+              )}
               <Button
                 block
                 onClick={() => {

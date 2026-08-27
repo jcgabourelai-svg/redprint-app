@@ -2,19 +2,14 @@
 
 namespace App\Services;
 
-use App\Enums\VisitStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Reading;
 use App\Models\Printer;
-use App\Models\Visit;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class ReadingService
 {
-    public function __construct(
-        private VisitService $visitService
-    ) {}
 
     /**
      * $creator es el socio que capturó la lectura (dueño del negocio);
@@ -43,8 +38,6 @@ class ReadingService
             $reading = Reading::create($data);
 
             $printer->update(['contador_actual' => $data['valor_contador']]);
-
-            $this->checkVisitCompletion($data['visita_id']);
 
             return $reading;
         });
@@ -93,31 +86,5 @@ class ReadingService
         }
 
         return $lastReading->valor_contador;
-    }
-
-    private function checkVisitCompletion(int $visitId): void
-    {
-        $visit = Visit::with('contract.activePrinters')->findOrFail($visitId);
-
-        if ($visit->estado !== VisitStatus::PENDIENTE) {
-            return;
-        }
-
-        $activePrinters = $visit->contract?->activePrinters ?? collect();
-
-        if ($activePrinters->isEmpty()) {
-            return;
-        }
-
-        $readingsForVisit = Reading::where('visita_id', $visitId)
-            ->whereIn('impresora_id', $activePrinters->pluck('id'))
-            ->count();
-
-        if ($readingsForVisit >= $activePrinters->count()) {
-            // La lectura recien creada ya cuenta como actividad, por lo que el
-            // cierre nunca exige motivo. El guard de estado de VisitService no
-            // aplica: aqui solo se completa si sigue PENDIENTE.
-            $this->visitService->complete($visit);
-        }
     }
 }

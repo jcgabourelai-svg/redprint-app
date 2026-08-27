@@ -191,6 +191,14 @@ export default function VisitDetailPage() {
   const totalActividades =
     (visit.readings?.length ?? 0) + entregas.length + mantenimientos.length + cambiosImpresoras.length
   const requiereMotivoCierre = totalActividades === 0
+  const impresorasList = visit.impresoras ?? []
+  const lecturasList = (visit.readings ?? []) as Array<{ impresora_id?: string | number }>
+  const todasLecturasCapturadas =
+    visit.estado === 'PENDIENTE' &&
+    impresorasList.length > 0 &&
+    impresorasList.every((imp) =>
+      lecturasList.some((r) => String(r.impresora_id) === String(imp.impresora_id))
+    )
 
 
   return (
@@ -488,6 +496,13 @@ export default function VisitDetailPage() {
             <CardTitle className="text-sm uppercase text-muted-foreground">Acciones</CardTitle>
           </CardHeader>
           <CardContent>
+            {todasLecturasCapturadas && (
+              <div className="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3.5 py-2.5 text-sm text-emerald-800">
+                ✅ Todas las lecturas del contrato están capturadas. Si la visita
+                terminó, márcala como completada. Antes del cierre todavía
+                puedes registrar entregas, fallas o cambios de impresoras.
+              </div>
+            )}
             <div className="flex flex-wrap gap-3">
               {visit.estado === 'PENDIENTE' && (
                 <>

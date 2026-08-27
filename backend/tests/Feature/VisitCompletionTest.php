@@ -222,6 +222,49 @@ class VisitCompletionTest extends TestCase
             ->assertJsonPath('message', 'La visita ya está completada');
     }
 
+    public function test_capturar_lecturas_no_completa_la_visita_automaticamente(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $printer = $this->createPrinter($admin, ['estado' => PrinterStatus::RENTADA]);
+        $contract->printers()->attach($printer->id, [
+            'fecha_asignacion' => now(),
+            'lectura_inicial' => 1000,
+            'activa' => true,
+        ]);
+        $visit = $this->createVisit($contract, $admin);
+
+        $this->postJson('/api/v1/readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'contrato_id' => $contract->id,
+            'fecha' => today()->toDateString(),
+            'valor_contador' => 1500,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'valor_contador' => 1500,
+            'paginas_periodo' => 500,
+        ]);
+
+        // La visita sigue PENDIENTE: el cierre es siempre explicito y permite
+        // seguir registrando actividades (fallas, insumos, retiros...).
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::PENDIENTE->value,
+        ]);
+
+        // El cierre explicito sigue funcionando sin motivo: la lectura ya
+        // cuenta como actividad registrada.
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [])
+            ->assertOk()
+            ->assertJsonPath('estado', 'COMPLETADA');
+    }
+
     public function test_assign_printer_con_visita_id_vincula_y_auto_completa(): void
     {
         $admin = $this->adminUser();
