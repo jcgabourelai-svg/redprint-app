@@ -21,7 +21,7 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useVisit, useCompleteVisit, useRescheduleVisit, useUpdateVisit, useDeleteVisit, useSocios } from '@/hooks/useVisits'
-import type { VisitStatus } from '@/types/operations'
+import type { VisitStatus, VisitReading } from '@/types/operations'
 import { formatDate } from '@/lib/formatters'
 import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { parseApiError } from '@/lib/api-errors'
@@ -192,7 +192,7 @@ export default function VisitDetailPage() {
     (visit.readings?.length ?? 0) + entregas.length + mantenimientos.length + cambiosImpresoras.length
   const requiereMotivoCierre = totalActividades === 0
   const impresorasList = visit.impresoras ?? []
-  const lecturasList = (visit.readings ?? []) as Array<{ impresora_id?: string | number }>
+  const lecturasList = visit.readings ?? []
   const todasLecturasCapturadas =
     visit.estado === 'PENDIENTE' &&
     impresorasList.length > 0 &&
@@ -313,7 +313,12 @@ export default function VisitDetailPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {visit.impresoras.map((imp) => (
+              {visit.impresoras.map((imp) => {
+                const lectura = lecturasList.find(
+                  (r) => String(r.impresora_id) === String(imp.impresora_id)
+                ) as VisitReading | undefined
+                const lecturaActual = lectura?.lectura_actual ?? imp.lectura_actual
+                return (
                 <div key={imp.id} className="border border-border rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div>
@@ -342,26 +347,40 @@ export default function VisitDetailPage() {
                       <span className="font-medium">{imp.contrato_id}</span>
                     </div>
                   </div>
-                  {imp.lectura_actual !== undefined && (
+                  {lecturaActual !== undefined && (
                     <div className="mt-2 pt-2 border-t border-border text-sm">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
-                          <span className="text-muted-foreground">Lectura actual:</span>{' '}
+                          <span className="text-muted-foreground">Conteo de esta visita:</span>{' '}
                           <span className="font-medium text-success">
-                            {imp.lectura_actual.toLocaleString()} hojas
+                            {Number(lecturaActual).toLocaleString('es-MX')} hojas
                           </span>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">Páginas consumidas:</span>{' '}
+                          <span className="text-muted-foreground">Páginas impresas:</span>{' '}
                           <span className="font-medium">
-                            {imp.paginas_consumidas?.toLocaleString()} hojas
+                            {Number(lectura?.paginas_consumidas ?? imp.paginas_consumidas ?? 0).toLocaleString('es-MX')} hojas
                           </span>
                         </div>
+                        <div>
+                          <span className="text-muted-foreground">Capturada:</span>{' '}
+                          <span className="font-medium">
+                            {lectura?.fecha ? formatDate(lectura.fecha) : '-'}
+                          </span>
+                          {lectura?.socio_capturista ? ` · ${lectura.socio_capturista}` : ''}
+                        </div>
                       </div>
+                      {lectura?.es_anomalia && (
+                        <p className="mt-1 text-xs text-warning">
+                          Lectura marcada como anómala
+                          {lectura.justificacion_anomalia ? `: ${lectura.justificacion_anomalia}` : ''}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </CardContent>
         </Card>

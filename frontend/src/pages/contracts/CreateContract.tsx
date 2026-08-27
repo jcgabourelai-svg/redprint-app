@@ -104,7 +104,7 @@ export default function CreateContract() {
       costo_pag_excedente: parseFloat(costo_por_pagina_excedente),
       impresoras: selectedPrinters.map((printerId) => ({
         id: printerId,
-        lectura_inicial: parseInt(lecturas_iniciales[printerId]) || 0,
+        lectura_inicial: getLecturaInicial(printerId),
       })),
     }
     
@@ -124,10 +124,27 @@ export default function CreateContract() {
     navigate('/contratos')
   }
 
+  const getLecturaInicial = (printerId: string) => {
+    const entered = lecturas_iniciales[printerId]
+    if (entered !== undefined && entered !== '') {
+      const parsed = parseInt(entered)
+      if (!isNaN(parsed)) return parsed
+    }
+    const printer = printers.find((p) => p.id === printerId)
+    return printer?.contador_actual ?? 0
+  }
+
   const togglePrinter = (id: string) => {
-    setSelectedPrinters((prev) =>
-      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
-    )
+    if (selectedPrinters.includes(id)) {
+      setSelectedPrinters(selectedPrinters.filter((p) => p !== id))
+      return
+    }
+    const printer = printers.find((p) => p.id === id)
+    setSelectedPrinters([...selectedPrinters, id])
+    setLecturasIniciales((prev) => ({
+      ...prev,
+      [id]: String(printer?.contador_actual ?? 0),
+    }))
   }
 
   if (clientsLoading || printersLoading) {
@@ -286,7 +303,7 @@ export default function CreateContract() {
                             <p className="font-medium text-foreground">
                               {printer.id} - {printer.marca} {printer.modelo}
                             </p>
-                            <p className="text-xs text-muted-foreground">SERIE: {printer.numero_serie}</p>
+                            <p className="text-xs text-muted-foreground">SERIE: {printer.num_serie}</p>
                             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
                               <div>
                                 <span className="text-muted-foreground">Costo:</span>{' '}
@@ -294,11 +311,11 @@ export default function CreateContract() {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Contador:</span>{' '}
-                                <span className="text-muted-foreground">{Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas</span>
+                                <span className="text-foreground font-medium">{Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas</span>
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Almacén:</span>{' '}
-                                <span className="text-muted-foreground">{printer.almacen || '-'}</span>
+                                <span className="text-muted-foreground">{printer.warehouse?.nombre || '-'}</span>
                               </div>
                               <div>
                                 <Badge variant="printer_status" color={printer.estado}>
@@ -314,6 +331,14 @@ export default function CreateContract() {
                 </div>
                 <p className="text-sm text-muted-foreground">
                   Seleccionadas: {selectedPrinters.length} impresora(s)
+                  {selectedPrinterDetails.length > 0 && (
+                    <span>
+                      {' '}
+                      ({selectedPrinterDetails
+                        .map((p) => `${p.num_serie}: ${Number(p.contador_actual ?? 0).toLocaleString('es-MX')} hojas`)
+                        .join(' • ')})
+                    </span>
+                  )}
                 </p>
               </div>
             )}
@@ -395,13 +420,16 @@ export default function CreateContract() {
                           </span>
                           <Input
                             type="number"
-                            placeholder="0 (por defecto)"
+                            placeholder={`Contador actual: ${(printer.contador_actual ?? 0).toLocaleString('es-MX')}`}
                             value={lecturas_iniciales[printer.id] || ''}
                             onChange={(e) =>
                               setLecturasIniciales({ ...lecturas_iniciales, [printer.id]: e.target.value })
                             }
                             className="w-40"
                           />
+                          <span className="text-xs text-muted-foreground">
+                            Contador actual: {Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas
+                          </span>
                         </div>
                       ))}
                     </div>
@@ -485,9 +513,9 @@ export default function CreateContract() {
                         <div key={printer.id} className="flex items-center gap-3 text-sm">
                           <Printer className="h-4 w-4 text-primary" />
                           <span className="font-medium">{printer.id} - {printer.marca} {printer.modelo}</span>
-                          <span className="text-primary">SERIE: {printer.numero_serie}</span>
+                          <span className="text-primary">SERIE: {printer.num_serie}</span>
                           <span className="text-muted-foreground">
-                            Lectura: {lecturas_iniciales[printer.id] || '0'} páginas
+                            Lectura: {getLecturaInicial(printer.id).toLocaleString('es-MX')} páginas
                           </span>
                         </div>
                       ))}

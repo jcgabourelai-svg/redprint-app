@@ -5,14 +5,14 @@ export interface Printer {
   marca: string
   modelo: string
   printer_model_id?: number
-  numero_serie: string
+  num_serie: string
   num_inventario?: string
   fecha_adquisicion: string
   costo_adquisicion: number
   vida_util_estimada: number
   estado: PrinterStatus
   ubicacion: string
-  almacen?: string
+  warehouse?: { id: number; nombre: string; direccion?: string | null } | null
   contador_actual: number
   ultima_lectura?: number
   fecha_ultima_lectura?: string

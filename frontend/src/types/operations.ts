@@ -43,6 +43,22 @@ export interface VisitPrinterChange {
   impresora: { id: number; marca: string; modelo: string; num_serie: string | null } | null
 }
 
+export interface VisitReading {
+  id: number
+  visita_id: number
+  impresora_id: number
+  contrato_id?: number | null
+  fecha: string | null
+  valor_contador: number
+  lectura_anterior: number
+  lectura_actual: number
+  paginas_periodo: number | null
+  paginas_consumidas: number | null
+  es_anomalia: boolean
+  justificacion_anomalia?: string | null
+  socio_capturista?: string
+}
+
 export interface Visit {
   id: string
   cliente_id: string
@@ -62,7 +78,7 @@ export interface Visit {
   client?: unknown
   contract?: unknown
   socio?: unknown
-  readings?: unknown[]
+  readings?: VisitReading[]
   entregas?: VisitDelivery[]
   mantenimientos?: VisitMaintenanceOrder[]
   cambios_impresoras?: VisitPrinterChange[]

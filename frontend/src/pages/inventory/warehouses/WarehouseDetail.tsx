@@ -99,7 +99,7 @@ export default function WarehouseDetail() {
       String(p.id).toLowerCase().includes(term) ||
       (p.marca ?? '').toLowerCase().includes(term) ||
       (p.modelo ?? '').toLowerCase().includes(term) ||
-      (p.numero_serie ?? p.num_serie ?? '').toLowerCase().includes(term)
+      (p.num_serie ?? '').toLowerCase().includes(term)
 
     const matchesStatus =
       printerStatusFilter === 'all' || p.estado === printerStatusFilter
