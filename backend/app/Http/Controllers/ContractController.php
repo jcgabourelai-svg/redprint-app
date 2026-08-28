@@ -12,9 +12,11 @@ use App\Models\ContractPrinter;
 use App\Models\Visit;
 use App\Services\ContractService;
 use App\Services\VisitService;
+use App\Support\PrinterColorPalette;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ContractController extends Controller
 {
@@ -77,6 +79,9 @@ class ContractController extends Controller
             'lectura_inicial' => 'nullable|integer|min:0',
             'visita_id' => 'nullable|exists:visits,id',
             'alias' => 'nullable|string|max:60',
+            // Solo la key invalida es 422; un color ocupado nunca es error
+            // (fallback automatico al primer color libre dentro del servicio).
+            'color' => ['nullable', 'string', Rule::in(PrinterColorPalette::KEYS)],
         ]);
 
         $visita = isset($data['visita_id'])
@@ -89,7 +94,8 @@ class ContractController extends Controller
             $data['lectura_inicial'] ?? 0,
             $request->user(),
             $visita?->id,
-            $data['alias'] ?? null
+            $data['alias'] ?? null,
+            $data['color'] ?? null
         );
 
         $this->autoCompletarVisita($visita, VisitType::INSTALACION);

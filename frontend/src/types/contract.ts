@@ -8,6 +8,7 @@ export interface PrinterAssignment {
   impresora_modelo: string
   impresora_serie: string
   alias?: string | null
+  color?: string | null
   fecha_asignacion: string
   fecha_liberacion?: string | null
   activa?: boolean

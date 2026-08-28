@@ -96,6 +96,7 @@ class ContractResource extends JsonResource
             'impresora_modelo' => $printer->modelo,
             'impresora_serie' => $printer->num_serie,
             'alias' => $printer->pivot->alias,
+            'color' => $printer->pivot->color,
             'fecha_asignacion' => $printer->pivot->fecha_asignacion,
             'fecha_liberacion' => $printer->pivot->fecha_liberacion,
             'activa' => (bool) $printer->pivot->activa,

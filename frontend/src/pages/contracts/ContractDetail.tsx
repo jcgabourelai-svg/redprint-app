@@ -15,6 +15,7 @@ import {
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import AliasBadge from '@/components/ui/AliasBadge'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
@@ -451,7 +452,7 @@ export default function ContractDetail() {
                                     {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
                                   </p>
                                   {pa.alias && (
-                                    <Badge variant="neutral">{pa.alias}</Badge>
+                                    <AliasBadge alias={pa.alias} color={pa.color} />
                                   )}
                                   {pa.activa === false && (
                                     <Badge variant="neutral">Liberada</Badge>
@@ -611,9 +612,9 @@ export default function ContractDetail() {
                             <p className="text-sm font-medium text-muted-foreground mb-2">Desglose por impresora:</p>
                             {contract.impresoras.map((pa) => (
                               <div key={pa.id} className="flex justify-between py-1 text-sm">
-                                <span className="text-muted-foreground">
+                                <span className="text-muted-foreground inline-flex items-center gap-1.5">
                                   {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
-                                  {pa.alias && <span className="text-foreground"> ({pa.alias})</span>}
+                                  {pa.alias && <AliasBadge alias={pa.alias} color={pa.color} />}
                                 </span>
                                 <span className={`font-medium ${pa.rentabilidad_acumulada >= 0 ? 'text-success' : 'text-destructive'}`}>
                                   {formatCurrency(pa.rentabilidad_acumulada)}

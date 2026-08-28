@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Printer;
 use App\Models\User;
+use App\Support\PrinterColorPalette;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -59,6 +60,7 @@ class ContractSeeder extends Seeder
                     'fecha_asignacion' => $contract->fecha_inicio,
                     'lectura_inicial' => rand(0, 10000),
                     'alias' => $aliasPool[$aliasIndex % count($aliasPool)],
+                    'color' => PrinterColorPalette::KEYS[$aliasIndex % count(PrinterColorPalette::KEYS)],
                     'activa' => true,
                     'created_at' => now(),
                     'updated_at' => now(),

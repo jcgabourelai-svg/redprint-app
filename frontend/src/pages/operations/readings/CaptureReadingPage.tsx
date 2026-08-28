@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Input from '@/components/ui/Input'
+import AliasBadge from '@/components/ui/AliasBadge'
 import { useVisit } from '@/hooks/useVisits'
 import { useCreateReading } from '@/hooks/useReadings'
 import type { VisitPrinter } from '@/types/operations'
@@ -192,9 +193,14 @@ export default function CaptureReadingPage() {
                 <Card key={imp.impresora_id}>
                   <CardContent className="p-4 space-y-4">
                     <div>
-                      <p className="font-medium text-foreground">
-                        {imp.marca} {imp.modelo}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-foreground">
+                          {imp.marca} {imp.modelo}
+                        </p>
+                        {imp.alias && (
+                          <AliasBadge alias={imp.alias} color={imp.color} />
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground">
                         SERIE: {imp.numero_serie} | Contrato: {imp.contrato_id}
                       </p>

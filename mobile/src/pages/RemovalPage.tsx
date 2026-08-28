@@ -6,6 +6,7 @@ import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
 import { formatNumber } from '../lib/format'
+import PrinterColorDot from '../components/PrinterColorDot'
 import type { Visit, Warehouse } from '../types/api'
 import {
   Banner,
@@ -152,7 +153,8 @@ export default function RemovalPage() {
                 {selectedPrinter ? (
                   <Card className="mb-3 !border-orange-300 bg-orange-50/50">
                     <div className="min-w-0">
-                      <p className="truncate font-semibold text-gray-800">
+                      <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
+                        {selectedPrinter.color && <PrinterColorDot color={selectedPrinter.color} />}
                         {selectedPrinter.alias ?? `${selectedPrinter.marca} ${selectedPrinter.modelo}`}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
@@ -190,7 +192,8 @@ export default function RemovalPage() {
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate font-semibold text-gray-800">
+                        <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
+                          {p.color && <PrinterColorDot color={p.color} />}
                           {p.alias ?? `${p.marca} ${p.modelo}`}
                         </p>
                         <p className="mt-0.5 text-xs text-gray-500">

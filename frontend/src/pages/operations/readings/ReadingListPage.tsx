@@ -7,6 +7,7 @@ import EmptyState from '@/components/ui/EmptyState'
 import Badge from '@/components/ui/Badge'
 import Select from '@/components/ui/Select'
 import type { Reading } from '@/types/reading'
+import ColorDot from '@/components/ui/ColorDot'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatDate } from '@/lib/formatters'
@@ -75,6 +76,12 @@ export default function ReadingListPage() {
     {
       key: 'impresora_nombre',
       label: 'Impresora',
+      render: (value: string | null | undefined, row: Reading) => (
+        <span className="inline-flex items-center gap-1.5">
+          {row.impresora_color && <ColorDot color={row.impresora_color} />}
+          {value || '-'}
+        </span>
+      ),
     },
     {
       key: 'lectura_anterior',

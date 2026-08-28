@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import PrinterColorDot from '../components/PrinterColorDot'
 import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useSyncQueue } from '../hooks/useSyncQueue'
@@ -360,7 +361,10 @@ export default function CaptureReadingPage() {
 
         <Card className="mb-4">
           {printer.alias && (
-            <p className="text-sm font-semibold text-gray-800">{printer.alias}</p>
+            <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+              {printer.color && <PrinterColorDot color={printer.color} />}
+              {printer.alias}
+            </p>
           )}
           <p className={`text-xs text-gray-400 ${printer.alias ? 'mt-0.5' : ''}`}>
             {printer.alias && `${printer.marca} ${printer.modelo} · `}Serie: {printer.numero_serie ?? '-'}

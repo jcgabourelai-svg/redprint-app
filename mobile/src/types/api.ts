@@ -29,6 +29,7 @@ export interface VisitPrinter {
   modelo: string
   numero_serie: string | null
   alias?: string | null
+  color?: string | null
   contrato_id: string
   lectura_anterior: number
   fecha_lectura_anterior: string | null
@@ -80,6 +81,7 @@ export interface PrinterChange {
   evento: string
   fecha: string | null
   alias?: string | null
+  color?: string | null
   impresora: {
     id: number
     marca: string

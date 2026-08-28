@@ -7,6 +7,7 @@ import { useToast } from '../components/Toast'
 import api, { apiErrorMessage } from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
 import { formatDateLong, formatDateTime, formatMoney, formatNumber } from '../lib/format'
+import PrinterColorDot from '../components/PrinterColorDot'
 import type { Visit } from '../types/api'
 import type { ReadingQueueItem } from '../lib/db'
 import {
@@ -279,7 +280,8 @@ export default function VisitDetailPage() {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-gray-800">
+                    <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
+                      {p.color && <PrinterColorDot color={p.color} />}
                       {p.alias ?? `${p.marca} ${p.modelo}`}
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500">
@@ -395,7 +397,10 @@ export default function VisitDetailPage() {
                       {c.impresora ? `${c.impresora.marca} ${c.impresora.modelo}` : 'Impresora'}
                     </p>
                     {c.alias && (
-                      <p className="mt-0.5 text-xs font-medium text-gray-600">Alias: {c.alias}</p>
+                      <p className="mt-0.5 flex items-center gap-1.5 text-xs font-medium text-gray-600">
+                        {c.color && <PrinterColorDot color={c.color} />}
+                        Alias: {c.alias}
+                      </p>
                     )}
                     <p className="mt-0.5 text-xs text-gray-500">
                       Serie: {c.impresora?.num_serie ?? '-'}

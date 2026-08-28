@@ -3,6 +3,7 @@ export interface Reading {
   visita_id: string
   impresora_id: string
   impresora_nombre?: string
+  impresora_color?: string | null
   valor_contador?: number
   lectura_anterior?: number
   lectura_actual?: number

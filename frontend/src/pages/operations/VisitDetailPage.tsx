@@ -18,6 +18,7 @@ import {
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import AliasBadge from '@/components/ui/AliasBadge'
 import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useVisit, useCompleteVisit, useRescheduleVisit, useUpdateVisit, useDeleteVisit, useSocios } from '@/hooks/useVisits'
@@ -322,9 +323,14 @@ export default function VisitDetailPage() {
                 <div key={imp.id} className="border border-border rounded-lg p-4">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-medium text-foreground">
-                        {imp.marca} {imp.modelo}
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-medium text-foreground">
+                          {imp.marca} {imp.modelo}
+                        </p>
+                        {imp.alias && (
+                          <AliasBadge alias={imp.alias} color={imp.color} />
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         SERIE: {imp.numero_serie}
                       </p>

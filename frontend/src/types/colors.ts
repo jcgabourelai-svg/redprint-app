@@ -160,3 +160,53 @@ export const clientStatusColors: Record<string, ColorSet> = {
     background: '#FEF2F2',
   },
 }
+
+/**
+ * Paleta de identidad por impresora en contrato (keys sin acentos, viven en
+ * contract_printer.color). El backend es la fuente de verdad de las keys;
+ * este mapa key -> hex es solo presentacion. Escala 700/100/900 tipo
+ * Tailwind: texto oscuro sobre fondo pastel (contraste AA) y sin rojo puro
+ * para no colisionar con los badges de estado (error/CRITICA).
+ */
+export const printerColorPalette: Record<string, ColorSet> = {
+  azul: {
+    DEFAULT: '#1D4ED8',
+    foreground: '#1E3A8A',
+    background: '#DBEAFE',
+  },
+  turquesa: {
+    DEFAULT: '#0F766E',
+    foreground: '#134E4A',
+    background: '#CCFBF1',
+  },
+  verde: {
+    DEFAULT: '#15803D',
+    foreground: '#14532D',
+    background: '#DCFCE7',
+  },
+  ambar: {
+    DEFAULT: '#B45309',
+    foreground: '#78350F',
+    background: '#FEF3C7',
+  },
+  naranja: {
+    DEFAULT: '#C2410C',
+    foreground: '#7C2D12',
+    background: '#FFEDD5',
+  },
+  morado: {
+    DEFAULT: '#7C3AED',
+    foreground: '#4C1D95',
+    background: '#EDE9FE',
+  },
+  rosa: {
+    DEFAULT: '#DB2777',
+    foreground: '#831843',
+    background: '#FCE7F3',
+  },
+  gris: {
+    DEFAULT: '#475569',
+    foreground: '#1E293B',
+    background: '#E2E8F0',
+  },
+}

@@ -7,6 +7,8 @@ export interface VisitPrinter {
   marca: string
   modelo: string
   numero_serie: string
+  alias?: string | null
+  color?: string | null
   contrato_id: string
   lectura_anterior: number
   fecha_lectura_anterior: string

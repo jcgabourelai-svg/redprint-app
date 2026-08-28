@@ -10,6 +10,7 @@ use App\Models\ContractPrinter;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\User;
+use App\Support\PrinterColorPalette;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
@@ -108,7 +109,7 @@ class ContractService
         });
     }
 
-    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null): void
+    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null, ?string $color = null): void
     {
         $printer = Printer::findOrFail($printerId);
 
@@ -125,6 +126,7 @@ class ContractService
         }
 
         $alias = $this->normalizarAlias($alias);
+        $color = $this->resolverColor($contract, $color);
 
         if ($alias !== null) {
             $aliasDuplicado = ContractPrinter::where('contrato_id', $contract->id)
@@ -143,6 +145,7 @@ class ContractService
                 'lectura_inicial' => $initialReading,
                 'activa' => true,
                 'alias' => $alias,
+                'color' => $color,
             ]);
         } catch (UniqueConstraintViolationException) {
             // Backstop: el indice parcial (contrato_id, alias) WHERE activa
@@ -166,6 +169,9 @@ class ContractService
         if ($alias !== null) {
             $datosAdicionales['alias'] = $alias;
         }
+        if ($color !== null) {
+            $datosAdicionales['color'] = $color;
+        }
 
         PrinterHistory::create([
             'impresora_id' => $printer->id,
@@ -179,10 +185,13 @@ class ContractService
 
     public function releasePrinter(Contract $contract, Printer $printer, int $warehouseId, User $user, ?int $visitaId = null): void
     {
-        $alias = ContractPrinter::where('contrato_id', $contract->id)
+        $filaActiva = ContractPrinter::where('contrato_id', $contract->id)
             ->where('impresora_id', $printer->id)
             ->where('activa', true)
-            ->value('alias');
+            ->first(['alias', 'color']);
+
+        $alias = $filaActiva?->alias;
+        $color = $filaActiva?->color;
 
         $contract->printers()->updateExistingPivot($printer->id, [
             'fecha_liberacion' => now(),
@@ -200,6 +209,9 @@ class ContractService
         }
         if ($alias !== null) {
             $datosAdicionales['alias'] = $alias;
+        }
+        if ($color !== null) {
+            $datosAdicionales['color'] = $color;
         }
 
         PrinterHistory::create([
@@ -255,6 +267,37 @@ class ContractService
         $alias = $alias !== null ? trim($alias) : null;
 
         return $alias === '' ? null : $alias;
+    }
+
+    /**
+     * Herencia best-effort: usa el color pedido solo si es una key valida de
+     * la paleta y no esta en uso por otra asignacion ACTIVA del contrato
+     * (el reenvio desde movil jamas bloquea una instalacion en campo). En
+     * cualquier otro caso asigna el primer color libre; con mas de 8 activas
+     * se reutiliza por modulo. El color es pista visual secundaria: el texto
+     * del alias siempre esta presente.
+     */
+    private function resolverColor(Contract $contract, ?string $color): string
+    {
+        $usados = ContractPrinter::where('contrato_id', $contract->id)
+            ->where('activa', true)
+            ->pluck('color')
+            ->filter()
+            ->values();
+
+        if ($color !== null
+            && in_array($color, PrinterColorPalette::KEYS, true)
+            && ! $usados->contains($color)) {
+            return $color;
+        }
+
+        foreach (PrinterColorPalette::KEYS as $key) {
+            if (! $usados->contains($key)) {
+                return $key;
+            }
+        }
+
+        return PrinterColorPalette::KEYS[$usados->count() % count(PrinterColorPalette::KEYS)];
     }
 
     public function calculateEstimatedAmount(Contract $contract, int $pagesConsumed): float

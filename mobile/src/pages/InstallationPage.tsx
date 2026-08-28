@@ -39,6 +39,7 @@ export default function InstallationPage() {
   const [lecturaInicial, setLecturaInicial] = useState('0')
   const [alias, setAlias] = useState('')
   const [aliasSugerido, setAliasSugerido] = useState<string | null>(null)
+  const [colorHeredado, setColorHeredado] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -52,14 +53,21 @@ export default function InstallationPage() {
           setVisit(res.data)
           setVisitError(null)
           // Rotacion de flota: la impresora retirada en esta visita libera su
-          // "puesto"; se sugiere su alias para la impresora que la reemplaza.
-          const liberacion = res.data.cambios_impresoras?.find(
+          // "puesto"; se sugiere su alias para la impresora que la reemplaza
+          // y se reenvia su color (herencia best-effort, invisible al usuario).
+          const cambios = res.data.cambios_impresoras
+          const liberacion = cambios?.find(
             (c) => c.evento === 'LIBERACION_CONTRATO' && c.alias
           )
           if (liberacion?.alias) {
             setAliasSugerido(liberacion.alias)
             setAlias((actual) => actual || liberacion.alias || '')
           }
+          // El color del puesto se hereda con independencia del alias: el
+          // backend congela ambos por separado en el evento de liberacion.
+          setColorHeredado(
+            cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.color)?.color ?? null
+          )
         }
       })
       .catch((e) => {
@@ -103,6 +111,7 @@ export default function InstallationPage() {
         lectura_inicial: Number.parseInt(lecturaInicial || '0', 10) || 0,
         visita_id: visitId,
         alias: alias.trim() || null,
+        color: colorHeredado,
       })
       toast.success('Impresora asignada al contrato')
       goBackTo(`/visita/${visitId}`)
