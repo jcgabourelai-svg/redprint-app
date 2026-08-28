@@ -61,3 +61,15 @@ export function useReleasePrinter() {
     },
   })
 }
+
+export function useUpdateAssignmentAlias() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ contractId, assignmentId, alias }: { contractId: number; assignmentId: number; alias: string | null }) =>
+      api.patch(`/contracts/${contractId}/assignments/${assignmentId}`, { alias }).then(r => r.data),
+    onSuccess: (_, { contractId }) => {
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      qc.invalidateQueries({ queryKey: ['contracts', contractId] })
+    },
+  })
+}

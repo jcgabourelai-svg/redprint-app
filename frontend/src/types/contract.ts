@@ -7,7 +7,10 @@ export interface PrinterAssignment {
   impresora_marca: string
   impresora_modelo: string
   impresora_serie: string
+  alias?: string | null
   fecha_asignacion: string
+  fecha_liberacion?: string | null
+  activa?: boolean
   lectura_inicial: number
   contador_actual: number
   paginas_del_periodo: number

@@ -23,6 +23,7 @@ class ContractSeeder extends Seeder
 
         $contracts = [];
         $seq = 1;
+        $aliasPool = ['Recepción', 'Contabilidad', 'Taller', 'Gerencia', 'Almacén'];
 
         for ($i = 0; $i < 10; $i++) {
             $client = $clients[$i % $clients->count()];
@@ -50,16 +51,19 @@ class ContractSeeder extends Seeder
                 ->take($numPrinters)
                 ->get();
 
+            $aliasIndex = 0;
             foreach ($availablePrinters as $printer) {
                 DB::table('contract_printer')->insert([
                     'contrato_id' => $contract->id,
                     'impresora_id' => $printer->id,
                     'fecha_asignacion' => $contract->fecha_inicio,
                     'lectura_inicial' => rand(0, 10000),
+                    'alias' => $aliasPool[$aliasIndex % count($aliasPool)],
                     'activa' => true,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
+                $aliasIndex++;
 
                 $printer->update([
                     'estado' => PrinterStatus::RENTADA,

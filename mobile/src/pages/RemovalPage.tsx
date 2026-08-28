@@ -153,9 +153,10 @@ export default function RemovalPage() {
                   <Card className="mb-3 !border-orange-300 bg-orange-50/50">
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-gray-800">
-                        {selectedPrinter.marca} {selectedPrinter.modelo}
+                        {selectedPrinter.alias ?? `${selectedPrinter.marca} ${selectedPrinter.modelo}`}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
+                        {selectedPrinter.alias && `${selectedPrinter.marca} ${selectedPrinter.modelo} · `}
                         Serie: {selectedPrinter.numero_serie ?? '-'}
                       </p>
                       <p className="text-xs text-gray-400">
@@ -190,9 +191,12 @@ export default function RemovalPage() {
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-gray-800">
-                          {p.marca} {p.modelo}
+                          {p.alias ?? `${p.marca} ${p.modelo}`}
                         </p>
-                        <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          {p.alias && `${p.marca} ${p.modelo} · `}
+                          Serie: {p.numero_serie ?? '-'}
+                        </p>
                         <p className="text-xs text-gray-400">
                           Última lectura: {formatNumber(p.lectura_anterior)}
                         </p>

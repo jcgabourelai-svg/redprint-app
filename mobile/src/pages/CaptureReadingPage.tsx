@@ -340,7 +340,10 @@ export default function CaptureReadingPage() {
 
   return (
     <div>
-      <PageHeader title={`${printer.marca} ${printer.modelo}`} onBack={backToPrinter} />
+      <PageHeader
+        title={printer.alias ?? `${printer.marca} ${printer.modelo}`}
+        onBack={backToPrinter}
+      />
       <Page>
         {!online && (
           <div className="mb-4">
@@ -356,7 +359,12 @@ export default function CaptureReadingPage() {
         )}
 
         <Card className="mb-4">
-          <p className="text-xs text-gray-400">Serie: {printer.numero_serie ?? '-'}</p>
+          {printer.alias && (
+            <p className="text-sm font-semibold text-gray-800">{printer.alias}</p>
+          )}
+          <p className={`text-xs text-gray-400 ${printer.alias ? 'mt-0.5' : ''}`}>
+            {printer.alias && `${printer.marca} ${printer.modelo} · `}Serie: {printer.numero_serie ?? '-'}
+          </p>
           <p className="mt-1 text-sm text-gray-600">
             Última lectura: <strong>{formatNumber(printer.lectura_anterior)}</strong>
           </p>

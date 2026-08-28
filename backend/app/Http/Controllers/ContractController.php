@@ -8,6 +8,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\StoreContractRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
+use App\Models\ContractPrinter;
 use App\Models\Visit;
 use App\Services\ContractService;
 use App\Services\VisitService;
@@ -75,6 +76,7 @@ class ContractController extends Controller
             'impresora_id' => 'required|exists:printers,id',
             'lectura_inicial' => 'nullable|integer|min:0',
             'visita_id' => 'nullable|exists:visits,id',
+            'alias' => 'nullable|string|max:60',
         ]);
 
         $visita = isset($data['visita_id'])
@@ -86,12 +88,31 @@ class ContractController extends Controller
             $data['impresora_id'],
             $data['lectura_inicial'] ?? 0,
             $request->user(),
-            $visita?->id
+            $visita?->id,
+            $data['alias'] ?? null
         );
 
         $this->autoCompletarVisita($visita, VisitType::INSTALACION);
 
         return response()->json(new ContractResource($contract->fresh(['client', 'printers'])));
+    }
+
+    /**
+     * Renombra el alias ("Recepcion", "Taller"...) de una asignacion activa
+     * del contrato. Cambio administrativo: no genera historial.
+     */
+    public function updateAssignmentAlias(Request $request, Contract $contract, int $assignment): ContractResource
+    {
+        $data = $request->validate([
+            'alias' => 'nullable|string|max:60',
+        ]);
+
+        $assignmentModel = ContractPrinter::where('contrato_id', $contract->id)
+            ->findOrFail($assignment);
+
+        $this->contractService->updateAssignmentAlias($contract, $assignmentModel, $data['alias'] ?? null);
+
+        return new ContractResource($contract->fresh(['client', 'printers']));
     }
 
     public function releasePrinter(Request $request, Contract $contract): JsonResponse

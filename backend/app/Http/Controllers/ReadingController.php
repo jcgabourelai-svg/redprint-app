@@ -20,7 +20,7 @@ class ReadingController extends Controller
 
     public function index(Request $request)
     {
-        $query = Reading::with(['printer', 'visit', 'socio'])
+        $query = Reading::with(['printer.assignments', 'visit', 'socio'])
             ->when($request->impresora_id, fn($q, $id) => $q->where('impresora_id', $id))
             ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id));
 
@@ -35,7 +35,7 @@ class ReadingController extends Controller
 
     public function show(int $id)
     {
-        $reading = Reading::with(['printer', 'visit', 'socio', 'contract'])->findOrFail($id);
+        $reading = Reading::with(['printer.assignments', 'visit', 'socio', 'contract'])->findOrFail($id);
 
         return new ReadingResource($reading);
     }
@@ -48,7 +48,7 @@ class ReadingController extends Controller
         $estimatedAmount = $contract?->calculateEstimatedAmount($reading->paginas_periodo);
 
         return response()->json([
-            'reading' => new ReadingResource($reading->load(['printer', 'visit'])),
+            'reading' => new ReadingResource($reading->load(['printer.assignments', 'visit'])),
             'paginas_consumidas' => $reading->paginas_periodo,
             'monto_estimado' => $estimatedAmount,
         ], 201);
@@ -56,7 +56,7 @@ class ReadingController extends Controller
 
     public function getByVisit(int $visitId, Request $request)
     {
-        $readings = Reading::with(['printer', 'socio'])
+        $readings = Reading::with(['printer.assignments', 'socio'])
             ->where('visita_id', $visitId)
             ->orderBy('fecha', 'desc')
             ->get();
@@ -66,7 +66,7 @@ class ReadingController extends Controller
 
     public function getByPrinter(int $printerId, Request $request)
     {
-        $readings = Reading::with(['visit', 'socio'])
+        $readings = Reading::with(['printer.assignments', 'visit', 'socio'])
             ->where('impresora_id', $printerId)
             ->orderBy('fecha', 'desc')
             ->paginate($request->per_page ?? 15);

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Edit,
+  Pencil,
   Printer,
   DollarSign,
   Calendar,
@@ -17,11 +18,18 @@ import Badge from '@/components/ui/Badge'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Modal from '@/components/ui/Modal'
+import Toast from '@/components/ui/Toast'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useContract, useUpdateContract, useAssignPrinter, useReleasePrinter } from '@/hooks/useContracts'
+import {
+  useContract,
+  useUpdateContract,
+  useAssignPrinter,
+  useReleasePrinter,
+  useUpdateAssignmentAlias,
+} from '@/hooks/useContracts'
 import { useVisits } from '@/hooks/useVisits'
-import type { Contract, ContractStatus, VisitFrequency } from '@/types/contract'
+import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency } from '@/types/contract'
 import type { VisitStatus } from '@/types/operations'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
@@ -78,9 +86,18 @@ export default function ContractDetail() {
   const assignPrinter = useAssignPrinter()
   const releasePrinter = useReleasePrinter()
   const updateContract = useUpdateContract(idNum)
+  const updateAssignmentAlias = useUpdateAssignmentAlias()
 
   const [showEdit, setShowEdit] = useState(false)
   const [editError, setEditError] = useState('')
+  const [aliasTarget, setAliasTarget] = useState<PrinterAssignment | null>(null)
+  const [aliasValue, setAliasValue] = useState('')
+  const [aliasError, setAliasError] = useState('')
+  const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
+    open: false,
+    variant: 'success',
+    message: '',
+  })
   const [form, setForm] = useState({
     tarifa_base: '',
     paginas_incluidas: '',
@@ -124,6 +141,32 @@ export default function ContractDetail() {
       onSuccess: () => setShowEdit(false),
       onError: (err) => setEditError(parseApiError(err)),
     })
+  }
+
+  const openAliasEdit = (pa: PrinterAssignment) => {
+    setAliasTarget(pa)
+    setAliasValue(pa.alias ?? '')
+    setAliasError('')
+  }
+
+  const handleAliasSave = () => {
+    if (!aliasTarget) return
+    setAliasError('')
+    const alias = aliasValue.trim()
+    updateAssignmentAlias.mutate(
+      {
+        contractId: idNum,
+        assignmentId: Number(aliasTarget.id),
+        alias: alias || null,
+      },
+      {
+        onSuccess: () => {
+          setAliasTarget(null)
+          setToast({ open: true, variant: 'success', message: 'Alias actualizado' })
+        },
+        onError: (err) => setAliasError(parseApiError(err)),
+      }
+    )
   }
 
   if (!idNum) {
@@ -316,17 +359,38 @@ export default function ContractDetail() {
                           </Button>
                         </div>
                         {contract.impresoras.map((pa) => (
-                          <div key={pa.id} className="border border-border rounded-lg p-4">
+                          <div key={pa.id} className={`border rounded-lg p-4 ${pa.activa === false ? 'border-border/60 bg-muted/30' : 'border-border'}`}>
                             <div className="flex items-start justify-between mb-3">
                               <div>
-                                <p className="font-medium text-foreground">
-                                  {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium text-foreground">
+                                    {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
+                                  </p>
+                                  {pa.alias && (
+                                    <Badge variant="neutral">{pa.alias}</Badge>
+                                  )}
+                                  {pa.activa === false && (
+                                    <Badge variant="neutral">Liberada</Badge>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">SERIE: {pa.impresora_serie}</p>
                                 <p className="text-xs text-muted-foreground">
-                                  Asignada: {formatDate(pa.fecha_asignacion)} • Lectura inicial: {pa.lectura_inicial.toLocaleString('es-MX')}
+                                  Asignada: {formatDate(pa.fecha_asignacion)}
+                                  {pa.activa === false && pa.fecha_liberacion && ` • Liberada: ${formatDate(pa.fecha_liberacion)}`}
+                                  {' • '}Lectura inicial: {pa.lectura_inicial.toLocaleString('es-MX')}
                                 </p>
                               </div>
+                              {pa.activa !== false && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openAliasEdit(pa)}
+                                  title="Editar alias"
+                                >
+                                  <Pencil className="mr-1 h-3 w-3" />
+                                  Alias
+                                </Button>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                               <div>
@@ -463,7 +527,10 @@ export default function ContractDetail() {
                             <p className="text-sm font-medium text-muted-foreground mb-2">Desglose por impresora:</p>
                             {contract.impresoras.map((pa) => (
                               <div key={pa.id} className="flex justify-between py-1 text-sm">
-                                <span className="text-muted-foreground">{pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}</span>
+                                <span className="text-muted-foreground">
+                                  {pa.impresora_id} - {pa.impresora_marca} {pa.impresora_modelo}
+                                  {pa.alias && <span className="text-foreground"> ({pa.alias})</span>}
+                                </span>
                                 <span className={`font-medium ${pa.rentabilidad_acumulada >= 0 ? 'text-success' : 'text-destructive'}`}>
                                   {formatCurrency(pa.rentabilidad_acumulada)}
                                 </span>
@@ -574,6 +641,55 @@ export default function ContractDetail() {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={aliasTarget !== null}
+        onClose={() => setAliasTarget(null)}
+        title="Editar alias de la asignación"
+      >
+        {aliasTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {aliasTarget.impresora_marca} {aliasTarget.impresora_modelo} • SERIE: {aliasTarget.impresora_serie}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Alias / ubicación
+              </label>
+              <Input
+                type="text"
+                placeholder="Ej. Recepción"
+                value={aliasValue}
+                onChange={(e) => setAliasValue(e.target.value)}
+                maxLength={60}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Cómo la identifica el cliente en el sitio. Único entre asignaciones activas del contrato; vacío = sin alias.
+              </p>
+            </div>
+
+            {aliasError && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+                {aliasError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setAliasTarget(null)}>Cancelar</Button>
+              <Button onClick={handleAliasSave} disabled={updateAssignmentAlias.isPending}>
+                {updateAssignmentAlias.isPending ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Toast
+        isOpen={toast.open}
+        onClose={() => setToast((t) => ({ ...t, open: false }))}
+        variant={toast.variant}
+        message={toast.message}
+      />
     </PageLayout>
   )
 }

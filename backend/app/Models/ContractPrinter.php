@@ -15,6 +15,7 @@ class ContractPrinter extends Pivot
         'fecha_liberacion',
         'activa',
         'lectura_inicial',
+        'alias',
     ];
 
     protected function casts(): array

@@ -27,6 +27,7 @@ class StoreContractRequest extends FormRequest
             'impresoras' => 'nullable|array',
             'impresoras.*.id' => 'required_with:impresoras|exists:printers,id',
             'impresoras.*.lectura_inicial' => 'nullable|integer|min:0',
+            'impresoras.*.alias' => 'nullable|string|max:60',
         ];
     }
 

@@ -104,6 +104,11 @@ class Printer extends Model
         return $this->belongsToMany(Contract::class, 'contract_printer', 'impresora_id', 'contrato_id');
     }
 
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(ContractPrinter::class, 'impresora_id');
+    }
+
     public function invoiceDetails(): HasMany
     {
         return $this->hasMany(InvoiceDetail::class, 'impresora_id');

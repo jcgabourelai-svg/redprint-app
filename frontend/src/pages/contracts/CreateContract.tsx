@@ -61,6 +61,7 @@ export default function CreateContract() {
 
   const [selectedPrinters, setSelectedPrinters] = useState<string[]>([])
   const [lecturas_iniciales, setLecturasIniciales] = useState<Record<string, string>>({})
+  const [aliases, setAliases] = useState<Record<string, string>>({})
 
   const [tarifa_base, setTarifaBase] = useState('1500')
   const [paginas_incluidas, setPaginasIncluidas] = useState('500')
@@ -105,6 +106,7 @@ export default function CreateContract() {
       impresoras: selectedPrinters.map((printerId) => ({
         id: printerId,
         lectura_inicial: getLecturaInicial(printerId),
+        alias: aliases[printerId]?.trim() || null,
       })),
     }
     
@@ -414,22 +416,40 @@ export default function CreateContract() {
                     <p className="text-sm font-medium text-muted-foreground mb-2">Lecturas iniciales de contador:</p>
                     <div className="space-y-3">
                       {selectedPrinterDetails.map((printer) => (
-                        <div key={printer.id} className="flex items-center gap-3">
-                          <span className="text-sm text-muted-foreground min-w-[200px]">
-                            {printer.id} - {printer.marca} {printer.modelo}
-                          </span>
-                          <Input
-                            type="number"
-                            placeholder={`Contador actual: ${(printer.contador_actual ?? 0).toLocaleString('es-MX')}`}
-                            value={lecturas_iniciales[printer.id] || ''}
-                            onChange={(e) =>
-                              setLecturasIniciales({ ...lecturas_iniciales, [printer.id]: e.target.value })
-                            }
-                            className="w-40"
-                          />
-                          <span className="text-xs text-muted-foreground">
-                            Contador actual: {Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas
-                          </span>
+                        <div key={printer.id}>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm text-muted-foreground min-w-[200px]">
+                              {printer.id} - {printer.marca} {printer.modelo}
+                            </span>
+                            <Input
+                              type="number"
+                              placeholder={`Contador actual: ${(printer.contador_actual ?? 0).toLocaleString('es-MX')}`}
+                              value={lecturas_iniciales[printer.id] || ''}
+                              onChange={(e) =>
+                                setLecturasIniciales({ ...lecturas_iniciales, [printer.id]: e.target.value })
+                              }
+                              className="w-40"
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              Contador actual: {Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="text-sm text-muted-foreground min-w-[200px]">Alias / ubicación</span>
+                            <Input
+                              type="text"
+                              placeholder="Ej. Recepción"
+                              value={aliases[printer.id] || ''}
+                              onChange={(e) =>
+                                setAliases({ ...aliases, [printer.id]: e.target.value })
+                              }
+                              className="w-60"
+                              maxLength={60}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              Cómo la identifica el cliente en el sitio (opcional)
+                            </span>
+                          </div>
                         </div>
                       ))}
                     </div>

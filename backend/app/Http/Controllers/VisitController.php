@@ -45,7 +45,7 @@ class VisitController extends Controller
     public function show(Visit $visit): VisitResource
     {
         $visit->load([
-            'client', 'contract', 'socio', 'readings.printer',
+            'client', 'contract', 'socio', 'readings.printer.assignments',
             'contract.activePrinters.latestReading',
             'deliveries.article',
             'maintenanceOrders.printer',

@@ -37,6 +37,8 @@ export default function InstallationPage() {
   const [printersError, setPrintersError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [lecturaInicial, setLecturaInicial] = useState('0')
+  const [alias, setAlias] = useState('')
+  const [aliasSugerido, setAliasSugerido] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -49,6 +51,15 @@ export default function InstallationPage() {
         if (!cancelled) {
           setVisit(res.data)
           setVisitError(null)
+          // Rotacion de flota: la impresora retirada en esta visita libera su
+          // "puesto"; se sugiere su alias para la impresora que la reemplaza.
+          const liberacion = res.data.cambios_impresoras?.find(
+            (c) => c.evento === 'LIBERACION_CONTRATO' && c.alias
+          )
+          if (liberacion?.alias) {
+            setAliasSugerido(liberacion.alias)
+            setAlias((actual) => actual || liberacion.alias || '')
+          }
         }
       })
       .catch((e) => {
@@ -91,6 +102,7 @@ export default function InstallationPage() {
         impresora_id: selectedId,
         lectura_inicial: Number.parseInt(lecturaInicial || '0', 10) || 0,
         visita_id: visitId,
+        alias: alias.trim() || null,
       })
       toast.success('Impresora asignada al contrato')
       goBackTo(`/visita/${visitId}`)
@@ -184,7 +196,7 @@ export default function InstallationPage() {
             ))}
 
             {selectedId !== null && (
-              <div className="mt-5">
+              <div className="mt-5 space-y-4">
                 <Field label="Lectura inicial" help="Valor del contador al momento de la instalación">
                   <TextInput
                     type="number"
@@ -192,6 +204,22 @@ export default function InstallationPage() {
                     min={0}
                     value={lecturaInicial}
                     onChange={(e) => setLecturaInicial(e.target.value)}
+                  />
+                </Field>
+                <Field
+                  label="Alias / ubicación (opcional)"
+                  help={
+                    aliasSugerido && alias === aliasSugerido
+                      ? `Heredado de la impresora retirada en esta visita (${aliasSugerido}); edítalo si cambia el puesto`
+                      : 'Cómo la identifica el cliente en el sitio. Ej. Recepción'
+                  }
+                >
+                  <TextInput
+                    type="text"
+                    value={alias}
+                    maxLength={60}
+                    placeholder="Ej. Recepción"
+                    onChange={(e) => setAlias(e.target.value)}
                   />
                 </Field>
               </div>

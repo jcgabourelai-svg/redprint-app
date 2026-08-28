@@ -6,9 +6,11 @@ use App\Enums\ContractStatus;
 use App\Enums\PrinterStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
+use App\Models\ContractPrinter;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
 class ContractService
@@ -32,7 +34,14 @@ class ContractService
             $contract = Contract::create($data);
 
             foreach ($printerIds as $printerData) {
-                $this->assignPrinter($contract, $printerData['id'], $printerData['lectura_inicial'] ?? 0, $creator);
+                $this->assignPrinter(
+                    $contract,
+                    $printerData['id'],
+                    $printerData['lectura_inicial'] ?? 0,
+                    $creator,
+                    null,
+                    $printerData['alias'] ?? null
+                );
             }
 
             $contract = $contract->fresh(['client', 'printers']);
@@ -99,7 +108,7 @@ class ContractService
         });
     }
 
-    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null): void
+    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null): void
     {
         $printer = Printer::findOrFail($printerId);
 
@@ -115,11 +124,35 @@ class ContractService
             throw new BusinessRuleException('La impresora ya esta asignada a un contrato activo');
         }
 
-        $contract->printers()->attach($printerId, [
-            'fecha_asignacion' => now(),
-            'lectura_inicial' => $initialReading,
-            'activa' => true,
-        ]);
+        $alias = $this->normalizarAlias($alias);
+
+        if ($alias !== null) {
+            $aliasDuplicado = ContractPrinter::where('contrato_id', $contract->id)
+                ->where('alias', $alias)
+                ->where('activa', true)
+                ->exists();
+
+            if ($aliasDuplicado) {
+                throw new BusinessRuleException("El alias '{$alias}' ya está en uso en una asignación activa de este contrato");
+            }
+        }
+
+        try {
+            $contract->printers()->attach($printerId, [
+                'fecha_asignacion' => now(),
+                'lectura_inicial' => $initialReading,
+                'activa' => true,
+                'alias' => $alias,
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Backstop: el indice parcial (contrato_id, alias) WHERE activa
+            // garantiza la unicidad incluso bajo concurrencia.
+            throw new BusinessRuleException(
+                $alias !== null
+                    ? "El alias '{$alias}' ya está en uso en una asignación activa de este contrato"
+                    : 'La impresora ya tiene una asignación registrada en este contrato'
+            );
+        }
 
         $printer->update([
             'estado' => PrinterStatus::RENTADA,
@@ -129,6 +162,9 @@ class ContractService
         $datosAdicionales = ['contrato_id' => $contract->id];
         if ($visitaId) {
             $datosAdicionales['visita_id'] = $visitaId;
+        }
+        if ($alias !== null) {
+            $datosAdicionales['alias'] = $alias;
         }
 
         PrinterHistory::create([
@@ -143,6 +179,11 @@ class ContractService
 
     public function releasePrinter(Contract $contract, Printer $printer, int $warehouseId, User $user, ?int $visitaId = null): void
     {
+        $alias = ContractPrinter::where('contrato_id', $contract->id)
+            ->where('impresora_id', $printer->id)
+            ->where('activa', true)
+            ->value('alias');
+
         $contract->printers()->updateExistingPivot($printer->id, [
             'fecha_liberacion' => now(),
             'activa' => false,
@@ -157,6 +198,9 @@ class ContractService
         if ($visitaId) {
             $datosAdicionales['visita_id'] = $visitaId;
         }
+        if ($alias !== null) {
+            $datosAdicionales['alias'] = $alias;
+        }
 
         PrinterHistory::create([
             'impresora_id' => $printer->id,
@@ -166,6 +210,51 @@ class ContractService
             'socio_id' => $user->id,
             'fecha' => now(),
         ]);
+    }
+
+    /**
+     * Renombra el alias de una asignacion ACTIVA. Es un cambio administrativo:
+     * no escribe PrinterHistory (el valor historico ya quedo congelado en los
+     * eventos de asignacion/liberacion). alias null limpia el alias.
+     */
+    public function updateAssignmentAlias(Contract $contract, ContractPrinter $assignment, ?string $alias): ContractPrinter
+    {
+        if ($assignment->contrato_id !== $contract->id) {
+            throw new BusinessRuleException('La asignación no pertenece a este contrato');
+        }
+
+        if ($assignment->activa !== true) {
+            throw new BusinessRuleException('Solo se puede editar el alias de asignaciones activas');
+        }
+
+        $alias = $this->normalizarAlias($alias);
+
+        if ($alias !== null) {
+            $aliasDuplicado = ContractPrinter::where('contrato_id', $contract->id)
+                ->where('alias', $alias)
+                ->where('activa', true)
+                ->where('id', '!=', $assignment->id)
+                ->exists();
+
+            if ($aliasDuplicado) {
+                throw new BusinessRuleException("El alias '{$alias}' ya está en uso en una asignación activa de este contrato");
+            }
+        }
+
+        try {
+            $assignment->update(['alias' => $alias]);
+        } catch (UniqueConstraintViolationException) {
+            throw new BusinessRuleException("El alias '{$alias}' ya está en uso en una asignación activa de este contrato");
+        }
+
+        return $assignment;
+    }
+
+    private function normalizarAlias(?string $alias): ?string
+    {
+        $alias = $alias !== null ? trim($alias) : null;
+
+        return $alias === '' ? null : $alias;
     }
 
     public function calculateEstimatedAmount(Contract $contract, int $pagesConsumed): float

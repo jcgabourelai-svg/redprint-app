@@ -34,6 +34,7 @@ class VisitResource extends JsonResource
                 ->map(fn ($h) => [
                     'evento' => $h->tipo_evento,
                     'fecha' => $h->fecha?->toIso8601String(),
+                    'alias' => $h->datos_adicionales['alias'] ?? null,
                     'impresora' => $h->printer ? [
                         'id' => $h->printer->id,
                         'marca' => $h->printer->marca,
@@ -66,6 +67,7 @@ class VisitResource extends JsonResource
                     'marca' => $printer->marca,
                     'modelo' => $printer->modelo,
                     'numero_serie' => $printer->num_serie,
+                    'alias' => $printer->pivot?->alias,
                     'contrato_id' => (string) $contract->id,
                     'lectura_anterior' => (int) $lecturaAnterior,
                     'fecha_lectura_anterior' => $latest?->fecha?->toDateString(),

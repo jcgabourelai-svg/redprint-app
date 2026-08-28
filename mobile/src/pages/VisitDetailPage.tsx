@@ -280,9 +280,11 @@ export default function VisitDetailPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-gray-800">
-                      {p.marca} {p.modelo}
+                      {p.alias ?? `${p.marca} ${p.modelo}`}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-500">Serie: {p.numero_serie ?? '-'}</p>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      {p.alias ? `${p.marca} ${p.modelo} · ` : ''}Serie: {p.numero_serie ?? '-'}
+                    </p>
                     <p className="mt-1 text-xs text-gray-500">
                       Última lectura: {formatNumber(p.lectura_anterior)}
                       {p.fecha_lectura_anterior && ` (${p.fecha_lectura_anterior})`}
@@ -392,6 +394,9 @@ export default function VisitDetailPage() {
                     <p className="truncate font-semibold text-gray-800">
                       {c.impresora ? `${c.impresora.marca} ${c.impresora.modelo}` : 'Impresora'}
                     </p>
+                    {c.alias && (
+                      <p className="mt-0.5 text-xs font-medium text-gray-600">Alias: {c.alias}</p>
+                    )}
                     <p className="mt-0.5 text-xs text-gray-500">
                       Serie: {c.impresora?.num_serie ?? '-'}
                     </p>
