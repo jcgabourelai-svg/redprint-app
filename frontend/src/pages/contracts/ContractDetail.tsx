@@ -29,7 +29,10 @@ import {
   useUpdateAssignmentAlias,
 } from '@/hooks/useContracts'
 import { useVisits } from '@/hooks/useVisits'
+import { usePrinters } from '@/hooks/usePrinters'
+import { useWarehouses } from '@/hooks/useWarehouses'
 import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency } from '@/types/contract'
+import { PrinterStatus } from '@/types/enums'
 import type { VisitStatus } from '@/types/operations'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
@@ -87,12 +90,23 @@ export default function ContractDetail() {
   const releasePrinter = useReleasePrinter()
   const updateContract = useUpdateContract(idNum)
   const updateAssignmentAlias = useUpdateAssignmentAlias()
+  const { data: availablePrintersData, isLoading: isLoadingAvailablePrinters } = usePrinters({
+    estado: PrinterStatus.EN_ALMACEN,
+    per_page: 200,
+  })
+  const { data: warehousesData } = useWarehouses({ per_page: 100 })
 
   const [showEdit, setShowEdit] = useState(false)
   const [editError, setEditError] = useState('')
   const [aliasTarget, setAliasTarget] = useState<PrinterAssignment | null>(null)
   const [aliasValue, setAliasValue] = useState('')
   const [aliasError, setAliasError] = useState('')
+  const [showAssign, setShowAssign] = useState(false)
+  const [assignError, setAssignError] = useState('')
+  const [assignForm, setAssignForm] = useState({ impresora_id: '', lectura_inicial: '', alias: '' })
+  const [releaseTarget, setReleaseTarget] = useState<PrinterAssignment | null>(null)
+  const [releaseWarehouseId, setReleaseWarehouseId] = useState('')
+  const [releaseError, setReleaseError] = useState('')
   const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
     open: false,
     variant: 'success',
@@ -147,6 +161,76 @@ export default function ContractDetail() {
     setAliasTarget(pa)
     setAliasValue(pa.alias ?? '')
     setAliasError('')
+  }
+
+  const availablePrinters = availablePrintersData?.data || []
+  const warehouses = (warehousesData?.data || []).filter((w) => w.activo)
+
+  const openAssign = () => {
+    setAssignForm({ impresora_id: '', lectura_inicial: '', alias: '' })
+    setAssignError('')
+    setShowAssign(true)
+  }
+
+  const handleAssignPrinterSelect = (value: string) => {
+    const printer = availablePrinters.find((p) => String(p.id) === value)
+    setAssignForm({
+      ...assignForm,
+      impresora_id: value,
+      lectura_inicial: printer ? String(printer.contador_actual ?? 0) : assignForm.lectura_inicial,
+    })
+  }
+
+  const handleAssignSave = () => {
+    setAssignError('')
+    if (!assignForm.impresora_id) {
+      setAssignError('Selecciona una impresora disponible')
+      return
+    }
+    assignPrinter.mutate(
+      {
+        id: idNum,
+        impresora_id: Number(assignForm.impresora_id),
+        lectura_inicial: parseInt(assignForm.lectura_inicial) || 0,
+        alias: assignForm.alias.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          setShowAssign(false)
+          setToast({ open: true, variant: 'success', message: 'Impresora asignada al contrato' })
+        },
+        onError: (err) => setAssignError(parseApiError(err)),
+      }
+    )
+  }
+
+  const openRelease = (pa: PrinterAssignment) => {
+    setReleaseTarget(pa)
+    setReleaseWarehouseId('')
+    setReleaseError('')
+  }
+
+  const handleReleaseSave = () => {
+    if (!releaseTarget) return
+    setReleaseError('')
+    if (!releaseWarehouseId) {
+      setReleaseError('Selecciona el almacén de destino')
+      return
+    }
+    releasePrinter.mutate(
+      {
+        id: idNum,
+        impresora_id: Number(releaseTarget.impresora_id),
+        almacen_destino_id: Number(releaseWarehouseId),
+      },
+      {
+        onSuccess: () => {
+          setReleaseTarget(null)
+          setToast({ open: true, variant: 'success', message: 'Impresora liberada' })
+        },
+        onError: (err) => setReleaseError(parseApiError(err)),
+      }
+    )
   }
 
   const handleAliasSave = () => {
@@ -353,7 +437,7 @@ export default function ContractDetail() {
                     content: (
                       <div className="space-y-4 pb-4">
                         <div className="flex justify-end">
-                          <Button size="sm">
+                          <Button size="sm" onClick={openAssign}>
                             <Plus className="mr-2 h-4 w-4" />
                             Asignar
                           </Button>
@@ -417,7 +501,7 @@ export default function ContractDetail() {
                                 <Eye className="mr-1 h-3 w-3" />
                                 Ver detalle
                               </Button>
-                              <Button variant="ghost" size="sm">
+                              <Button variant="ghost" size="sm" onClick={() => openRelease(pa)}>
                                 Liberar
                               </Button>
                             </div>
@@ -678,6 +762,131 @@ export default function ContractDetail() {
               <Button variant="secondary" onClick={() => setAliasTarget(null)}>Cancelar</Button>
               <Button onClick={handleAliasSave} disabled={updateAssignmentAlias.isPending}>
                 {updateAssignmentAlias.isPending ? 'Guardando...' : 'Guardar'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal isOpen={showAssign} onClose={() => setShowAssign(false)} title="Asignar impresora">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Impresora (en almacén)
+            </label>
+            {isLoadingAvailablePrinters ? (
+              <p className="text-sm text-muted-foreground">Cargando impresoras disponibles...</p>
+            ) : availablePrinters.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No hay impresoras disponibles en almacén. Una impresora debe estar en almacén
+                para poder asignarse a un contrato.
+              </p>
+            ) : (
+              <Select
+                searchable
+                options={availablePrinters.map((p) => ({
+                  value: String(p.id),
+                  label: `${p.marca} ${p.modelo} — ${p.num_serie}`,
+                }))}
+                value={assignForm.impresora_id}
+                onChange={handleAssignPrinterSelect}
+                placeholder="Seleccionar impresora..."
+              />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Lectura inicial
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={assignForm.lectura_inicial}
+              onChange={(e) => setAssignForm({ ...assignForm, lectura_inicial: e.target.value })}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Se toma el contador actual de la impresora como referencia; ajústala si la
+              instalación inicia en otro valor.
+            </p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Alias / ubicación (opcional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Ej. Recepción"
+              value={assignForm.alias}
+              onChange={(e) => setAssignForm({ ...assignForm, alias: e.target.value })}
+              maxLength={60}
+            />
+          </div>
+
+          {assignError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {assignError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowAssign(false)}>Cancelar</Button>
+            <Button
+              onClick={handleAssignSave}
+              disabled={assignPrinter.isPending || availablePrinters.length === 0}
+            >
+              {assignPrinter.isPending ? 'Asignando...' : 'Asignar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={releaseTarget !== null}
+        onClose={() => setReleaseTarget(null)}
+        title="Liberar impresora"
+      >
+        {releaseTarget && (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              {releaseTarget.impresora_marca} {releaseTarget.impresora_modelo} • SERIE:{' '}
+              {releaseTarget.impresora_serie}
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Almacén de destino
+              </label>
+              {warehouses.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No hay almacenes activos configurados.
+                </p>
+              ) : (
+                <Select
+                  options={warehouses.map((w) => ({ value: String(w.id), label: w.nombre }))}
+                  value={releaseWarehouseId}
+                  onChange={setReleaseWarehouseId}
+                  placeholder="Seleccionar almacén..."
+                />
+              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                La impresora volverá al inventario del almacén seleccionado y quedará disponible
+                para otro contrato.
+              </p>
+            </div>
+
+            {releaseError && (
+              <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+                {releaseError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="secondary" onClick={() => setReleaseTarget(null)}>Cancelar</Button>
+              <Button
+                variant="danger"
+                onClick={handleReleaseSave}
+                disabled={releasePrinter.isPending || warehouses.length === 0}
+              >
+                {releasePrinter.isPending ? 'Liberando...' : 'Liberar'}
               </Button>
             </div>
           </div>

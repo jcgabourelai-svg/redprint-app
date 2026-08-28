@@ -45,6 +45,7 @@ export function useAssignPrinter() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ['contracts'] })
       qc.invalidateQueries({ queryKey: ['contracts', id] })
+      qc.invalidateQueries({ queryKey: ['printers'] })
     },
   })
 }
