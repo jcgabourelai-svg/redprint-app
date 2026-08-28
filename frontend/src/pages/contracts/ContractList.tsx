@@ -90,6 +90,11 @@ export default function ContractList() {
               {series.slice(0, 2).join(', ')}
               {series.length > 2 && '...'}
             </div>
+            {(row.pendientes_instalacion ?? 0) > 0 && (
+              <Badge variant="warning" className="mt-1">
+                Pendiente de instalación
+              </Badge>
+            )}
           </div>
         )
       },

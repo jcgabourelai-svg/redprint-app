@@ -73,6 +73,16 @@ class Contract extends Model
         return $this->printers()->wherePivot('activa', true);
     }
 
+    /**
+     * Plan de modelos contratados (intención comercial). Nunca es fuente de
+     * cobro: el pivot contract_printer sigue siendo la única verdad de las
+     * asignaciones físicas (D16).
+     */
+    public function planImpresoras(): HasMany
+    {
+        return $this->hasMany(ContractPrinterPlan::class, 'contrato_id');
+    }
+
     public function visits(): HasMany
     {
         return $this->hasMany(Visit::class, 'contrato_id');

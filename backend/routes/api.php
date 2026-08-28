@@ -111,6 +111,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('contracts', ContractController::class);
             Route::post('contracts/{contract}/assign-printer', [ContractController::class, 'assignPrinter']);
             Route::post('contracts/{contract}/release-printer', [ContractController::class, 'releasePrinter']);
+            Route::put('contracts/{contract}/plan', [ContractController::class, 'updatePlan']);
             Route::patch('contracts/{contract}/assignments/{assignment}', [ContractController::class, 'updateAssignmentAlias']);
         });
 

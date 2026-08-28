@@ -170,12 +170,28 @@ export interface Printer {
   id: number
   marca: string
   modelo: string
+  printer_model_id?: number | null
   num_serie: string | null
   num_inventario: string | null
   codigo_negocio: string | null
   estado: PrinterEstado | null
   contador_actual: number
   warehouse?: WarehouseRef | null
+}
+
+export interface ContractPlanRow {
+  id: number
+  modelo_id: number
+  marca: string | null
+  modelo_nombre: string | null
+  cantidad: number
+  instaladas: number | null
+}
+
+export interface ContractPlanInfo {
+  plan_impresoras?: ContractPlanRow[]
+  pendientes_instalacion?: number
+  active_printers_count?: number
 }
 
 export interface Warehouse {

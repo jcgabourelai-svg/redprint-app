@@ -43,11 +43,71 @@ class ContractResource extends JsonResource
                 ? round(($rentabilidadTotal / max($estimadoTotal, 1)) * 100, 2)
                 : $this->margen,
             'printers_count' => $this->whenNotNull($this->printers_count),
+            'active_printers_count' => $this->whenNotNull($this->active_printers_count),
             'client' => $this->whenLoaded('client'),
             'printers' => PrinterResource::collection($this->whenLoaded('printers')),
             'impresoras' => $this->when(isset($impresoras), $impresoras),
+            'plan_impresoras' => $this->whenLoaded('planImpresoras', fn () => $this->resolverPlanImpresoras()),
+            'pendientes_instalacion' => $this->whenNotNull($this->resolverPendientesInstalacion()),
             'fecha_creacion' => $this->fecha_creacion?->toIso8601String(),
         ];
+    }
+
+    /**
+     * Plan de modelos (intención comercial). `instaladas` cuenta las
+     * asignaciones ACTIVAS del contrato cuyo printer_model_id coincide;
+     * requiere `printers` cargada (el pivot es la única fuente de verdad).
+     */
+    private function resolverPlanImpresoras(): array
+    {
+        $printers = $this->resource->relationLoaded('printers') ? $this->printers : null;
+
+        return $this->planImpresoras
+            ->map(function ($fila) use ($printers) {
+                $instaladas = $printers !== null
+                    ? $printers->filter(
+                        fn ($p) => $p->pivot->activa
+                            && (int) $p->printer_model_id === (int) $fila->printer_model_id
+                    )->count()
+                    : null;
+
+                return [
+                    'id' => $fila->id,
+                    'modelo_id' => $fila->printer_model_id,
+                    'marca' => $fila->printerModel?->brand?->nombre,
+                    'modelo_nombre' => $fila->printerModel?->nombre,
+                    'cantidad' => (int) $fila->cantidad,
+                    'instaladas' => $instaladas,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Equipos planificados sin asignación activa (floor 0). Usa el
+     * withCount('activePrinters') si está disponible; si no, deriva el
+     * conteo de la relación `printers` cargada. Null = sin datos para
+     * calcularlo (plan no cargado).
+     */
+    private function resolverPendientesInstalacion(): ?int
+    {
+        if (! $this->resource->relationLoaded('planImpresoras')) {
+            return null;
+        }
+
+        $totalPlan = (int) $this->planImpresoras->sum('cantidad');
+
+        if ($this->active_printers_count !== null) {
+            return max(0, $totalPlan - (int) $this->active_printers_count);
+        }
+
+        if ($this->resource->relationLoaded('printers')) {
+            $activas = $this->printers->filter(fn ($p) => (bool) $p->pivot->activa)->count();
+            return max(0, $totalPlan - $activas);
+        }
+
+        return null;
     }
 
     private function resolverImpresoras(): ?array

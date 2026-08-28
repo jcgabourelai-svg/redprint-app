@@ -8,7 +8,7 @@
 > **Para humanos:** es también un buen resumen ejecutivo del sistema: negocio, alcance,
 > filosofía, flujos y deuda conocida.
 
-**Última revisión del documento:** 2026-08-26 · **Veracidad:** contrastado contra el código
+**Última revisión del documento:** 2026-08-28 · **Veracidad:** contrastado contra el código
 (backend `app/`, `routes/api.php`, migraciones; frontend `src/`; mobile `src/`). Si el código y
 este documento discrepan, **gana el código** — y eso es en sí mismo un hallazgo a reportar.
 
@@ -216,6 +216,7 @@ Diagrama de relaciones principales (≠ esquema completo; ver migraciones para d
 erDiagram
     Client ||--o{ Contract : "tiene"
     Contract }o--o{ Printer : "asigna (pivot contract_printer: lectura_inicial, activa)"
+    Contract ||--o{ ContractPrinterPlan : "planifica modelos (intención, no cobro)"
     Warehouse ||--o{ Printer : "guarda (cuando no está rentada)"
     PrinterModel ||--o{ Printer : "tipifica"
     PrinterModel }o--o{ Article : "compatibilidad"
@@ -250,6 +251,7 @@ erDiagram
 |---|---|---|
 | **Contract** | El corazón del negocio: precio (tarifa base/incluidas/excedente), frecuencia de visita, estado | `calculateEstimatedAmount()` es la fórmula del §1; atributos `ingresos`/`costos`/`rentabilidad`/`margen` |
 | **ContractPrinter** (pivot) | Asignación impresora↔contrato | Guarda `lectura_inicial` (base de cálculo del primer periodo) y `activa` |
+| **ContractPrinterPlan** | Plan de modelos contratados (intención comercial, sin series) | **Nunca es fuente de cobro** (D16); puro `printer_model_id` × `cantidad` (sin alias: el alias nace en la instalación, en el pivot); la instalación real nace al vincular la serie (móvil) |
 | **Visit** | Unidad de trabajo de campo | `tipo_visita` es **motivo**, no restricción de acciones; `origen=CAMPO` si se creó desde el móvil; `motivo_cierre` obligatorio si se cierra sin actividades |
 | **Reading** | El dato que genera ingresos | `paginas_periodo` = contador − lectura previa (o `lectura_inicial`, o 0); retroceso ⇒ anomalía con justificación obligatoria |
 | **Invoice / InvoiceDetail** | Cobro por periodo | Detalle por lectura con distribución proporcional del monto del contrato (redondeo absorbido en la última fila) |
@@ -352,6 +354,7 @@ sequenceDiagram
 
     A->>API: POST /contracts (wizard 4 pasos)
     API-->>A: CTR-NNNN ACTIVO + impresoras RENTADA + 1ª visita
+    Note over A,API: El alta puede llevar plan de modelos sin series (D16);<br/>el operador vincula la serie real y captura la lectura_inicial<br/>(contador físico) al instalar desde la app móvil.
     S->>API: visits:generate-upcoming (rolling 1 mes)
     O->>API: GET /visits (Hoy / Calendario)
     O->>API: POST /readings (con foto/GPS, cola offline si no hay red)
@@ -405,6 +408,7 @@ propuesto contradice una decisión consciente (malo) o corrige una omisión (bue
 | D13 | **Cierre de periodo como snapshot informativo** | Cerrar rápido, sin bloquear operación | Pregunta abierta: ¿debería congelar? (ver §11.2) |
 | D14 | **Build de frontends que vacía `dist` sin borrar la carpeta** | Bind mount de nginx en Windows/OneDrive se rompe si cambia el inodo | No cambiar por `rm -rf dist` (detalles en AGENTS.md) |
 | D15 | **Registros de campo: staging móvil + regularización web diferida** | El contrato toca dinero y la impresora toca catálogo: no se dan de alta desde el móvil (extiende D4/D5). El hecho físico se captura como evidencia cruda y un admin la vincula a entidades reales en una sola transacción | Al vincular, instalación implícita con `lectura_inicial = contador capturado` (línea base, no se cobra histórico previo) y la salida de stock (kardex) nace solo ahí; los registros vinculados/descartados son inmutables |
+| D16 | **Plan de modelos ≠ asignación: el plan nunca es fuente de cobro** | Separar la intención comercial (qué modelos se contratan, `contract_printer_plan`) del hecho físico (qué serie queda instalada, pivot `contract_printer`). La `tarifa_base` corre desde `fecha_inicio` aunque falte instalar; el binding diferido solo traslada cuándo empieza a contar páginas (desde la `lectura_inicial` capturada en campo) | Cualquier cálculo de dinero debe seguir leyendo el pivot (nunca el plan); el plan solo alimenta visibilidad (`pendientes_instalacion`, badge) y advertencias de estimación; `PUT /contracts/{id}/plan` solo en ACTIVO y replace-all |
 
 ---
 
@@ -664,6 +668,7 @@ rg -n "users.rol|->rol\b" backend/app/Services              # usos de columna le
 | Cola offline móvil | `mobile/src/lib/sync.ts`, `lib/db.ts`, README de `mobile/` |
 | Catálogo de permisos | `backend/config/permisos.php` (20 claves / 6 módulos) |
 | Registros de campo (staging + bandeja) | `backend/app/Services/FieldRecordService.php`, bandeja `frontend/src/pages/operations/fieldrecords/`, captura `mobile/src/pages/NewFieldRecordPage.tsx` |
+| Plan de modelos (D16) | `backend/app/Models/ContractPrinterPlan.php`, migración `2026_08_28_200000_create_contract_printer_plan_table.php`, `ContractService::updatePlan`, wizard `CreateContract.tsx` (paso 2), instalación con plan `mobile/src/pages/InstallationPage.tsx` |
 | Mocks del frontend | §10 + grep `mock` en `frontend/src/pages/finance`, `components/layout/Header.tsx` |
 | Bug legacy `users.rol` | `backend/app/Services/InventoryService.php::generateLowStockNotification` |
 | Resumen de cierre por `tipo` | `backend/app/Http/Controllers/PeriodController.php` |

@@ -7,6 +7,7 @@ use App\Enums\PrinterStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
 use App\Models\ContractPrinter;
+use App\Models\ContractPrinterPlan;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\User;
@@ -32,20 +33,28 @@ class ContractService
             $printerIds = $data['impresoras'] ?? [];
             unset($data['impresoras']);
 
+            $planRows = $data['plan_impresoras'] ?? [];
+            unset($data['plan_impresoras']);
+
             $contract = Contract::create($data);
+
+            foreach ($planRows as $row) {
+                $this->crearFilaPlan($contract, $row);
+            }
 
             foreach ($printerIds as $printerData) {
                 $this->assignPrinter(
                     $contract,
                     $printerData['id'],
-                    $printerData['lectura_inicial'] ?? 0,
+                    $printerData['lectura_inicial'] ?? null,
                     $creator,
                     null,
                     $printerData['alias'] ?? null
                 );
             }
 
-            $contract = $contract->fresh(['client', 'printers']);
+            $contract = $contract->fresh(['client', 'printers', 'planImpresoras.printerModel.brand']);
+            $contract->loadCount('activePrinters');
 
             // Genera la 1ra visita recurrente (rolling) sin esperar al cron,
             // dentro de la misma transaccion para garantizar atomicidad.
@@ -109,9 +118,52 @@ class ContractService
         });
     }
 
-    public function assignPrinter(Contract $contract, int $printerId, int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null, ?string $color = null): void
+    /**
+     * Reemplaza por completo el plan de modelos del contrato (replace-all).
+     * Solo en contratos ACTIVOS: el plan es intención comercial y se ajusta
+     * mientras el contrato vive; las asignaciones físicas no se tocan.
+     */
+    public function updatePlan(Contract $contract, array $rows): Contract
+    {
+        if ($contract->estado !== ContractStatus::ACTIVO) {
+            throw new BusinessRuleException('Solo se puede editar el plan de contratos activos');
+        }
+
+        return DB::transaction(function () use ($contract, $rows) {
+            $contract->planImpresoras()->delete();
+
+            foreach ($rows as $row) {
+                $this->crearFilaPlan($contract, $row);
+            }
+
+            $contract = $contract->fresh(['client', 'printers', 'planImpresoras.printerModel.brand']);
+            $contract->loadCount('activePrinters');
+
+            return $contract;
+        });
+    }
+
+    private function crearFilaPlan(Contract $contract, array $row): ContractPrinterPlan
+    {
+        try {
+            return $contract->planImpresoras()->create([
+                'printer_model_id' => $row['modelo_id'],
+                'cantidad' => (int) $row['cantidad'],
+            ]);
+        } catch (UniqueConstraintViolationException) {
+            // Backstop: el unique (contrato_id, printer_model_id) atrapa
+            // duplicados que escapen a la validación (p. ej. concurrencia).
+            throw new BusinessRuleException('No se puede repetir el mismo modelo de impresora en el plan');
+        }
+    }
+
+    public function assignPrinter(Contract $contract, int $printerId, ?int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null, ?string $color = null): void
     {
         $printer = Printer::findOrFail($printerId);
+
+        // D-D: sin lectura explícita, la línea base es el contador físico de
+        // la serie (nunca 0: no se cobra el histórico previo a la instalación).
+        $initialReading ??= (int) $printer->contador_actual;
 
         if ($printer->estado !== PrinterStatus::EN_ALMACEN) {
             throw new BusinessRuleException('La impresora debe estar en almacen para asignarla');

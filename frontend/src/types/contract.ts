@@ -19,6 +19,15 @@ export interface PrinterAssignment {
   rentabilidad_acumulada: number
 }
 
+export interface ContractPlanRow {
+  id: number
+  modelo_id: number
+  marca: string | null
+  modelo_nombre: string | null
+  cantidad: number
+  instaladas: number | null
+}
+
 export interface Contract {
   id: string
   cliente_id: string
@@ -35,6 +44,9 @@ export interface Contract {
   dia_visita?: number | null
   estado: ContractStatus
   impresoras: PrinterAssignment[]
+  plan_impresoras?: ContractPlanRow[]
+  pendientes_instalacion?: number
+  active_printers_count?: number
   printers?: {
     id: string
     marca: string

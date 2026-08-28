@@ -7,6 +7,9 @@ import {
   FileText,
   DollarSign,
   ClipboardCheck,
+  Package,
+  Plus,
+  Trash2,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -17,6 +20,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import { useClients } from '@/hooks/useClients'
 import { usePrinters } from '@/hooks/usePrinters'
+import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useCreateContract } from '@/hooks/useContracts'
 import type { VisitFrequency } from '@/types/contract'
 import { formatCurrency } from '@/lib/formatters'
@@ -38,6 +42,11 @@ const presetLabels: Record<string, { tarifa_base: number; paginas_incluidas: num
   estandar: { tarifa_base: 1500, paginas_incluidas: 500, costo_por_pagina_excedente: 0.01 },
 }
 
+interface PlanRow {
+  modelo_id: string
+  cantidad: string
+}
+
 export default function CreateContract() {
   const navigate = useNavigate()
   const [step, setStep] = useState(0)
@@ -47,10 +56,12 @@ export default function CreateContract() {
 
   const { data: clientsData, isLoading: clientsLoading } = useClients()
   const { data: printersData, isLoading: printersLoading } = usePrinters({ estado: 'EN_ALMACEN' })
+  const { data: printerModels, isLoading: modelsLoading } = usePrinterModels(undefined, true)
   const createContract = useCreateContract()
 
   const clients = clientsData?.data || []
   const printers = printersData?.data || []
+  const models = printerModels || []
 
   const [cliente_id, setClienteId] = useState('')
   const [fecha_inicio, setFechaInicio] = useState('2026-05-15')
@@ -62,6 +73,8 @@ export default function CreateContract() {
   const [selectedPrinters, setSelectedPrinters] = useState<string[]>([])
   const [lecturas_iniciales, setLecturasIniciales] = useState<Record<string, string>>({})
   const [aliases, setAliases] = useState<Record<string, string>>({})
+  const [planRows, setPlanRows] = useState<PlanRow[]>([])
+  const [showSeries, setShowSeries] = useState(false)
 
   const [tarifa_base, setTarifaBase] = useState('1500')
   const [paginas_incluidas, setPaginasIncluidas] = useState('500')
@@ -72,13 +85,46 @@ export default function CreateContract() {
     label: `${c.razon_social} (${c.nombre_contacto})`,
   }))
 
+  const modelOptions = models.map((m) => ({
+    value: String(m.id),
+    label: m.marca ? `${m.marca} ${m.nombre}` : m.nombre,
+  }))
+
   const selectedClient = clients.find((c) => c.id === cliente_id)
   const selectedPrinterDetails = printers.filter((p) => selectedPrinters.includes(p.id))
 
+  const getPlanRows = () =>
+    planRows
+      .filter((r) => r.modelo_id)
+      .map((r) => ({
+        modelo_id: parseInt(r.modelo_id),
+        cantidad: parseInt(r.cantidad) || 1,
+      }))
+
+  const getPlanModelLabel = (modeloId: string) => {
+    const m = models.find((mm) => String(mm.id) === modeloId)
+    return m ? (m.marca ? `${m.marca} ${m.nombre}` : m.nombre) : modeloId
+  }
+
+  const addPlanRow = () => {
+    const usedIds = new Set(planRows.map((r) => r.modelo_id).filter(Boolean))
+    const firstFree = modelOptions.find((o) => !usedIds.has(o.value))
+    setPlanRows([
+      ...planRows,
+      { modelo_id: firstFree?.value ?? '', cantidad: '1' },
+    ])
+  }
+
+  const updatePlanRow = (index: number, patch: Partial<PlanRow>) => {
+    setPlanRows(planRows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+
+  const removePlanRow = (index: number) => {
+    setPlanRows(planRows.filter((_, i) => i !== index))
+  }
+
   const canNext = () => {
     if (step === 0) return !!cliente_id && !!fecha_inicio
-    if (step === 1) return selectedPrinters.length > 0
-    if (step === 2) return true
     return true
   }
 
@@ -103,6 +149,7 @@ export default function CreateContract() {
       tarifa_base: parseFloat(tarifa_base),
       paginas_incluidas: parseInt(paginas_incluidas),
       costo_pag_excedente: parseFloat(costo_por_pagina_excedente),
+      plan_impresoras: getPlanRows(),
       impresoras: selectedPrinters.map((printerId) => ({
         id: printerId,
         lectura_inicial: getLecturaInicial(printerId),
@@ -149,7 +196,7 @@ export default function CreateContract() {
     }))
   }
 
-  if (clientsLoading || printersLoading) {
+  if (clientsLoading || printersLoading || modelsLoading) {
     return (
       <PageLayout title="Contratos › Crear Nuevo Contrato">
         <div className="flex items-center justify-center py-12">
@@ -274,74 +321,174 @@ export default function CreateContract() {
             )}
 
             {step === 1 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {selectedClient && (
                   <div className="bg-primary/10 rounded-lg p-3 text-sm">
                     <p className="font-medium text-primary">Cliente: {selectedClient.razon_social} ({selectedClient.nombre_contacto})</p>
                     <p className="text-primary">RFC: {selectedClient.rfc || '-'}</p>
                   </div>
                 )}
-                <p className="text-sm text-muted-foreground">Impresoras disponibles en almacén:</p>
-                <div className="space-y-3">
-                  {printers.map((printer) => {
-                    const isSelected = selectedPrinters.includes(printer.id)
-                    return (
-                      <div
-                        key={printer.id}
-                        className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                          isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-input'
-                        }`}
-                        onClick={() => togglePrinter(printer.id)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div
-                            className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
-                              isSelected ? 'bg-primary border-primary' : 'border-input'
-                            }`}
-                          >
-                            {isSelected && <Check className="h-3 w-3 text-white" />}
+
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-primary" />
+                      <p className="text-sm font-medium text-foreground">Modelos contratados (recomendado)</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={addPlanRow} disabled={modelOptions.length === 0}>
+                      <Plus className="mr-1 h-3 w-3" />
+                      Agregar modelo
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">
+                    Define qué modelos quedan contratados. Las series físicas se vinculan en campo al
+                    momento de instalar (la app móvil captura la lectura inicial real).
+                  </p>
+                  {planRows.length === 0 ? (
+                    <div className="border border-dashed border-border rounded-lg p-4 text-sm text-muted-foreground">
+                      Sin plan de modelos. Puedes agregar los modelos contratados o dejarlo vacío y
+                      asignar series directamente.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {planRows.map((row, index) => {
+                        const selectedModel = models.find((m) => String(m.id) === row.modelo_id)
+                        const duplicado =
+                          row.modelo_id &&
+                          planRows.filter((r) => r.modelo_id === row.modelo_id).length > 1
+                        return (
+                          <div key={index} className="border border-border rounded-lg p-3">
+                            <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto] items-center">
+                              <div>
+                                <label className="block text-xs text-muted-foreground mb-1">Modelo</label>
+                                <Select
+                                  options={modelOptions}
+                                  value={row.modelo_id}
+                                  onChange={(v) => updatePlanRow(index, { modelo_id: v })}
+                                  placeholder="Seleccionar modelo..."
+                                  searchable
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-muted-foreground mb-1">Cantidad</label>
+                                <Input
+                                  type="number"
+                                  min={1}
+                                  max={20}
+                                  value={row.cantidad}
+                                  onChange={(e) => updatePlanRow(index, { cantidad: e.target.value })}
+                                />
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="mt-5"
+                                onClick={() => removePlanRow(index)}
+                                title="Quitar modelo"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                            {duplicado && (
+                              <p className="text-xs text-destructive mt-2">
+                                Este modelo está repetido en el plan; el servidor lo rechazará.
+                              </p>
+                            )}
+                            {selectedModel && (
+                              <p className="text-xs text-muted-foreground mt-2">
+                                {getPlanModelLabel(row.modelo_id)} × {parseInt(row.cantidad) || 1}
+                              </p>
+                            )}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-foreground">
-                              {printer.id} - {printer.marca} {printer.modelo}
-                            </p>
-                            <p className="text-xs text-muted-foreground">SERIE: {printer.num_serie}</p>
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
-                              <div>
-                                <span className="text-muted-foreground">Costo:</span>{' '}
-                                <span className="text-muted-foreground">{formatCurrency(printer.costo_adquisicion)}</span>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="border border-border rounded-lg">
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between p-3 text-sm font-medium text-foreground hover:bg-muted/50 transition-colors"
+                    onClick={() => setShowSeries(!showSeries)}
+                  >
+                    <span className="flex items-center gap-2">
+                      <Printer className="h-4 w-4 text-muted-foreground" />
+                      Asignar series ahora (opcional)
+                      {selectedPrinters.length > 0 && (
+                        <Badge variant="primary">{selectedPrinters.length}</Badge>
+                      )}
+                    </span>
+                    <span>{showSeries ? '−' : '+'}</span>
+                  </button>
+                  {showSeries && (
+                    <div className="space-y-3 p-3 pt-0 border-t border-border">
+                      <p className="text-xs text-muted-foreground pt-2">
+                        Reserva blanda: las series seleccionadas pasan a RENTADA desde hoy con la
+                        lectura inicial indicada. Si el equipo se instala después, deja esta sección
+                        vacía.
+                      </p>
+                      {printers.map((printer) => {
+                        const isSelected = selectedPrinters.includes(printer.id)
+                        return (
+                          <div
+                            key={printer.id}
+                            className={`border rounded-lg p-4 cursor-pointer transition-colors ${
+                              isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-input'
+                            }`}
+                            onClick={() => togglePrinter(printer.id)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div
+                                className={`mt-0.5 flex h-5 w-5 items-center justify-center rounded border ${
+                                  isSelected ? 'bg-primary border-primary' : 'border-input'
+                                }`}
+                              >
+                                {isSelected && <Check className="h-3 w-3 text-white" />}
                               </div>
-                              <div>
-                                <span className="text-muted-foreground">Contador:</span>{' '}
-                                <span className="text-foreground font-medium">{Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas</span>
-                              </div>
-                              <div>
-                                <span className="text-muted-foreground">Almacén:</span>{' '}
-                                <span className="text-muted-foreground">{printer.warehouse?.nombre || '-'}</span>
-                              </div>
-                              <div>
-                                <Badge variant="printer_status" color={printer.estado}>
-                                  EN ALMACÉN
-                                </Badge>
+                              <div className="flex-1">
+                                <p className="font-medium text-foreground">
+                                  {printer.id} - {printer.marca} {printer.modelo}
+                                </p>
+                                <p className="text-xs text-muted-foreground">SERIE: {printer.num_serie}</p>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
+                                  <div>
+                                    <span className="text-muted-foreground">Costo:</span>{' '}
+                                    <span className="text-muted-foreground">{formatCurrency(printer.costo_adquisicion)}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Contador:</span>{' '}
+                                    <span className="text-foreground font-medium">{Number(printer.contador_actual ?? 0).toLocaleString('es-MX')} hojas</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Almacén:</span>{' '}
+                                    <span className="text-muted-foreground">{printer.warehouse?.nombre || '-'}</span>
+                                  </div>
+                                  <div>
+                                    <Badge variant="printer_status" color={printer.estado}>
+                                      EN ALMACÉN
+                                    </Badge>
+                                  </div>
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  Seleccionadas: {selectedPrinters.length} impresora(s)
-                  {selectedPrinterDetails.length > 0 && (
-                    <span>
-                      {' '}
-                      ({selectedPrinterDetails
-                        .map((p) => `${p.num_serie}: ${Number(p.contador_actual ?? 0).toLocaleString('es-MX')} hojas`)
-                        .join(' • ')})
-                    </span>
+                        )
+                      })}
+                      <p className="text-sm text-muted-foreground">
+                        Seleccionadas: {selectedPrinters.length} impresora(s)
+                        {selectedPrinterDetails.length > 0 && (
+                          <span>
+                            {' '}
+                            ({selectedPrinterDetails
+                              .map((p) => `${p.num_serie}: ${Number(p.contador_actual ?? 0).toLocaleString('es-MX')} hojas`)
+                              .join(' • ')})
+                          </span>
+                        )}
+                      </p>
+                    </div>
                   )}
-                </p>
+                </div>
               </div>
             )}
 
@@ -523,6 +670,25 @@ export default function CreateContract() {
                   </div>
                 </div>
 
+                {getPlanRows().length > 0 && (
+                  <div className="bg-info/10 rounded-lg p-4">
+                    <p className="font-medium text-info mb-2 flex items-center gap-2">
+                      <Package className="h-4 w-4" />
+                      Plan de Modelos ({getPlanRows().length})
+                    </p>
+                    <div className="space-y-1">
+                      {getPlanRows().map((row, i) => (
+                        <div key={i} className="flex items-center gap-3 text-sm">
+                          <span className="font-medium">
+                            {getPlanModelLabel(String(row.modelo_id))} × {row.cantidad}
+                          </span>
+                          <span className="text-muted-foreground">instalación en campo</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {selectedPrinterDetails.length > 0 && (
                   <div className="bg-primary/10 rounded-lg p-4">
                     <p className="font-medium text-primary mb-2">
@@ -540,6 +706,13 @@ export default function CreateContract() {
                         </div>
                       ))}
                     </div>
+                  </div>
+                )}
+
+                {getPlanRows().length === 0 && selectedPrinterDetails.length === 0 && (
+                  <div className="bg-warning/10 border border-warning/30 rounded-lg p-4 text-sm text-warning">
+                    El contrato quedará activo sin equipos; instala las impresoras desde la app de
+                    campo (app móvil) en la primera visita.
                   </div>
                 )}
 
@@ -578,7 +751,8 @@ export default function CreateContract() {
           <p className="text-sm text-muted-foreground">¿Estás seguro de que deseas crear este contrato?</p>
           <div className="text-sm space-y-1">
             <p><span className="text-muted-foreground">Cliente:</span> {selectedClient?.razon_social}</p>
-            <p><span className="text-muted-foreground">Impresoras:</span> {selectedPrinters.length}</p>
+            <p><span className="text-muted-foreground">Modelos en plan:</span> {getPlanRows().reduce((s, r) => s + r.cantidad, 0)}</p>
+            <p><span className="text-muted-foreground">Series asignadas ahora:</span> {selectedPrinters.length}</p>
             <p><span className="text-muted-foreground">Tarifa base:</span> {formatCurrency(Number(tarifa_base))}</p>
           </div>
           {error && (
@@ -588,7 +762,12 @@ export default function CreateContract() {
           )}
           <div className="bg-warning/10 rounded p-3 text-xs text-warning space-y-1">
             <p>• Creará el contrato en estado ACTIVO</p>
-            <p>• Cambiará las impresoras a estado RENTADA</p>
+            {selectedPrinters.length > 0 && (
+              <p>• Las series seleccionadas pasarán a estado RENTADA</p>
+            )}
+            {getPlanRows().length > 0 && (
+              <p>• Los modelos quedarán como plan de instalación en campo (sin cobro hasta vincular serie)</p>
+            )}
             <p>• Generará visitas en el calendario</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -610,7 +789,11 @@ export default function CreateContract() {
           <div>
             <p className="font-medium">Contrato creado para {selectedClient?.razon_social}</p>
             <p className="text-sm text-muted-foreground">
-              {selectedPrinters.length} impresoras asignadas: {selectedPrinters.join(', ')}
+              {selectedPrinters.length > 0
+                ? `${selectedPrinters.length} impresoras asignadas: ${selectedPrinters.join(', ')}`
+                : getPlanRows().length > 0
+                ? 'Plan de modelos registrado; instala las series desde la app de campo.'
+                : 'Contrato sin equipos; instala desde la app de campo.'}
             </p>
             <p className="text-sm text-muted-foreground mt-2">
               Las visitas se han programado en el calendario.

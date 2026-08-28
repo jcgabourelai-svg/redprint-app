@@ -6,6 +6,7 @@ use App\Enums\VisitStatus;
 use App\Enums\VisitType;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\StoreContractRequest;
+use App\Http\Requests\UpdateContractPlanRequest;
 use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\ContractPrinter;
@@ -29,7 +30,8 @@ class ContractController extends Controller
 
     public function index(Request $request)
     {
-        $query = Contract::with(['client', 'printers'])
+        $query = Contract::with(['client', 'printers', 'planImpresoras.printerModel.brand'])
+            ->withCount('activePrinters')
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
             ->search($request->search, ['codigo_negocio']);
@@ -45,7 +47,15 @@ class ContractController extends Controller
 
     public function show(Contract $contract): ContractResource
     {
-        $contract->load(['client', 'printers.maintenanceOrders', 'printers.expenses', 'visits', 'invoices']);
+        $contract->load([
+            'client',
+            'printers.maintenanceOrders',
+            'printers.expenses',
+            'visits',
+            'invoices',
+            'planImpresoras.printerModel.brand',
+        ]);
+        $contract->loadCount('activePrinters');
         return new ContractResource($contract);
     }
 
@@ -91,7 +101,7 @@ class ContractController extends Controller
         $this->contractService->assignPrinter(
             $contract,
             $data['impresora_id'],
-            $data['lectura_inicial'] ?? 0,
+            $data['lectura_inicial'] ?? null,
             $request->user(),
             $visita?->id,
             $data['alias'] ?? null,
@@ -100,7 +110,24 @@ class ContractController extends Controller
 
         $this->autoCompletarVisita($visita, VisitType::INSTALACION);
 
-        return response()->json(new ContractResource($contract->fresh(['client', 'printers'])));
+        $contract = $contract->fresh(['client', 'printers', 'planImpresoras.printerModel.brand']);
+        $contract->loadCount('activePrinters');
+
+        return response()->json(new ContractResource($contract));
+    }
+
+    /**
+     * Reemplaza el plan de modelos contratados (intención comercial, no
+     * asignaciones físicas). Solo contratos ACTIVOS.
+     */
+    public function updatePlan(UpdateContractPlanRequest $request, Contract $contract): ContractResource
+    {
+        $contract = $this->contractService->updatePlan(
+            $contract,
+            $request->validated('plan_impresoras', []) ?? []
+        );
+
+        return new ContractResource($contract);
     }
 
     /**
@@ -118,7 +145,7 @@ class ContractController extends Controller
 
         $this->contractService->updateAssignmentAlias($contract, $assignmentModel, $data['alias'] ?? null);
 
-        return new ContractResource($contract->fresh(['client', 'printers']));
+        return new ContractResource($this->freshConPlan($contract));
     }
 
     public function releasePrinter(Request $request, Contract $contract): JsonResponse
@@ -144,7 +171,15 @@ class ContractController extends Controller
 
         $this->autoCompletarVisita($visita, VisitType::RETIRO);
 
-        return response()->json(new ContractResource($contract->fresh(['client', 'printers'])));
+        return response()->json(new ContractResource($this->freshConPlan($contract)));
+    }
+
+    private function freshConPlan(Contract $contract): Contract
+    {
+        $contract = $contract->fresh(['client', 'printers', 'planImpresoras.printerModel.brand']);
+        $contract->loadCount('activePrinters');
+
+        return $contract;
     }
 
     /**

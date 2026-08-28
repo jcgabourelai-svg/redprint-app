@@ -34,12 +34,17 @@ export function usePrinterBrands(withModelos = false) {
   })
 }
 
-export function usePrinterModels(brandId?: number) {
+export function usePrinterModels(brandId?: number, withBrand = false) {
   return useQuery<PrinterModel[]>({
-    queryKey: ['printer-models', { brandId }],
+    queryKey: ['printer-models', { brandId, withBrand }],
     queryFn: () =>
       api
-        .get('/printer-models', { params: brandId ? { brand_id: brandId } : {} })
+        .get('/printer-models', {
+          params: {
+            ...(brandId ? { brand_id: brandId } : {}),
+            ...(withBrand ? { with_brand: 1 } : {}),
+          },
+        })
         .then((r) => r.data),
   })
 }

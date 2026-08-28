@@ -5,12 +5,14 @@ import {
   Edit,
   Pencil,
   Printer,
+  Package,
   DollarSign,
   Calendar,
   Eye,
   Activity,
   Plus,
   FileText,
+  Trash2,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -22,13 +24,16 @@ import Modal from '@/components/ui/Modal'
 import Toast from '@/components/ui/Toast'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
+import { useIsAdmin } from '@/contexts/AuthContext'
 import {
   useContract,
   useUpdateContract,
   useAssignPrinter,
   useReleasePrinter,
   useUpdateAssignmentAlias,
+  useUpdateContractPlan,
 } from '@/hooks/useContracts'
+import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useVisits } from '@/hooks/useVisits'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useWarehouses } from '@/hooks/useWarehouses'
@@ -68,6 +73,11 @@ const visitaEstadoVariant: Record<VisitStatus, 'primary' | 'success' | 'warning'
   OMITIDA: 'neutral',
 }
 
+interface PlanEditRow {
+  modelo_id: string
+  cantidad: string
+}
+
 function getEsquemaLabel(contract: Contract): string {
   if (contract.tarifa_base === 0 && contract.paginas_incluidas === 0) return 'Puro consumo'
   if (contract.costo_por_pagina_excedente === 0) return 'Renta fija'
@@ -82,7 +92,8 @@ export default function ContractDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const idNum = parseInt(id || '0')
-  
+  const isAdmin = useIsAdmin()
+
   const { data: contract, isLoading, error } = useContract(idNum)
   const { data: visitsData, isLoading: isLoadingVisits } = useVisits(
     { contrato_id: idNum, per_page: 100 }
@@ -91,6 +102,8 @@ export default function ContractDetail() {
   const releasePrinter = useReleasePrinter()
   const updateContract = useUpdateContract(idNum)
   const updateAssignmentAlias = useUpdateAssignmentAlias()
+  const updatePlan = useUpdateContractPlan(idNum)
+  const { data: printerModels } = usePrinterModels(undefined, true)
   const { data: availablePrintersData, isLoading: isLoadingAvailablePrinters } = usePrinters({
     estado: PrinterStatus.EN_ALMACEN,
     per_page: 200,
@@ -108,6 +121,9 @@ export default function ContractDetail() {
   const [releaseTarget, setReleaseTarget] = useState<PrinterAssignment | null>(null)
   const [releaseWarehouseId, setReleaseWarehouseId] = useState('')
   const [releaseError, setReleaseError] = useState('')
+  const [showPlanEdit, setShowPlanEdit] = useState(false)
+  const [planRows, setPlanRows] = useState<PlanEditRow[]>([])
+  const [planError, setPlanError] = useState('')
   const [toast, setToast] = useState<{ open: boolean; variant: 'success' | 'error'; message: string }>({
     open: false,
     variant: 'success',
@@ -250,6 +266,60 @@ export default function ContractDetail() {
           setToast({ open: true, variant: 'success', message: 'Alias actualizado' })
         },
         onError: (err) => setAliasError(parseApiError(err)),
+      }
+    )
+  }
+
+  const modelOptions = (printerModels || []).map((m) => ({
+    value: String(m.id),
+    label: m.marca ? `${m.marca} ${m.nombre}` : m.nombre,
+  }))
+
+  const openPlanEdit = () => {
+    if (!contract) return
+    setPlanRows(
+      (contract.plan_impresoras ?? []).map((row) => ({
+        modelo_id: String(row.modelo_id),
+        cantidad: String(row.cantidad),
+      }))
+    )
+    setPlanError('')
+    setShowPlanEdit(true)
+  }
+
+  const addPlanRow = () => {
+    const usedIds = new Set(planRows.map((r) => r.modelo_id).filter(Boolean))
+    const firstFree = modelOptions.find((o) => !usedIds.has(o.value))
+    setPlanRows([...planRows, { modelo_id: firstFree?.value ?? '', cantidad: '1' }])
+  }
+
+  const updatePlanRow = (index: number, patch: Partial<PlanEditRow>) => {
+    setPlanRows(planRows.map((r, i) => (i === index ? { ...r, ...patch } : r)))
+  }
+
+  const removePlanRow = (index: number) => {
+    setPlanRows(planRows.filter((_, i) => i !== index))
+  }
+
+  const handlePlanSave = () => {
+    setPlanError('')
+    const rows = planRows.filter((r) => r.modelo_id)
+    const ids = rows.map((r) => r.modelo_id)
+    if (new Set(ids).size !== ids.length) {
+      setPlanError('No se puede repetir el mismo modelo de impresora en el plan')
+      return
+    }
+    updatePlan.mutate(
+      rows.map((r) => ({
+        modelo_id: parseInt(r.modelo_id),
+        cantidad: parseInt(r.cantidad) || 1,
+      })),
+      {
+        onSuccess: () => {
+          setShowPlanEdit(false)
+          setToast({ open: true, variant: 'success', message: 'Plan de equipos actualizado' })
+        },
+        onError: (err) => setPlanError(parseApiError(err)),
       }
     )
   }
@@ -426,6 +496,61 @@ export default function ContractDetail() {
             </div>
           </CardContent>
         </Card>
+
+        {(contract.plan_impresoras?.length || 0) > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Package className="h-5 w-5 text-primary" />
+                  <CardTitle>Plan de Equipos</CardTitle>
+                </div>
+                {isAdmin && contract.estado === 'ACTIVO' && (
+                  <Button variant="outline" size="sm" onClick={openPlanEdit}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Editar plan
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-xs text-muted-foreground mb-3">
+                Intención comercial: qué modelos quedan contratados. El cobro nace al vincular la
+                serie física (asignación), no desde este plan.
+              </p>
+              <div className="space-y-2">
+                {contract.plan_impresoras!.map((row) => {
+                  const instaladas = row.instaladas ?? 0
+                  const pendientes = Math.max(0, row.cantidad - instaladas)
+                  return (
+                    <div
+                      key={row.id}
+                      className="flex items-center justify-between border border-border rounded-lg p-3 text-sm"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">
+                          {row.marca ?? ''} {row.modelo_nombre ?? `Modelo #${row.modelo_id}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Instaladas {instaladas} de {row.cantidad}
+                        </p>
+                      </div>
+                      {contract.estado === 'ACTIVO' && pendientes > 0 && (
+                        <Badge variant="warning">Pendiente {pendientes}</Badge>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {(contract.pendientes_instalacion ?? 0) > 0 && (
+                <p className="text-xs text-warning mt-3">
+                  {contract.pendientes_instalacion} equipo(s) del plan sin instalar. La instalación
+                  se completa desde la app de campo durante una visita.
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card>
           <CardContent className="p-0">
@@ -836,6 +961,76 @@ export default function ContractDetail() {
               disabled={assignPrinter.isPending || availablePrinters.length === 0}
             >
               {assignPrinter.isPending ? 'Asignando...' : 'Asignar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showPlanEdit}
+        onClose={() => setShowPlanEdit(false)}
+        title="Editar plan de equipos"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Reemplaza el plan completo de modelos contratados. No toca las series ya asignadas.
+          </p>
+          <div className="flex justify-end">
+            <Button variant="outline" size="sm" onClick={addPlanRow} disabled={modelOptions.length === 0}>
+              <Plus className="mr-1 h-3 w-3" />
+              Agregar modelo
+            </Button>
+          </div>
+          {planRows.length === 0 ? (
+            <div className="border border-dashed border-border rounded-lg p-4 text-sm text-muted-foreground">
+              Sin filas: al guardar, el contrato quedará sin plan de modelos.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {planRows.map((row, index) => {
+                const duplicado =
+                  row.modelo_id &&
+                  planRows.filter((r) => r.modelo_id === row.modelo_id).length > 1
+                return (
+                  <div key={index} className="border border-border rounded-lg p-3 space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-[1fr_100px_auto] items-center">
+                      <Select
+                        options={modelOptions}
+                        value={row.modelo_id}
+                        onChange={(v) => updatePlanRow(index, { modelo_id: v })}
+                        placeholder="Seleccionar modelo..."
+                        searchable
+                      />
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={row.cantidad}
+                        onChange={(e) => updatePlanRow(index, { cantidad: e.target.value })}
+                      />
+                      <Button variant="ghost" size="sm" onClick={() => removePlanRow(index)}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                    {duplicado && (
+                      <p className="text-xs text-destructive">Modelo repetido en el plan</p>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {planError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {planError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowPlanEdit(false)}>Cancelar</Button>
+            <Button onClick={handlePlanSave} disabled={updatePlan.isPending}>
+              {updatePlan.isPending ? 'Guardando...' : 'Guardar Plan'}
             </Button>
           </div>
         </div>

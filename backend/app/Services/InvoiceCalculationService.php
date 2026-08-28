@@ -20,7 +20,7 @@ class InvoiceCalculationService
     {
         $contratos = Contract::where('cliente_id', $clienteId)
             ->where('estado', ContractStatus::ACTIVO)
-            ->with(['activePrinters'])
+            ->with(['activePrinters', 'planImpresoras'])
             ->get();
 
         $advertencias = [];
@@ -155,6 +155,20 @@ class InvoiceCalculationService
                     'El contrato %s no tuvo lecturas en el periodo y su tarifa base es 0 (sin costo).',
                     $contrato->codigo_negocio,
                 );
+            }
+
+            // D-H: el plan es intención comercial; si faltan equipos por
+            // instalar se advierte (no bloquea, no altera montos).
+            $totalPlan = (int) $contrato->planImpresoras->sum('cantidad');
+            if ($totalPlan > 0) {
+                $instaladas = $contrato->activePrinters->count();
+                if ($totalPlan > $instaladas) {
+                    $advertencias[] = sprintf(
+                        'El contrato %s tiene %d equipo(s) planificados sin instalar.',
+                        $contrato->codigo_negocio,
+                        $totalPlan - $instaladas,
+                    );
+                }
             }
         }
 

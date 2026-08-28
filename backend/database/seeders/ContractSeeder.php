@@ -76,5 +76,37 @@ class ContractSeeder extends Seeder
             $contracts[] = $contract;
             $seq++;
         }
+
+        // D-J: contrato demo con plan de modelos SIN series asignadas, para
+        // evidenciar el flujo de instalación inicial desde la app de campo
+        // (el operador vincula la serie real y captura la línea base).
+        if ($clients->isNotEmpty()) {
+            $printerEnStock = Printer::where('estado', PrinterStatus::EN_ALMACEN)
+                ->whereNotNull('printer_model_id')
+                ->inRandomOrder()
+                ->first();
+
+            if ($printerEnStock?->printer_model_id) {
+                $demo = Contract::create([
+                    'cliente_id' => $clients->last()->id,
+                    'codigo_negocio' => 'CTR-' . str_pad($seq, 4, '0', STR_PAD_LEFT),
+                    'fecha_inicio' => now()->subDays(3),
+                    'tarifa_base' => 1800,
+                    'paginas_incluidas' => 1000,
+                    'costo_pag_excedente' => 0.02,
+                    'dias_gracia' => 10,
+                    'frecuencia_visitas' => 'MENSUAL',
+                    'dias_adelanto' => 7,
+                    'estado' => ContractStatus::ACTIVO,
+                    'creado_por' => $admin->id,
+                    'fecha_creacion' => now(),
+                ]);
+
+                $demo->planImpresoras()->create([
+                    'printer_model_id' => $printerEnStock->printer_model_id,
+                    'cantidad' => 2,
+                ]);
+            }
+        }
     }
 }

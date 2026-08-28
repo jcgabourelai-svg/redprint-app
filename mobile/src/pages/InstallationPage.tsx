@@ -5,7 +5,7 @@ import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
-import type { Printer, Visit } from '../types/api'
+import type { ContractPlanRow, Printer, Visit } from '../types/api'
 import {
   Banner,
   Button,
@@ -18,6 +18,20 @@ import {
   SkeletonCard,
   TextInput,
 } from '../components/ui'
+
+/** Ordena: primero las series cuyo modelo está en el plan (sort estable). */
+function ordenarPorPlan(printers: Printer[], planModelIds: Set<number>): Printer[] {
+  const porMarcaModelo = (a: Printer, b: Printer) =>
+    `${a.marca} ${a.modelo}`.localeCompare(`${b.marca} ${b.modelo}`, 'es')
+  return printers
+    .slice()
+    .sort((a, b) => {
+      const aEnPlan = a.printer_model_id ? planModelIds.has(a.printer_model_id) : false
+      const bEnPlan = b.printer_model_id ? planModelIds.has(b.printer_model_id) : false
+      if (aEnPlan !== bEnPlan) return aEnPlan ? -1 : 1
+      return porMarcaModelo(a, b)
+    })
+}
 
 export default function InstallationPage() {
   const { id } = useParams()
@@ -35,6 +49,7 @@ export default function InstallationPage() {
   const [visitError, setVisitError] = useState<string | null>(null)
   const [printers, setPrinters] = useState<Printer[] | null>(null)
   const [printersError, setPrintersError] = useState<string | null>(null)
+  const [plan, setPlan] = useState<ContractPlanRow[] | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [lecturaInicial, setLecturaInicial] = useState('0')
   const [alias, setAlias] = useState('')
@@ -83,13 +98,35 @@ export default function InstallationPage() {
 
   const contratoId = visit?.contrato_id ?? null
 
+  // Plan del contrato: intención comercial (qué modelos llevar). Solo
+  // informativo: la sustitución por otro modelo sigue permitida.
   useEffect(() => {
-    if (!canInstall || !contratoId) return
+    if (!contratoId) return
+    let cancelled = false
+    api
+      .get<{ plan_impresoras?: ContractPlanRow[] }>(`/contracts/${contratoId}`)
+      .then((res) => {
+        if (!cancelled) setPlan(res.data.plan_impresoras ?? [])
+      })
+      .catch(() => {
+        // El plan es enriquecimiento: nunca bloquea la instalación.
+        if (!cancelled) setPlan([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [contratoId])
+
+  useEffect(() => {
+    if (!canInstall || !contratoId || plan === null) return
     let cancelled = false
     fetchAll<Printer>('/printers', { estado: 'EN_ALMACEN' })
       .then((ps) => {
         if (!cancelled) {
-          setPrinters(ps)
+          const planModelIds = new Set(
+            (plan ?? []).map((row) => row.modelo_id)
+          )
+          setPrinters(planModelIds.size > 0 ? ordenarPorPlan(ps, planModelIds) : ps)
           setPrintersError(null)
         }
       })
@@ -99,7 +136,7 @@ export default function InstallationPage() {
     return () => {
       cancelled = true
     }
-  }, [canInstall, contratoId])
+  }, [canInstall, contratoId, plan])
 
   async function handleSubmit() {
     if (!contratoId || selectedId === null) return
@@ -123,6 +160,15 @@ export default function InstallationPage() {
   }
 
   const title = visit ? (visit.cliente_nombre ?? 'Instalación') : 'Instalación'
+
+  const planModelIds = new Set((plan ?? []).map((row) => row.modelo_id))
+
+  const handleSelect = (p: Printer) => {
+    setSelectedId(p.id)
+    // D-D: la línea base sugerida es el contador físico de la serie elegida;
+    // el operador puede ajustarla antes de confirmar.
+    setLecturaInicial(String(p.contador_actual ?? 0))
+  }
 
   return (
     <div>
@@ -160,6 +206,22 @@ export default function InstallationPage() {
 
         {canInstall && contratoId && (
           <>
+            {(plan?.length ?? 0) > 0 && (
+              <div className="mb-4">
+                <Banner tone="info">
+                  <span className="font-semibold">Plan del contrato:</span>{' '}
+                  {plan!
+                    .map(
+                      (row) =>
+                        `${row.cantidad}× ${row.marca ?? ''} ${row.modelo_nombre ?? ''}`.trim()
+                    )
+                    .join(' · ')}
+                  {' · '}
+                  Instaladas: {plan!.reduce((s, row) => s + (row.instaladas ?? 0), 0)}
+                </Banner>
+              </div>
+            )}
+
             <SectionTitle hint="Selecciona una impresora disponible en almacén">
               Impresoras en almacén
             </SectionTitle>
@@ -181,28 +243,36 @@ export default function InstallationPage() {
               <EmptyState icon="🖨️" text="No hay impresoras disponibles para instalación" />
             )}
 
-            {printers?.map((p) => (
-              <Card
-                key={p.id}
-                className={`mb-3 ${selectedId === p.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                onClick={() => setSelectedId(p.id)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate font-semibold text-gray-800">
-                      {p.marca} {p.modelo}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-500">Serie: {p.num_serie ?? '-'}</p>
-                    <p className="text-xs text-gray-500">
-                      Inventario: {p.num_inventario ?? '-'}
-                      {p.warehouse ? ` · ${p.warehouse.nombre}` : ''}
-                    </p>
-                    <p className="text-xs text-gray-400">Contador: {p.contador_actual}</p>
+            {printers?.map((p) => {
+              const enPlan = p.printer_model_id ? planModelIds.has(p.printer_model_id) : false
+              return (
+                <Card
+                  key={p.id}
+                  className={`mb-3 ${selectedId === p.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                  onClick={() => handleSelect(p)}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-gray-800">
+                        {p.marca} {p.modelo}
+                        {enPlan && (
+                          <span className="ml-2 rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700">
+                            EN PLAN
+                          </span>
+                        )}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">Serie: {p.num_serie ?? '-'}</p>
+                      <p className="text-xs text-gray-500">
+                        Inventario: {p.num_inventario ?? '-'}
+                        {p.warehouse ? ` · ${p.warehouse.nombre}` : ''}
+                      </p>
+                      <p className="text-xs text-gray-400">Contador: {p.contador_actual}</p>
+                    </div>
+                    {selectedId === p.id && <span className="text-blue-600">✓</span>}
                   </div>
-                  {selectedId === p.id && <span className="text-blue-600">✓</span>}
-                </div>
-              </Card>
-            ))}
+                </Card>
+              )
+            })}
 
             {selectedId !== null && (
               <div className="mt-5 space-y-4">

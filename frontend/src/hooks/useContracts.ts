@@ -63,6 +63,18 @@ export function useReleasePrinter() {
   })
 }
 
+export function useUpdateContractPlan(id: number) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (rows: { modelo_id: number; cantidad: number }[]) =>
+      api.put(`/contracts/${id}/plan`, { plan_impresoras: rows }).then(r => r.data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+      qc.invalidateQueries({ queryKey: ['contracts', id] })
+    },
+  })
+}
+
 export function useUpdateAssignmentAlias() {
   const qc = useQueryClient()
   return useMutation({
