@@ -12,6 +12,7 @@ import Select from '@/components/ui/Select'
 import Toast from '@/components/ui/Toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
+import { InvoiceStatusLabels } from '@/types/enums'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
 import { useCreatePayment } from '@/hooks/usePayments'
@@ -111,7 +112,7 @@ export default function InvoiceList() {
       sortable: true,
       render: (value: string) => (
         <Badge className={getInvoiceStatusColor(value)}>
-          {value}
+          {(InvoiceStatusLabels as Record<string, string>)[value] || value}
         </Badge>
       ),
     },
@@ -247,6 +248,7 @@ export default function InvoiceList() {
               <Select
                 options={[
                   { value: '', label: 'Todos los estados' },
+                  { value: 'BORRADOR', label: 'Borrador' },
                   { value: 'PENDIENTE', label: 'Pendiente' },
                   { value: 'PARCIALMENTE_PAGADA', label: 'Parcial' },
                   { value: 'PAGADA', label: 'Pagada' },

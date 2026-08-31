@@ -24,6 +24,7 @@ class Client extends Model
         'correo',
         'direccion_instalacion',
         'notas',
+        'dias_credito',
         'creado_por',
         'fecha_creacion',
     ];
@@ -34,6 +35,7 @@ class Client extends Model
     {
         return [
             'fecha_creacion' => 'datetime',
+            'dias_credito' => 'integer',
         ];
     }
 

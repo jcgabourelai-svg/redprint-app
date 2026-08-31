@@ -148,6 +148,9 @@ Route::prefix('v1')->group(function () {
         // =====================================================
         Route::middleware('permission:finanzas.facturas')->group(function () {
             Route::get('invoices/calcular', [InvoiceController::class, 'calcular']);
+            Route::post('invoices/draft', [InvoiceController::class, 'storeDraft']);
+            Route::post('invoices/{invoice}/emitir', [InvoiceController::class, 'emitir']);
+            Route::post('invoices/{invoice}/recalcular', [InvoiceController::class, 'recalcular']);
             Route::apiResource('invoices', InvoiceController::class);
             Route::apiResource('payments', PaymentController::class)->only(['index', 'store']);
         });

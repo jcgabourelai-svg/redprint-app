@@ -15,6 +15,7 @@ export const ContractStatus = {
 export type ContractStatus = (typeof ContractStatus)[keyof typeof ContractStatus]
 
 export const InvoiceStatus = {
+  BORRADOR: 'BORRADOR',
   PENDIENTE: 'PENDIENTE',
   PARCIALMENTE_PAGADA: 'PARCIALMENTE_PAGADA',
   PAGADA: 'PAGADA',
@@ -22,6 +23,15 @@ export const InvoiceStatus = {
   INCOBRABLE: 'INCOBRABLE',
 } as const
 export type InvoiceStatus = (typeof InvoiceStatus)[keyof typeof InvoiceStatus]
+
+export const InvoiceStatusLabels: Record<InvoiceStatus, string> = {
+  BORRADOR: 'Borrador',
+  PENDIENTE: 'Pendiente',
+  PARCIALMENTE_PAGADA: 'Parcialmente pagada',
+  PAGADA: 'Pagada',
+  VENCIDA: 'Vencida',
+  INCOBRABLE: 'Incobrable',
+}
 
 export const VisitStatus = {
   PENDIENTE: 'PENDIENTE',

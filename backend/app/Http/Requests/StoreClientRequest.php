@@ -21,6 +21,7 @@ class StoreClientRequest extends FormRequest
             'correo' => 'nullable|email|max:255',
             'direccion_instalacion' => 'required|string',
             'notas' => 'nullable|string',
+            'dias_credito' => 'nullable|integer|min:0|max:365',
         ];
     }
 

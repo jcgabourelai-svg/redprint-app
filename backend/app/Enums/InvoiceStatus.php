@@ -4,6 +4,7 @@ namespace App\Enums;
 
 enum InvoiceStatus: string
 {
+    case BORRADOR = 'BORRADOR';
     case PENDIENTE = 'PENDIENTE';
     case PARCIALMENTE_PAGADA = 'PARCIALMENTE_PAGADA';
     case PAGADA = 'PAGADA';

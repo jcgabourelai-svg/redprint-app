@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, FileText, DollarSign, AlertCircle, Printer, Calendar, Link2, Unlink2, Upload, FileCheck2, Eye } from 'lucide-react'
+import { ArrowLeft, FileText, DollarSign, AlertCircle, Printer, Calendar, Link2, Unlink2, Upload, FileCheck2, Eye, Send, RefreshCw, Trash2, AlertTriangle } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -15,6 +15,8 @@ import api from '@/lib/api'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
 import { useCreatePayment } from '@/hooks/usePayments'
 import { useUnlinkCfdi } from '@/hooks/useCfdi'
+import { useEmitInvoice, useRecalcInvoice, useDeleteInvoice } from '@/hooks/useInvoices'
+import { InvoiceStatusLabels } from '@/types/enums'
 import { parseApiError } from '@/lib/api-errors'
 import LinkCfdiModal from '@/components/cfdi/LinkCfdiModal'
 import ImportCfdiModal from '@/components/cfdi/ImportCfdiModal'
@@ -41,17 +43,17 @@ interface InvoicePayment {
 
 interface InvoiceFull {
   id: string
-  numero_factura: string
+  numero_factura: string | null
   cliente_id: string
-  fecha_emision?: string
-  fecha_vencimiento?: string
-  periodo_inicio?: string
-  periodo_fin?: string
+  fecha_emision?: string | null
+  fecha_vencimiento?: string | null
+  periodo_inicio?: string | null
+  periodo_fin?: string | null
   monto_total: number
   monto_pagado: number
   saldo_pendiente: number
   estado?: string
-  notas?: string
+  notas?: string | null
   xml_comprobante_id?: number | null
   xml_comprobante?: XmlComprobante | null
   client?: { razon_social?: string; rfc?: string } | null
@@ -82,9 +84,22 @@ export default function InvoiceDetail() {
   })
 
   const unlinkCfdi = useUnlinkCfdi()
+  const emitInvoice = useEmitInvoice()
+  const recalcInvoice = useRecalcInvoice()
+  const deleteInvoice = useDeleteInvoice()
   const [showLinkCfdi, setShowLinkCfdi] = useState(false)
   const [showImportXml, setShowImportXml] = useState(false)
   const [detailCfdiId, setDetailCfdiId] = useState<number | null>(null)
+
+  const [showEmitModal, setShowEmitModal] = useState(false)
+  const [emitForm, setEmitForm] = useState({
+    numero_factura: '',
+    fecha_emision: new Date().toISOString().split('T')[0],
+  })
+  const [showRecalcModal, setShowRecalcModal] = useState(false)
+  const [recalcAdvertencias, setRecalcAdvertencias] = useState<string[] | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirmed, setDeleteConfirmed] = useState(false)
 
   const notify = (variant: 'success' | 'error', message: string) =>
     setToast({ open: true, variant, message })
@@ -96,6 +111,48 @@ export default function InvoiceDetail() {
       await unlinkCfdi.mutateAsync(invoice.xml_comprobante_id)
       notify('success', 'Comprobante desvinculado.')
     } catch (err) {
+      notify('error', parseApiError(err))
+    }
+  }
+
+  const openEmitModal = () => {
+    setEmitForm({ numero_factura: '', fecha_emision: new Date().toISOString().split('T')[0] })
+    setShowEmitModal(true)
+  }
+
+  const handleEmit = async () => {
+    try {
+      await emitInvoice.mutateAsync({
+        id: invoice!.id,
+        numero_factura: emitForm.numero_factura,
+        fecha_emision: emitForm.fecha_emision,
+      })
+      setShowEmitModal(false)
+      notify('success', 'Factura emitida: pasó a cuenta por cobrar.')
+    } catch (err) {
+      notify('error', parseApiError(err))
+    }
+  }
+
+  const handleRecalc = async () => {
+    try {
+      const result = await recalcInvoice.mutateAsync(invoice!.id)
+      setShowRecalcModal(false)
+      setRecalcAdvertencias((result?.advertencias as string[] | undefined) ?? [])
+      notify('success', 'Borrador recalculado desde las lecturas del periodo.')
+    } catch (err) {
+      setShowRecalcModal(false)
+      notify('error', parseApiError(err))
+    }
+  }
+
+  const handleDelete = async () => {
+    try {
+      await deleteInvoice.mutateAsync(invoice!.id)
+      notify('success', 'Borrador eliminado.')
+      navigate('/finanzas/facturas')
+    } catch (err) {
+      setShowDeleteModal(false)
       notify('error', parseApiError(err))
     }
   }
@@ -124,6 +181,9 @@ export default function InvoiceDetail() {
   }
 
   const clienteNombre = invoice.client?.razon_social || `Cliente ${invoice.cliente_id}`
+  const esBorrador = invoice.estado === 'BORRADOR'
+  const tituloFactura = invoice.numero_factura || 'Borrador sin folio'
+  const estadoLabel = (InvoiceStatusLabels as Record<string, string>)[invoice.estado || ''] || invoice.estado || '-'
   const porcentajePagado =
     invoice.monto_total > 0
       ? Math.round(((invoice.monto_total - invoice.saldo_pendiente) / invoice.monto_total) * 100)
@@ -166,20 +226,58 @@ export default function InvoiceDetail() {
   }
 
   return (
-    <PageLayout title={`Finanzas › Facturas › ${invoice.numero_factura}`}>
+    <PageLayout title={`Finanzas › Facturas › ${tituloFactura}`}>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="sm" onClick={() => navigate('/finanzas/facturas')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Volver
           </Button>
-          {invoice.saldo_pendiente > 0 && (
-            <Button size="sm" onClick={openPaymentModal}>
-              <DollarSign className="mr-2 h-4 w-4" />
-              Registrar pago
-            </Button>
+          {esBorrador ? (
+            <div className="flex items-center gap-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowRecalcModal(true)} loading={recalcInvoice.isPending}>
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Recalcular
+              </Button>
+              <Button variant="danger" size="sm" onClick={() => { setDeleteConfirmed(false); setShowDeleteModal(true) }}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                Eliminar
+              </Button>
+              <Button size="sm" onClick={openEmitModal}>
+                <Send className="mr-2 h-4 w-4" />
+                Emitir
+              </Button>
+            </div>
+          ) : (
+            invoice.saldo_pendiente > 0 && (
+              <Button size="sm" onClick={openPaymentModal}>
+                <DollarSign className="mr-2 h-4 w-4" />
+                Registrar pago
+              </Button>
+            )
           )}
         </div>
+
+        {esBorrador && (
+          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 mt-0.5 text-warning shrink-0" />
+            <p className="text-sm text-warning">
+              <strong>Borrador:</strong> aún no es cuenta por cobrar. Emitelo con el folio real del PAC para
+              que genere saldo y vencimiento; las lecturas del periodo ya quedaron reservadas.
+            </p>
+          </div>
+        )}
+
+        {recalcAdvertencias && recalcAdvertencias.length > 0 && (
+          <div className="bg-warning/10 border border-warning/20 rounded-lg p-3 space-y-1">
+            {recalcAdvertencias.map((adv, i) => (
+              <p key={i} className="text-sm text-warning flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                {adv}
+              </p>
+            ))}
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -189,13 +287,13 @@ export default function InvoiceDetail() {
                   <FileText className="h-6 w-6 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl">{invoice.numero_factura}</CardTitle>
+                  <CardTitle className="text-xl">{tituloFactura}</CardTitle>
                   <p className="text-sm text-muted-foreground">{clienteNombre}</p>
                 </div>
               </div>
               <div className="flex flex-col items-end gap-1">
                 <Badge className={getInvoiceStatusColor(invoice.estado || '')}>
-                  {invoice.estado || '-'}
+                  {estadoLabel}
                 </Badge>
                 {invoice.xml_comprobante_id ? (
                   <Badge variant="success">CFDI conciliado</Badge>
@@ -298,6 +396,7 @@ export default function InvoiceDetail() {
           </div>
         </div>
 
+        {!esBorrador && (
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between">
@@ -353,7 +452,7 @@ export default function InvoiceDetail() {
                   <p className="text-xs text-muted-foreground mt-1 max-w-md">
                     "Subir XML" importa y vincula automáticamente solo si el
                     serie-folio del comprobante coincide con el número de factura
-                    ({invoice.numero_factura}). Si no coincide, usa "Vincular CFDI".
+                    ({tituloFactura}). Si no coincide, usa "Vincular CFDI".
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-end gap-2">
@@ -370,6 +469,7 @@ export default function InvoiceDetail() {
             )}
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardContent className="p-0">
@@ -428,17 +528,19 @@ export default function InvoiceDetail() {
                       </div>
                     ),
                   },
-                  {
-                    id: 'pagos',
-                    label: `Pagos (${pagos.length})`,
-                    content: (
-                      <div className="pb-4">
-                        {pagos.length === 0 ? (
-                          <div className="text-center py-8">
-                            <DollarSign className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                            <p className="text-muted-foreground">No hay pagos registrados</p>
-                          </div>
-                        ) : (
+                  // Un borrador no admite pagos: la seccion queda oculta.
+                  ...(!esBorrador
+                    ? [{
+                        id: 'pagos',
+                        label: `Pagos (${pagos.length})`,
+                        content: (
+                  <div className="pb-4">
+                    {pagos.length === 0 ? (
+                      <div className="text-center py-8">
+                        <DollarSign className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+                        <p className="text-muted-foreground">No hay pagos registrados</p>
+                      </div>
+                    ) : (
                           <div className="overflow-x-auto">
                             <table className="w-full text-sm">
                               <thead>
@@ -479,9 +581,10 @@ export default function InvoiceDetail() {
                             </table>
                           </div>
                         )}
-                      </div>
-                    ),
-                  },
+                  </div>
+                        ),
+                      }]
+                    : []),
                   {
                     id: 'estado',
                     label: 'Estado',
@@ -515,7 +618,7 @@ export default function InvoiceDetail() {
       >
         <div className="space-y-4">
           <div className="bg-muted p-3 rounded-lg">
-            <p className="text-sm text-muted-foreground">Factura: <strong>{invoice.numero_factura}</strong></p>
+            <p className="text-sm text-muted-foreground">Factura: <strong>{tituloFactura}</strong></p>
             <p className="text-sm text-muted-foreground">Cliente: <strong>{clienteNombre}</strong></p>
             <p className="text-sm text-muted-foreground">Monto total: <strong>{formatCurrency(invoice.monto_total)}</strong></p>
             <p className="text-sm text-muted-foreground">Saldo pendiente: <strong className="text-destructive">{formatCurrency(invoice.saldo_pendiente)}</strong></p>
@@ -580,6 +683,120 @@ export default function InvoiceDetail() {
       />
 
       <CfdiDetailModal id={detailCfdiId} isOpen={detailCfdiId !== null} onClose={() => setDetailCfdiId(null)} />
+
+      <Modal
+        isOpen={showEmitModal}
+        onClose={() => setShowEmitModal(false)}
+        title="Emitir Factura"
+      >
+        <div className="space-y-4">
+          <div className="bg-muted p-3 rounded-lg space-y-1">
+            <p className="text-sm text-muted-foreground">Cliente: <strong>{clienteNombre}</strong></p>
+            <p className="text-sm text-muted-foreground">Monto calculado: <strong>{formatCurrency(invoice.monto_total)}</strong></p>
+          </div>
+
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3">
+            <p className="text-sm">
+              Al emitir, la factura <strong>pasará a cuenta por cobrar</strong> (estado PENDIENTE)
+              con saldo igual al monto total y vencimiento derivado del crédito del cliente
+              (fecha de emisión + días de crédito).
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Número de factura (del PAC externo) *</label>
+            <Input
+              value={emitForm.numero_factura}
+              onChange={(e) => setEmitForm({ ...emitForm, numero_factura: e.target.value })}
+              placeholder="F-001"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de emisión *</label>
+            <Input
+              type="date"
+              value={emitForm.fecha_emision}
+              onChange={(e) => setEmitForm({ ...emitForm, fecha_emision: e.target.value })}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="secondary" onClick={() => setShowEmitModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleEmit}
+              loading={emitInvoice.isPending}
+              disabled={!emitForm.numero_factura.trim() || !emitForm.fecha_emision}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              Emitir Factura
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showRecalcModal}
+        onClose={() => setShowRecalcModal(false)}
+        title="Recalcular Borrador"
+      >
+        <div className="space-y-4">
+          <p className="text-sm">
+            Se recalculará el monto desde las <strong>lecturas actuales del periodo</strong>{' '}
+            ({formatDate(invoice.periodo_inicio)} — {formatDate(invoice.periodo_fin)}), liberando y
+            volviendo a reservar las lecturas del borrador.
+          </p>
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="secondary" onClick={() => setShowRecalcModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleRecalc} loading={recalcInvoice.isPending}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Recalcular
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Eliminar Borrador"
+      >
+        <div className="space-y-4">
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+            <p className="text-sm">
+              El borrador se <strong>eliminará permanentemente</strong>. Al no tener folio, pagos ni
+              CFDI no hay historia que conservar; las lecturas reservadas quedarán libres para una
+              facturación futura.
+            </p>
+          </div>
+
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={deleteConfirmed}
+              onChange={(e) => setDeleteConfirmed(e.target.checked)}
+              className="mt-1"
+            />
+            <span className="text-sm">
+              Entiendo que el borrador se eliminará de forma permanente y no se podrá recuperar.
+            </span>
+          </label>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" onClick={handleDelete} disabled={!deleteConfirmed} loading={deleteInvoice.isPending}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Eliminar Borrador
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Toast
         isOpen={toast.open}

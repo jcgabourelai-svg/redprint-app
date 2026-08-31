@@ -7,7 +7,7 @@ import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { formatCurrency } from '@/lib/formatters'
-import { useCreateInvoice, useInvoiceCalculation } from '@/hooks/useInvoices'
+import { useCreateInvoice, useCreateInvoiceDraft, useInvoiceCalculation } from '@/hooks/useInvoices'
 import { useClients } from '@/hooks/useClients'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -20,10 +20,10 @@ const steps = [
 export default function RegisterInvoicePage() {
   const [currentStep, setCurrentStep] = useState(1)
   const [form, setForm] = useState({
+    destino: 'borrador' as 'borrador' | 'directa',
     numero_factura: '',
     cliente_id: '',
     fecha_emision: new Date().toISOString().split('T')[0],
-    fecha_vencimiento: '',
     periodo_inicio: '',
     periodo_fin: '',
     monto_total: '',
@@ -33,9 +33,12 @@ export default function RegisterInvoicePage() {
   const [error, setError] = useState('')
   const navigate = useNavigate()
   const createInvoice = useCreateInvoice()
+  const createDraft = useCreateInvoiceDraft()
   const { data: clientsData, isLoading: clientsLoading } = useClients({ per_page: 100 })
 
-  const isLecturasMode = form.metodo_calculo === 'lecturas'
+  const isDraftMode = form.destino === 'borrador'
+  // El borrador siempre se calcula desde lecturas: no admite monto manual.
+  const isLecturasMode = isDraftMode || form.metodo_calculo === 'lecturas'
 
   const calculo = useInvoiceCalculation(
     form.cliente_id,
@@ -58,11 +61,22 @@ export default function RegisterInvoicePage() {
   const handleCreateInvoice = async () => {
     setError('')
     try {
+      if (isDraftMode) {
+        // Borrador: sin folio ni fechas; el servidor calcula el monto.
+        const created = await createDraft.mutateAsync({
+          cliente_id: parseInt(form.cliente_id),
+          periodo_inicio: form.periodo_inicio,
+          periodo_fin: form.periodo_fin,
+          notas: form.notas || undefined,
+        })
+        navigate(`/finanzas/facturas/${created.id}`)
+        return
+      }
+
       const payload: Record<string, unknown> = {
         numero_factura: form.numero_factura,
         cliente_id: parseInt(form.cliente_id),
         fecha_emision: form.fecha_emision,
-        fecha_vencimiento: form.fecha_vencimiento,
         periodo_inicio: form.periodo_inicio || undefined,
         periodo_fin: form.periodo_fin || undefined,
         monto_total: effectiveMonto,
@@ -81,12 +95,15 @@ export default function RegisterInvoicePage() {
   }
 
   const step1Valid =
-    !!form.numero_factura &&
     !!form.cliente_id &&
-    !!form.fecha_vencimiento &&
-    (isLecturasMode ? !!calculo.data : !!form.monto_total)
+    (isDraftMode
+      ? !!calculo.data && calcMonto > 0
+      : !!form.numero_factura &&
+        !!form.fecha_emision &&
+        (isLecturasMode ? !!calculo.data : !!form.monto_total))
 
   const advertencias = calculo.data?.advertencias ?? []
+  const isSubmitting = createDraft.isPending || createInvoice.isPending
 
   return (
     <PageLayout title="Registrar Factura">
@@ -94,7 +111,7 @@ export default function RegisterInvoicePage() {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Registrar Factura</h2>
-            <p className="text-sm text-muted-foreground">Registro manual de factura emitida en PAC externo</p>
+            <p className="text-sm text-muted-foreground">Borrador calculado por el sistema o captura de factura timbrada en PAC externo</p>
           </div>
           <Button variant="ghost" onClick={() => navigate('/finanzas/cuentas-por-cobrar')}>
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -129,14 +146,54 @@ export default function RegisterInvoicePage() {
                 <h3 className="text-lg font-semibold text-foreground">Paso 1 de 3: Datos Generales de la Factura</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Número de factura (del PAC externo) *</label>
-                  <Input
-                    value={form.numero_factura}
-                    onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
-                    placeholder="F-001"
-                    error={error && !form.numero_factura ? 'Requerido' : undefined}
-                  />
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">Destino del documento *</label>
+                  <div className="space-y-2">
+                    <label className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="destino"
+                        value="borrador"
+                        checked={isDraftMode}
+                        onChange={() => setForm({ ...form, destino: 'borrador', metodo_calculo: 'lecturas', monto_total: '' })}
+                        className="text-primary mt-1"
+                      />
+                      <span className="text-sm">
+                        <strong>Borrador (calculado, emitir después)</strong> <span className="text-muted-foreground">— recomendado</span>
+                        <span className="block text-xs text-muted-foreground">
+                          El sistema calcula el monto desde las lecturas del periodo y reserva las lecturas. El folio y la fecha se capturan al emitir.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2">
+                      <input
+                        type="radio"
+                        name="destino"
+                        value="directa"
+                        checked={!isDraftMode}
+                        onChange={() => setForm({ ...form, destino: 'directa' })}
+                        className="text-primary mt-1"
+                      />
+                      <span className="text-sm">
+                        <strong>Factura ya emitida en PAC</strong>
+                        <span className="block text-xs text-muted-foreground">
+                          La factura ya fue timbrada en el PAC externo: se registra con su folio y fecha de emisión.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
                 </div>
+
+                {!isDraftMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Número de factura (del PAC externo) *</label>
+                    <Input
+                      value={form.numero_factura}
+                      onChange={(e) => setForm({ ...form, numero_factura: e.target.value })}
+                      placeholder="F-001"
+                      error={error && !form.numero_factura ? 'Requerido' : undefined}
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Cliente *</label>
@@ -153,23 +210,19 @@ export default function RegisterInvoicePage() {
                   )}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de emisión *</label>
-                  <Input
-                    type="date"
-                    value={form.fecha_emision}
-                    onChange={(e) => setForm({ ...form, fecha_emision: e.target.value })}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de vencimiento *</label>
-                  <Input
-                    type="date"
-                    value={form.fecha_vencimiento}
-                    onChange={(e) => setForm({ ...form, fecha_vencimiento: e.target.value })}
-                  />
-                </div>
+                {!isDraftMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Fecha de emisión *</label>
+                    <Input
+                      type="date"
+                      value={form.fecha_emision}
+                      onChange={(e) => setForm({ ...form, fecha_emision: e.target.value })}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      La fecha de vencimiento se calcula automáticamente (emisión + días de crédito del cliente).
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
@@ -190,38 +243,41 @@ export default function RegisterInvoicePage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Método de cálculo *</label>
-                  <div className="space-y-2">
-                    <label className="flex items-center gap-2">
-                      <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas', monto_total: '' })} className="text-primary" />
-                      <span className="text-sm">Según lecturas registradas (recomendado)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="radio" name="metodo" value="manual" checked={form.metodo_calculo === 'manual'} onChange={() => setForm({ ...form, metodo_calculo: 'manual' })} className="text-primary" />
-                      <span className="text-sm">Monto manual</span>
-                    </label>
+                {!isDraftMode && (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Método de cálculo *</label>
+                    <div className="space-y-2">
+                      <label className="flex items-center gap-2">
+                        <input type="radio" name="metodo" value="lecturas" checked={form.metodo_calculo === 'lecturas'} onChange={() => setForm({ ...form, metodo_calculo: 'lecturas', monto_total: '' })} className="text-primary" />
+                        <span className="text-sm">Según lecturas registradas (recomendado)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="radio" name="metodo" value="manual" checked={form.metodo_calculo === 'manual'} onChange={() => setForm({ ...form, metodo_calculo: 'manual' })} className="text-primary" />
+                        <span className="text-sm">Monto manual</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Monto total *</label>
-                  {isLecturasMode ? (
-                    <>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={periodoIncomplete ? '' : (calculo.data ? String(calculo.data.monto_total) : '')}
-                        readOnly
-                        disabled
-                        placeholder={periodoIncomplete ? 'Selecciona cliente y periodo para calcular' : 'Calculando...'}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Monto calculado automáticamente desde las lecturas del periodo (campo bloqueado).
-                      </p>
-                    </>
-                  ) : (
+                {isLecturasMode ? (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Monto total {isDraftMode ? '(calculado)' : '*'}</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={periodoIncomplete ? '' : (calculo.data ? String(calculo.data.monto_total) : '')}
+                      readOnly
+                      disabled
+                      placeholder={periodoIncomplete ? 'Selecciona cliente y periodo para calcular' : 'Calculando...'}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Monto calculado automáticamente desde las lecturas del periodo (campo bloqueado).
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">Monto total *</label>
                     <Input
                       type="number"
                       step="0.01"
@@ -230,8 +286,8 @@ export default function RegisterInvoicePage() {
                       onChange={(e) => setForm({ ...form, monto_total: e.target.value })}
                       placeholder="0.00"
                     />
-                  )}
-                </div>
+                  </div>
+                )}
 
                 {isLecturasMode && !periodoIncomplete && (
                   <div className="space-y-1">
@@ -351,16 +407,26 @@ export default function RegisterInvoicePage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
-                      <p>Número de factura: <strong>{form.numero_factura}</strong></p>
+                      <p>Destino: <strong>{isDraftMode ? 'Borrador (se emitirá después)' : 'Factura ya emitida en PAC'}</strong></p>
+                      {!isDraftMode && (
+                        <>
+                          <p>Número de factura: <strong>{form.numero_factura}</strong></p>
+                          <p>Fecha de emisión: <strong>{form.fecha_emision}</strong></p>
+                          <p>Fecha de vencimiento: <strong className="text-muted-foreground">derivada del crédito del cliente (emisión + días de crédito)</strong></p>
+                        </>
+                      )}
                       <p>Cliente: <strong>{selectedClientLabel}</strong></p>
-                      <p>Fecha de emisión: <strong>{form.fecha_emision}</strong></p>
-                      <p>Fecha de vencimiento: <strong>{form.fecha_vencimiento}</strong></p>
                       <p>Periodo: <strong>{form.periodo_inicio} - {form.periodo_fin}</strong></p>
                       <p>Método de cálculo: <strong>{isLecturasMode ? 'Según lecturas' : 'Manual'}</strong></p>
                       <p>Monto total: <strong>{formatCurrency(effectiveMonto)}</strong></p>
                       {isLecturasMode && calculo.data && calculo.data.detalles.length > 0 && (
                         <p className="text-muted-foreground">
                           Se generarán <strong>{calculo.data.detalles.length}</strong> líneas de detalle vinculadas a las lecturas.
+                        </p>
+                      )}
+                      {isDraftMode && (
+                        <p className="text-muted-foreground">
+                          El borrador reserva las lecturas del periodo pero <strong>no es cuenta por cobrar</strong> hasta emitirse con folio real.
                         </p>
                       )}
                     </div>
@@ -390,9 +456,11 @@ export default function RegisterInvoicePage() {
                   </Button>
                   <Button
                     onClick={handleCreateInvoice}
-                    disabled={createInvoice.isPending}
+                    disabled={isSubmitting}
                   >
-                    {createInvoice.isPending ? 'Registrando...' : 'Registrar Factura'}
+                    {isSubmitting
+                      ? (isDraftMode ? 'Creando borrador...' : 'Registrando...')
+                      : (isDraftMode ? 'Crear Borrador' : 'Registrar Factura')}
                   </Button>
                 </div>
               </div>

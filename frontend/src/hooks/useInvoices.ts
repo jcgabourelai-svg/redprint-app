@@ -26,6 +26,54 @@ export function useCreateInvoice() {
   })
 }
 
+export interface DraftResponse {
+  id: number
+  [key: string]: unknown
+}
+
+export function useCreateInvoiceDraft() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: { cliente_id: number; periodo_inicio: string; periodo_fin: string; notas?: string }) =>
+      api
+        .post<{ data: DraftResponse; advertencias: string[] }>('/invoices/draft', data)
+        .then((r) => r.data.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }) },
+  })
+}
+
+export function useEmitInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number | string; numero_factura: string; fecha_emision: string }) =>
+      api.post(`/invoices/${id}/emitir`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['invoices', id] })
+    },
+  })
+}
+
+export function useRecalcInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number | string) =>
+      api.post(`/invoices/${id}/recalcular`).then(r => r.data),
+    onSuccess: (_, id) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['invoices', id] })
+    },
+  })
+}
+
+export function useDeleteInvoice() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: number | string) => api.delete(`/invoices/${id}`).then(r => r.data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }) },
+  })
+}
+
 export function useUpdateInvoice() {
   const qc = useQueryClient()
   return useMutation({

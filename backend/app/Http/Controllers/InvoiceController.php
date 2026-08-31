@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvoiceStatus;
+use App\Http\Requests\EmitInvoiceRequest;
+use App\Http\Requests\StoreInvoiceDraftRequest;
 use App\Http\Requests\StoreInvoiceRequest;
 use App\Http\Resources\InvoiceResource;
 use App\Models\Invoice;
@@ -39,9 +42,17 @@ class InvoiceController extends Controller
 
     public function index(Request $request)
     {
-        $query = Invoice::with(['client', 'contract', 'socio'])
-            ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
-            ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
+        $query = Invoice::with(['client', 'contract', 'socio']);
+
+        if ($request->filled('estado')) {
+            $query->where('estado', $request->estado);
+        } else {
+            // Los borradores solo aparecen con ?estado=BORRADOR explicito:
+            // protege CxC, dashboards y reportes sin tocarlos.
+            $query->where('estado', '!=', InvoiceStatus::BORRADOR->value);
+        }
+
+        $query->when($request->cliente_id, fn ($q, $id) => $q->where('cliente_id', $id))
             ->search($request->search, ['numero_factura']);
 
         $this->applySorting($query, $request, [
@@ -69,6 +80,36 @@ class InvoiceController extends Controller
     {
         $invoice = $this->invoiceService->create($request->validated(), $request->user());
         return response()->json(new InvoiceResource($invoice), 201);
+    }
+
+    public function storeDraft(StoreInvoiceDraftRequest $request): JsonResponse
+    {
+        $result = $this->invoiceService->createDraft($request->validated(), $request->user());
+
+        return (new InvoiceResource($result['invoice']))
+            ->additional(['advertencias' => $result['advertencias']])
+            ->response()
+            ->setStatusCode(201);
+    }
+
+    public function emitir(EmitInvoiceRequest $request, Invoice $invoice): InvoiceResource
+    {
+        $invoice = $this->invoiceService->emitir($invoice, $request->validated());
+        return new InvoiceResource($invoice);
+    }
+
+    public function recalcular(Request $request, Invoice $invoice): InvoiceResource
+    {
+        $result = $this->invoiceService->recalcular($invoice);
+
+        return (new InvoiceResource($result['invoice']))
+            ->additional(['advertencias' => $result['advertencias']]);
+    }
+
+    public function destroy(Request $request, Invoice $invoice): JsonResponse
+    {
+        $this->invoiceService->destroy($invoice);
+        return response()->json(['message' => 'Borrador de factura eliminado.']);
     }
 
     public function update(Request $request, Invoice $invoice): InvoiceResource

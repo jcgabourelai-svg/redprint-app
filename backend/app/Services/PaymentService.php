@@ -39,6 +39,13 @@ class PaymentService
 
     public function validateAmount(Invoice $invoice, float $amount): void
     {
+        // Un borrador no es cuenta por cobrar: no admite pagos hasta emitirse.
+        if ($invoice->estado === InvoiceStatus::BORRADOR) {
+            throw new BusinessRuleException(
+                'No se pueden registrar pagos a una factura en BORRADOR. Emitela primero.'
+            );
+        }
+
         if ($amount <= 0) {
             throw new BusinessRuleException('El monto del pago debe ser mayor a 0');
         }

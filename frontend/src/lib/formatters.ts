@@ -54,13 +54,15 @@ export function getContractStatusColor(status: string): string {
 }
 
 export function getInvoiceStatusColor(status: string): string {
+  // El API envia los enums en mayusculas; normalizamos el lookup para que
+  // todo el mapa viva (o muera) con un solo casing.
   const colors: Record<string, string> = {
-    pagada: 'bg-green-100 text-green-800',
-    pendiente: 'bg-yellow-100 text-yellow-800',
-    vencida: 'bg-red-100 text-red-800',
-    anulada: 'bg-gray-100 text-gray-800',
+    PAGADA: 'bg-green-100 text-green-800',
+    PENDIENTE: 'bg-yellow-100 text-yellow-800',
+    VENCIDA: 'bg-red-100 text-red-800',
+    BORRADOR: 'bg-gray-100 text-gray-800',
   }
-  return colors[status] || 'text-gray-600'
+  return colors[status?.toUpperCase()] || 'text-gray-600'
 }
 
 export function getVisitStatusColor(status: string): string {

@@ -2,20 +2,23 @@ import type { InvoiceStatus } from './enums'
 
 export interface Invoice {
   id: string
+  /** Alias legacy usado por algunos listados; el API envia numero_factura. */
   numero: string
+  numero_factura: string | null
   cliente_id: string
   cliente_nombre: string
-  fecha_emision: string
-  fecha_vencimiento: string
-  periodo_inicio: string
-  periodo_fin: string
+  fecha_emision: string | null
+  fecha_vencimiento: string | null
+  periodo_inicio: string | null
+  periodo_fin: string | null
   subtotal: number
   iva: number
   monto_total: number
+  monto_pagado: number
   saldo_pendiente: number
   estado: InvoiceStatus
   contrato_id?: string
-  notas?: string
+  notas?: string | null
   comprobante?: string
   xml_comprobante_id?: number | null
   xml_comprobante?: { id: number; uuid: string; serie_folio?: string | null } | null

@@ -52,5 +52,30 @@ class InvoiceSeeder extends Seeder
                 'fecha_creacion' => now(),
             ]);
         }
+
+        // Borradores demo: calculo previo a la emision (sin folio, sin
+        // fechas, sin saldo) sobre el periodo del mes en curso.
+        for ($i = 21; $i <= 22; $i++) {
+            $client = $clients->random();
+            $contract = $client->contracts()->first();
+
+            Invoice::create([
+                'numero_factura' => null,
+                'cliente_id' => $client->id,
+                'contrato_id' => $contract?->id,
+                'fecha_emision' => null,
+                'fecha_vencimiento' => null,
+                'periodo_inicio' => now()->startOfMonth(),
+                'periodo_fin' => now()->endOfMonth(),
+                'monto_total' => rand(2000, 15000) + (rand(0, 99) / 100),
+                'monto_pagado' => 0,
+                'saldo_pendiente' => 0,
+                'estado' => InvoiceStatus::BORRADOR,
+                'notas' => 'Borrador demo',
+                'socio_id' => $admin->id,
+                'creado_por' => $admin->id,
+                'fecha_creacion' => now(),
+            ]);
+        }
     }
 }

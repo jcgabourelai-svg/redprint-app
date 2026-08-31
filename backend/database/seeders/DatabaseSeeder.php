@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             PrinterExpenseSeeder::class,
             BankAccountSeeder::class,
             FieldRecordSeeder::class,
+            RedprintLocalSeeder::class,
         ]);
     }
 }

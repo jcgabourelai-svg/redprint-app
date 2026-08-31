@@ -18,7 +18,8 @@ class StoreInvoiceRequest extends FormRequest
             'cliente_id' => 'required|exists:clients,id',
             'contrato_id' => 'nullable|exists:contracts,id',
             'fecha_emision' => 'required|date',
-            'fecha_vencimiento' => 'required|date|after_or_equal:fecha_emision',
+            // fecha_vencimiento ya no se captura: la deriva el servidor como
+            // fecha_emision + cliente.dias_credito.
             'periodo_inicio' => 'nullable|date',
             'periodo_fin' => 'nullable|date|after_or_equal:periodo_inicio',
             'monto_total' => 'required|numeric|min:0',
@@ -39,7 +40,6 @@ class StoreInvoiceRequest extends FormRequest
             'numero_factura.unique' => 'El numero de factura ya existe',
             'cliente_id.required' => 'El cliente es obligatorio',
             'fecha_emision.required' => 'La fecha de emision es obligatoria',
-            'fecha_vencimiento.required' => 'La fecha de vencimiento es obligatoria',
             'monto_total.required' => 'El monto total es obligatorio',
         ];
     }

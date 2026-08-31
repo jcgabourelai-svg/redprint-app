@@ -18,6 +18,7 @@ class ClientResource extends JsonResource
             'correo' => $this->correo,
             'direccion_instalacion' => $this->direccion_instalacion,
             'notas' => $this->notas,
+            'dias_credito' => $this->dias_credito,
             'contratos_activos_count' => $this->whenNotNull($this->contratos_activos_count),
             'saldo_pendiente' => $this->saldo_pendiente,
             'estado' => $this->estado,

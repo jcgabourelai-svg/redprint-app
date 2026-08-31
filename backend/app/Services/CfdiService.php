@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 class CfdiService
 {
     public function __construct(
-        private CfdiParser $parser
+        private CfdiParser $parser,
+        private InvoiceService $invoiceService
     ) {}
 
     /**
@@ -145,7 +146,16 @@ class CfdiService
 
         $numeroFactura = $cfdi->serie_folio ?? ('UUID-' . substr($cfdi->uuid, 0, 8));
         $fechaEmision = $cfdi->fecha_emision->toDateString();
-        $fechaVencimiento = $overrides['fecha_vencimiento'] ?? $fechaEmision;
+        // El vencimiento ya no es libre en los flujos de facturas: se deriva
+        // del credito del cliente. Este flujo conserva el override explicito
+        // como excepcion documentada (ver InvoiceService::derivarVencimiento).
+        $fechaVencimiento = $overrides['fecha_vencimiento'] ?? null;
+        if ($fechaVencimiento === null) {
+            $fechaVencimiento = $this->invoiceService->derivarVencimiento(
+                Client::findOrFail($cfdi->receptor_id),
+                $fechaEmision,
+            );
+        }
 
         return DB::transaction(function () use ($cfdi, $user, $numeroFactura, $fechaEmision, $fechaVencimiento, $overrides) {
             // Relacion 1:1: el CFDI no debe tener ya una factura asociada.

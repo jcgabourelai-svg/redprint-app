@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\ContractStatus;
 use App\Models\Contract;
+use App\Models\Invoice;
 use App\Models\Reading;
 use Illuminate\Support\Facades\DB;
 
@@ -14,10 +15,17 @@ class InvoiceCalculationService
      * agrupando las lecturas no facturadas por contrato y aplicando la
      * formula de tarifa de cada contrato.
      *
+     * @param  int|null  $excluirFacturaId  Excluye una factura del detector de
+     *                                      solapamiento (usado al recalcular un
+     *                                      borrador para no advertir contra si mismo).
      * @return array{monto_total: float, contratos: array, detalles: array, advertencias: array}
      */
-    public function calcularEstimacion(int $clienteId, string $periodoInicio, string $periodoFin): array
-    {
+    public function calcularEstimacion(
+        int $clienteId,
+        string $periodoInicio,
+        string $periodoFin,
+        ?int $excluirFacturaId = null,
+    ): array {
         $contratos = Contract::where('cliente_id', $clienteId)
             ->where('estado', ContractStatus::ACTIVO)
             ->with(['activePrinters', 'planImpresoras'])
@@ -189,6 +197,27 @@ class InvoiceCalculationService
 
         if ($lecturasConContrato->isEmpty() && $montoTotal == 0.0) {
             $advertencias[] = 'No se encontraron lecturas no facturadas en el periodo seleccionado.';
+        }
+
+        // Detector de solapamiento de periodos (advertencia, no bloqueante):
+        // cualquier factura del cliente (incluidos borradores) cuyo periodo
+        // intersecte el solicitado. Los bloqueos duros llegan en Fase 1.
+        $solapadas = Invoice::where('cliente_id', $clienteId)
+            ->whereNotNull('periodo_inicio')
+            ->whereNotNull('periodo_fin')
+            ->where('periodo_inicio', '<=', $periodoFin)
+            ->where('periodo_fin', '>=', $periodoInicio)
+            ->when($excluirFacturaId, fn ($q, $id) => $q->where('id', '!=', $id))
+            ->orderBy('id')
+            ->get(['id', 'numero_factura', 'periodo_inicio', 'periodo_fin']);
+
+        foreach ($solapadas as $existente) {
+            $advertencias[] = sprintf(
+                'El periodo se solapa con la factura %s (%s a %s). Verifica que no se este facturando dos veces el mismo periodo.',
+                $existente->numero_factura ?? 'en borrador sin folio #' . $existente->id,
+                $existente->periodo_inicio->toDateString(),
+                $existente->periodo_fin->toDateString(),
+            );
         }
 
         return [
