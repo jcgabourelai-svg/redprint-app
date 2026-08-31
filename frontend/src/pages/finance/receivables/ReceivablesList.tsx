@@ -9,14 +9,14 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
-import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
+import { formatCurrency, formatDate, getInvoiceStatusColor, parseDate } from '@/lib/formatters'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
 import type { Invoice } from '@/types/invoice'
 
 function calcularDiasVencidos(fechaVencimiento: string): number {
   const hoy = new Date()
-  const vencimiento = new Date(fechaVencimiento)
+  const vencimiento = parseDate(fechaVencimiento)
   const diff = hoy.getTime() - vencimiento.getTime()
   return Math.ceil(diff / (1000 * 60 * 60 * 24))
 }

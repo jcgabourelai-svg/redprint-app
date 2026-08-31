@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { parseDate } from '@/lib/formatters'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -13,7 +14,7 @@ export function formatCurrency(value: number): string {
 }
 
 export function formatDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date
+  const d = typeof date === 'string' ? parseDate(date) : date
   return d.toLocaleDateString('es-MX', {
     day: '2-digit',
     month: '2-digit',

@@ -9,11 +9,19 @@ export function formatCurrency(amount: number | string | null | undefined): stri
   }).format(n)
 }
 
+export function parseDate(date: string): Date {
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date)
+  if (dateOnly) {
+    return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]))
+  }
+  return new Date(date)
+}
+
 export function formatDate(date?: string | null): string {
   if (!date) {
     return '-'
   }
-  const d = new Date(date)
+  const d = parseDate(date)
   if (isNaN(d.getTime())) {
     return '-'
   }
