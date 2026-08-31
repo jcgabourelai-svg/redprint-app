@@ -41,12 +41,17 @@ class VisitController extends Controller
     public function index(Request $request)
     {
         $query = Visit::with(['client', 'contract.activePrinters', 'socio', 'readings'])
-            ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
+            ->when($request->estado, function ($q, $e) {
+                $estados = array_filter(explode(',', (string) $e));
+                $q->whereIn('estado', $estados);
+            })
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
             ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id))
             ->when($request->socio_id, fn($q, $id) => $q->where('socio_id', $id))
             ->when($request->month, fn($q, $m) => $q->whereMonth('fecha_programada', $m))
-            ->when($request->year, fn($q, $y) => $q->whereYear('fecha_programada', $y));
+            ->when($request->year, fn($q, $y) => $q->whereYear('fecha_programada', $y))
+            ->when($request->desde, fn($q, $d) => $q->whereDate('fecha_programada', '>=', $d))
+            ->when($request->hasta, fn($q, $h) => $q->whereDate('fecha_programada', '<=', $h));
 
         $this->applySorting($query, $request, [
             'id', 'fecha_programada', 'estado', 'created_at',

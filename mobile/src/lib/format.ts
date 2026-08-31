@@ -38,6 +38,17 @@ export function addDaysISO(iso: string, days: number): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
+export function diffDaysISO(fromISO: string, toISO: string): number {
+  const ms = parseISODate(toISO).getTime() - parseISODate(fromISO).getTime()
+  return Math.round(ms / 86_400_000)
+}
+
+export function daysOverdueLabel(fechaISO: string): string | null {
+  const days = diffDaysISO(fechaISO.slice(0, 10), todayISO())
+  if (days < 1) return null
+  return `hace ${days} ${days === 1 ? 'día' : 'días'}`
+}
+
 export function formatDateLong(iso: string | null | undefined): string {
   if (!iso) return 'Sin fecha'
   return longFmt.format(parseISODate(iso.slice(0, 10)))

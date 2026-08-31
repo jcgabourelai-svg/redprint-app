@@ -162,6 +162,39 @@ export const clientStatusColors: Record<string, ColorSet> = {
 }
 
 /**
+ * Paleta por tipo de visita (keys minusculas; el Badge normaliza el enum).
+ * Espejo de la app movil (tipoVisitaTone): lectura=azul, mantenimiento=violeta,
+ * instalacion=esmeralda, retiro=naranja, entrega_insumos=celeste.
+ */
+export const visitTypeColors: Record<string, ColorSet> = {
+  lectura: {
+    DEFAULT: '#2563EB',
+    foreground: '#1D4ED8',
+    background: '#EFF6FF',
+  },
+  mantenimiento: {
+    DEFAULT: '#7C3AED',
+    foreground: '#6D28D9',
+    background: '#F5F3FF',
+  },
+  instalacion: {
+    DEFAULT: '#059669',
+    foreground: '#047857',
+    background: '#ECFDF5',
+  },
+  retiro: {
+    DEFAULT: '#EA580C',
+    foreground: '#C2410C',
+    background: '#FFF7ED',
+  },
+  entrega_insumos: {
+    DEFAULT: '#0284C7',
+    foreground: '#0369A1',
+    background: '#F0F9FF',
+  },
+}
+
+/**
  * Paleta de identidad por impresora en contrato (keys sin acentos, viven en
  * contract_printer.color). El backend es la fuente de verdad de las keys;
  * este mapa key -> hex es solo presentacion. Escala 700/100/900 tipo

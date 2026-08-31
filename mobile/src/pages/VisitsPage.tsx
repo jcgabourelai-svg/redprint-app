@@ -1,7 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
-import api, { apiErrorMessage, fetchAll } from '../lib/api'
+import api, {
+  apiErrorMessage,
+  fetchAll,
+  FETCH_ALL_MAX_PAGES,
+  FETCH_ALL_PAGE_SIZE,
+} from '../lib/api'
 import { SYNC_DONE_EVENT } from '../lib/sync'
 import {
   addDaysISO,
@@ -16,7 +21,20 @@ import type { Paginated, Visit } from '../types/api'
 import VisitCard from '../components/VisitCard'
 import { Banner, Chip, EmptyState, Page, SkeletonCard } from '../components/ui'
 
-type Filter = 'hoy' | 'semana' | 'mes'
+type Filter = 'hoy' | 'semana' | 'mes' | 'vencidas'
+
+const OVERDUE_FETCH_CAP = FETCH_ALL_PAGE_SIZE * FETCH_ALL_MAX_PAGES
+
+function groupByDate(list: Visit[]): [string, Visit[]][] {
+  const map = new Map<string, Visit[]>()
+  for (const v of list) {
+    const key = v.fecha_programada ?? 'sin-fecha'
+    const arr = map.get(key) ?? []
+    arr.push(v)
+    map.set(key, arr)
+  }
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+}
 
 async function loadVisits(): Promise<Visit[]> {
   const now = new Date()
@@ -43,7 +61,9 @@ export default function VisitsPage() {
     return { year: n.getFullYear(), month: n.getMonth() + 1 }
   })
   const [visits, setVisits] = useState<Visit[] | null>(null)
+  const [overdue, setOverdue] = useState<Visit[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [overdueError, setOverdueError] = useState<string | null>(null)
   const [activeOnly, setActiveOnly] = useState(true)
   const [unread, setUnread] = useState(0)
   const [tick, setTick] = useState(0)
@@ -72,6 +92,26 @@ export default function VisitsPage() {
   }, [canOperaciones, filter, cursor, tick])
 
   useEffect(() => {
+    if (!canOperaciones) return
+    let cancelled = false
+    setOverdue(null)
+    setOverdueError(null)
+    fetchAll<Visit>('/visits', {
+      estado: 'PENDIENTE,REPROGRAMADA',
+      hasta: addDaysISO(todayISO(), -1),
+    })
+      .then((vencidas) => {
+        if (!cancelled) setOverdue(vencidas)
+      })
+      .catch((e) => {
+        if (!cancelled) setOverdueError(apiErrorMessage(e))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [canOperaciones, tick])
+
+  useEffect(() => {
     const handler = () => setTick((t) => t + 1)
     window.addEventListener(SYNC_DONE_EVENT, handler)
     return () => window.removeEventListener(SYNC_DONE_EVENT, handler)
@@ -94,21 +134,26 @@ export default function VisitsPage() {
   }, [canNotif])
 
   const groups = useMemo(() => {
+    if (filter === 'vencidas') return overdue === null ? [] : groupByDate(overdue)
     const today = todayISO()
     const limit = addDaysISO(today, 7)
-    const map = new Map<string, Visit[]>()
-    for (const v of visits ?? []) {
+    const filtered = (visits ?? []).filter((v) => {
       const f = v.fecha_programada ?? ''
-      if (filter === 'hoy' && f !== today) continue
-      if (filter === 'semana' && !(f >= today && f <= limit)) continue
-      if (activeOnly && v.estado !== 'PENDIENTE' && v.estado !== 'REPROGRAMADA') continue
-      const key = v.fecha_programada ?? 'sin-fecha'
-      const arr = map.get(key) ?? []
-      arr.push(v)
-      map.set(key, arr)
-    }
-    return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
-  }, [visits, filter, activeOnly])
+      if (filter === 'hoy' && f !== today) return false
+      if (filter === 'semana' && !(f >= today && f <= limit)) return false
+      if (activeOnly && v.estado !== 'PENDIENTE' && v.estado !== 'REPROGRAMADA') return false
+      return true
+    })
+    return groupByDate(filtered)
+  }, [visits, filter, activeOnly, overdue])
+
+  const showsOverdue = filter === 'hoy' || filter === 'vencidas'
+  const displayError = error || (showsOverdue ? overdueError : null)
+  const loading =
+    visits === null || (showsOverdue && overdue === null && overdueError === null)
+  const overdueList = overdue ?? []
+  const overdueCount =
+    overdueList.length >= OVERDUE_FETCH_CAP ? `${OVERDUE_FETCH_CAP}+` : overdueList.length
 
   if (!canOperaciones) {
     return (
@@ -149,7 +194,7 @@ export default function VisitsPage() {
           {formatDateLong(todayISO())}
         </p>
 
-        <div className="mb-4 flex items-center justify-between gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex gap-2">
             <Chip active={filter === 'hoy'} onClick={() => setFilter('hoy')}>
               Hoy
@@ -159,6 +204,9 @@ export default function VisitsPage() {
             </Chip>
             <Chip active={filter === 'mes'} onClick={() => setFilter('mes')}>
               Mes
+            </Chip>
+            <Chip active={filter === 'vencidas'} onClick={() => setFilter('vencidas')}>
+              Vencidas
             </Chip>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -203,18 +251,20 @@ export default function VisitsPage() {
           </div>
         )}
 
-        <div className="mb-5 flex gap-2">
-          <Chip active={activeOnly} onClick={() => setActiveOnly(true)}>
-            Activas
-          </Chip>
-          <Chip active={!activeOnly} onClick={() => setActiveOnly(false)}>
-            Todas
-          </Chip>
-        </div>
+        {filter !== 'vencidas' && (
+          <div className="mb-5 flex gap-2">
+            <Chip active={activeOnly} onClick={() => setActiveOnly(true)}>
+              Activas
+            </Chip>
+            <Chip active={!activeOnly} onClick={() => setActiveOnly(false)}>
+              Todas
+            </Chip>
+          </div>
+        )}
 
-        {error && (
+        {displayError && (
           <div className="mb-4 space-y-2">
-            <Banner tone="error">{error}</Banner>
+            <Banner tone="error">{displayError}</Banner>
             <button
               onClick={() => setTick((t) => t + 1)}
               className="text-sm font-semibold text-blue-600"
@@ -224,7 +274,7 @@ export default function VisitsPage() {
           </div>
         )}
 
-        {visits === null && !error && (
+        {loading && !displayError && (
           <>
             <SkeletonCard />
             <SkeletonCard />
@@ -232,7 +282,13 @@ export default function VisitsPage() {
           </>
         )}
 
-        {visits !== null && groups.length === 0 && !error && (
+        {!loading && !displayError && filter === 'vencidas' && groups.length === 0 && (
+          <EmptyState icon="🎉" text="No tienes visitas vencidas" />
+        )}
+
+        {!loading && !displayError && filter !== 'vencidas' && groups.length === 0 && !(
+          filter === 'hoy' && overdueList.length > 0
+        ) && (
           <EmptyState
             icon="📅"
             text={
@@ -247,6 +303,20 @@ export default function VisitsPage() {
               Programar visita →
             </Link>
           </EmptyState>
+        )}
+
+        {filter === 'hoy' && !loading && !displayError && overdueList.length > 0 && (
+          <section className="mb-5">
+            <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-red-600">
+              ⚠️ Vencidas ({overdueCount})
+            </h3>
+            {overdueList.map((v) => (
+              <VisitCard key={v.id} visit={v} />
+            ))}
+            {groups.length === 0 && (
+              <p className="text-sm text-gray-400">Hoy no tienes visitas programadas</p>
+            )}
+          </section>
         )}
 
         {groups.map(([day, dayVisits]) => (

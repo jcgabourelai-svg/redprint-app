@@ -35,6 +35,11 @@ const tipoVisitaLabels: Record<VisitType, string> = {
   ENTREGA_INSUMOS: 'Entrega de insumos',
 }
 
+const tiposFiltro = [
+  { value: '', label: 'Todos' },
+  ...Object.entries(tipoVisitaLabels).map(([value, label]) => ({ value, label })),
+]
+
 // Espejo de la app móvil: estos tipos operan sobre el contrato del cliente.
 const TIPO_REQUIERE_CONTRATO: Record<VisitType, boolean> = {
   LECTURA: true,
@@ -74,6 +79,7 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const [socioFilter, setSocioFilter] = useState('')
   const [estadoFilter, setEstadoFilter] = useState('')
+  const [tipoFilter, setTipoFilter] = useState('')
   const [view, setView] = useState<VisitView>(getInitialView)
   const [showNewVisitModal, setShowNewVisitModal] = useState(false)
   const [createError, setCreateError] = useState('')
@@ -131,11 +137,12 @@ export default function CalendarPage() {
     return visits.filter((v) => {
       if (socioFilter && String(v.socio_id ?? '') !== socioFilter) return false
       if (estadoFilter && v.estado !== estadoFilter) return false
+      if (tipoFilter && v.tipo_visita !== tipoFilter) return false
       return true
     })
-  }, [visits, socioFilter, estadoFilter])
+  }, [visits, socioFilter, estadoFilter, tipoFilter])
 
-  const hasLocalFilters = !!socioFilter || !!estadoFilter
+  const hasLocalFilters = !!socioFilter || !!estadoFilter || !!tipoFilter
   const isVirginEmpty = visits.length === 0 && !hasLocalFilters
 
   const calendarEvents: CalendarEvent[] = filteredVisits.map((v) => ({
@@ -158,6 +165,16 @@ export default function CalendarPage() {
       key: 'cliente_nombre',
       label: 'Cliente',
       render: (value) => value || '-',
+    },
+    {
+      key: 'tipo_visita',
+      label: 'Tipo',
+      sortable: true,
+      render: (value) => (
+        <Badge variant="visit_type" color={String(value)}>
+          {tipoVisitaLabels[value as VisitType] ?? String(value)}
+        </Badge>
+      ),
     },
     {
       key: 'socio_nombre',
@@ -294,6 +311,14 @@ export default function CalendarPage() {
               value={estadoFilter}
               onChange={setEstadoFilter}
               placeholder="Filtrar estado"
+            />
+          </div>
+          <div className="w-full sm:w-48">
+            <Select
+              options={tiposFiltro}
+              value={tipoFilter}
+              onChange={setTipoFilter}
+              placeholder="Filtrar tipo"
             />
           </div>
         </div>

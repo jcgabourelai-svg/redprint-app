@@ -1,10 +1,10 @@
 import { HTMLAttributes } from 'react'
 import { cn } from '@/lib/utils'
-import { printerStatusColors, documentStatusColors, contractStatusColors, clientStatusColors } from '@/types/colors'
+import { printerStatusColors, documentStatusColors, contractStatusColors, clientStatusColors, visitTypeColors } from '@/types/colors'
 import type { ColorVariant } from '@/types/colors'
 
 export interface BadgeProps extends HTMLAttributes<HTMLSpanElement> {
-  variant?: ColorVariant | 'printer_status' | 'document_status' | 'contract_status' | 'client_status'
+  variant?: ColorVariant | 'printer_status' | 'document_status' | 'contract_status' | 'client_status' | 'visit_type'
   color?: string
 }
 
@@ -13,6 +13,7 @@ const statusColorMap: Record<string, Record<string, { foreground: string; backgr
   document_status: documentStatusColors,
   contract_status: contractStatusColors,
   client_status: clientStatusColors,
+  visit_type: visitTypeColors,
 }
 
 const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) => {
@@ -28,7 +29,8 @@ const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) 
   }
 
   let inlineStyle: React.CSSProperties | undefined
-  if ((variant === 'printer_status' || variant === 'document_status' || variant === 'contract_status' || variant === 'client_status') && color) {
+  const isStatusVariant = variant in statusColorMap
+  if (isStatusVariant && color) {
     // El API envia enums en mayusculas y las llaves del mapa son minusculas;
     // normalizamos para que el lookup siempre funcione.
     const statusColors = statusColorMap[variant]?.[String(color).toLowerCase()]
@@ -44,7 +46,7 @@ const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) 
     <span
       className={cn(
         baseStyles,
-        variant !== 'printer_status' && variant !== 'document_status' && variant !== 'contract_status' && variant !== 'client_status' && variantClasses[variant],
+        !isStatusVariant && variantClasses[variant],
         className
       )}
       style={inlineStyle}

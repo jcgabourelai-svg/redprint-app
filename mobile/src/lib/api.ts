@@ -51,15 +51,18 @@ export function isNetworkError(err: unknown): boolean {
   return axios.isAxiosError(err) && !err.response
 }
 
+export const FETCH_ALL_PAGE_SIZE = 100
+export const FETCH_ALL_MAX_PAGES = 10
+
 export async function fetchAll<T>(
   url: string,
   params: Record<string, string | number | boolean> = {}
 ): Promise<T[]> {
   const out: T[] = []
   let page = 1
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < FETCH_ALL_MAX_PAGES; i++) {
     const res = await api.get<Paginated<T>>(url, {
-      params: { ...params, per_page: 100, page },
+      params: { ...params, per_page: FETCH_ALL_PAGE_SIZE, page },
     })
     out.push(...res.data.data)
     const last = res.data.meta?.last_page ?? 1
