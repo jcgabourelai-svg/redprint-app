@@ -224,7 +224,7 @@ export default function ClientDetail() {
                                 <div>
                                   <p className="font-medium">{contract.id} - Activo desde {formatDate(contract.fecha_inicio)}</p>
                                   <p className="text-xs text-muted-foreground">
-                                    {contract.impresoras.length} impresora(s) asignada(s)
+                                    {(contract.impresoras ?? contract.printers ?? []).length} impresora(s) asignada(s)
                                   </p>
                                 </div>
                                 <Badge variant="contract_status" color={contract.estado}>
