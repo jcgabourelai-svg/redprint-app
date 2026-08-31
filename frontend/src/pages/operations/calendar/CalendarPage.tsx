@@ -13,8 +13,8 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import type { CalendarEvent } from '@/components/ui/Calendar'
 import type { Visit, VisitType, VisitStatus } from '@/types/operations'
-import { useVisits, useCreateVisit, useSocios, useGenerateVisits } from '@/hooks/useVisits'
-import { useClients } from '@/hooks/useClients'
+import { useVisits, useCreateVisit, useSocios, useGenerateVisits, useVisitClientOptions } from '@/hooks/useVisits'
+import type { VisitClientOption } from '@/hooks/useVisits'
 import { formatDate } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -33,6 +33,15 @@ const tipoVisitaLabels: Record<VisitType, string> = {
   INSTALACION: 'Instalación',
   RETIRO: 'Retiro',
   ENTREGA_INSUMOS: 'Entrega de insumos',
+}
+
+// Espejo de la app móvil: estos tipos operan sobre el contrato del cliente.
+const TIPO_REQUIERE_CONTRATO: Record<VisitType, boolean> = {
+  LECTURA: true,
+  INSTALACION: true,
+  RETIRO: true,
+  ENTREGA_INSUMOS: true,
+  MANTENIMIENTO: false,
 }
 
 const estadoLabels: Record<VisitStatus, string> = {
@@ -71,6 +80,7 @@ export default function CalendarPage() {
   const [generateMsg, setGenerateMsg] = useState('')
   const [newVisit, setNewVisit] = useState({
     cliente_id: '',
+    contrato_id: '',
     tipo_visita: 'LECTURA' as VisitType,
     fecha_programada: '',
     socio_id: '',
@@ -82,19 +92,36 @@ export default function CalendarPage() {
   const createVisit = useCreateVisit()
   const generateVisits = useGenerateVisits()
   const { data: sociosData } = useSocios()
-  const { data: clientsData } = useClients()
+  const { data: visitClientsData } = useVisitClientOptions()
 
   const socios = sociosData || []
-  const clients = clientsData?.data || []
+  const visitClients: VisitClientOption[] = visitClientsData || []
 
   const socioOptions = [
     { value: '', label: 'Todos' },
     ...socios.map((s) => ({ value: String(s.id), label: s.nombre })),
   ]
-  const clientOptions = clients.map((c) => ({
+  const clientOptions = visitClients.map((c) => ({
     value: String(c.id),
     label: c.razon_social,
   }))
+
+  const clienteSeleccionado = visitClients.find((c) => String(c.id) === newVisit.cliente_id) || null
+  const contratosCliente = clienteSeleccionado?.contratos ?? []
+  const contratoOptions = contratosCliente.map((ct) => ({
+    value: String(ct.id),
+    label: ct.codigo_negocio,
+  }))
+  const requiereContrato = TIPO_REQUIERE_CONTRATO[newVisit.tipo_visita]
+
+  function handleClienteChange(clienteId: string) {
+    const cliente = visitClients.find((c) => String(c.id) === clienteId)
+    setNewVisit((prev) => ({
+      ...prev,
+      cliente_id: clienteId,
+      contrato_id: cliente?.contratos[0] ? String(cliente.contratos[0].id) : '',
+    }))
+  }
 
   useEffect(() => {
     localStorage.setItem(VIEW_KEY, view)
@@ -321,11 +348,38 @@ export default function CalendarPage() {
             <Select
               options={clientOptions}
               value={newVisit.cliente_id}
-              onChange={(v) => setNewVisit({ ...newVisit, cliente_id: v })}
+              onChange={handleClienteChange}
               placeholder="Seleccionar cliente"
               searchable
             />
+            <p className="mt-1 text-xs text-muted-foreground">
+              Solo se listan clientes con contrato activo.
+            </p>
           </div>
+          {newVisit.cliente_id && contratosCliente.length === 1 && (
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Contrato</label>
+              <p className="rounded-md border border-input bg-muted/50 px-3 py-2 text-sm text-foreground">
+                {contratosCliente[0].codigo_negocio}
+              </p>
+            </div>
+          )}
+          {newVisit.cliente_id && contratosCliente.length > 1 && (
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">Contrato *</label>
+              <Select
+                options={contratoOptions}
+                value={newVisit.contrato_id}
+                onChange={(v) => setNewVisit({ ...newVisit, contrato_id: v })}
+                placeholder="Seleccionar contrato"
+              />
+            </div>
+          )}
+          {newVisit.cliente_id && contratosCliente.length === 0 && (
+            <div className="rounded-md bg-amber-50 border border-amber-200 text-amber-700 px-3 py-2 text-sm">
+              El cliente no tiene contratos activos: solo se puede programar una visita de mantenimiento.
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">Tipo de visita *</label>
             <Select
@@ -377,6 +431,7 @@ export default function CalendarPage() {
                 createVisit.mutate(
                   {
                     cliente_id: parseInt(newVisit.cliente_id),
+                    contrato_id: newVisit.contrato_id ? parseInt(newVisit.contrato_id) : null,
                     tipo_visita: newVisit.tipo_visita,
                     fecha_programada: newVisit.fecha_programada,
                     socio_id: parseInt(newVisit.socio_id),
@@ -387,6 +442,7 @@ export default function CalendarPage() {
                       setShowNewVisitModal(false)
                       setNewVisit({
                         cliente_id: '',
+                        contrato_id: '',
                         tipo_visita: 'LECTURA',
                         fecha_programada: '',
                         socio_id: '',
@@ -401,7 +457,8 @@ export default function CalendarPage() {
                 createVisit.isPending ||
                 !newVisit.cliente_id ||
                 !newVisit.fecha_programada ||
-                !newVisit.socio_id
+                !newVisit.socio_id ||
+                (requiereContrato && !newVisit.contrato_id)
               }
             >
               {createVisit.isPending ? 'Guardando...' : 'Guardar'}

@@ -7,7 +7,9 @@ use App\Http\Resources\ArticleDeliveryResource;
 use App\Http\Resources\VisitResource;
 use App\Enums\ContractStatus;
 use App\Enums\VisitStatus;
+use App\Enums\VisitType;
 use App\Models\Client;
+use App\Models\Contract;
 use App\Models\PrinterHistory;
 use App\Models\Visit;
 use App\Models\User;
@@ -18,14 +20,27 @@ use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 
 class VisitController extends Controller
 {
     use Sortable;
 
+    /**
+     * Tipos de visita que operan sobre el contrato del cliente: requieren
+     * contrato_id (enviado o auto-derivado). MANTENIMIENTO puede ser una
+     * visita suelta sin contrato.
+     */
+    private const TIPOS_REQUIEREN_CONTRATO = [
+        VisitType::LECTURA,
+        VisitType::INSTALACION,
+        VisitType::RETIRO,
+        VisitType::ENTREGA_INSUMOS,
+    ];
+
     public function index(Request $request)
     {
-        $query = Visit::with(['client', 'contract', 'socio', 'readings'])
+        $query = Visit::with(['client', 'contract.activePrinters', 'socio', 'readings'])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->cliente_id, fn($q, $id) => $q->where('cliente_id', $id))
             ->when($request->contrato_id, fn($q, $id) => $q->where('contrato_id', $id))
@@ -69,9 +84,62 @@ class VisitController extends Controller
         $data['creado_por'] = $request->user()->id;
         $data['estado'] = VisitStatus::PENDIENTE;
         $data['fecha_creacion'] = now();
+        $data['contrato_id'] = $this->resolverContratoId($data);
 
         $visit = Visit::create($data);
-        return response()->json(new VisitResource($visit->load(['client', 'contract', 'socio'])), 201);
+        return response()->json(new VisitResource($visit->load(['client', 'contract.activePrinters', 'socio'])), 201);
+    }
+
+    /**
+     * Valida/resuelve el contrato de la visita:
+     * - Si viene contrato_id: debe pertenecer al cliente y estar ACTIVO.
+     * - Si no viene y el tipo opera sobre contrato: auto-derivar cuando el
+     *   cliente tiene exactamente 1 contrato ACTIVO; 0 o varios -> 422.
+     * - MANTENIMIENTO sin contrato -> null (visita suelta).
+     */
+    private function resolverContratoId(array $data): ?int
+    {
+        if (!empty($data['contrato_id'])) {
+            $contract = Contract::find($data['contrato_id']);
+
+            if (!$contract || (int) $contract->cliente_id !== (int) $data['cliente_id']) {
+                throw ValidationException::withMessages([
+                    'contrato_id' => 'El contrato no pertenece al cliente seleccionado',
+                ]);
+            }
+
+            if ($contract->estado !== ContractStatus::ACTIVO) {
+                throw ValidationException::withMessages([
+                    'contrato_id' => 'El contrato no está activo',
+                ]);
+            }
+
+            return (int) $contract->id;
+        }
+
+        $tipo = VisitType::from($data['tipo_visita']);
+        if (!in_array($tipo, self::TIPOS_REQUIEREN_CONTRATO, true)) {
+            return null;
+        }
+
+        $activos = Contract::where('cliente_id', $data['cliente_id'])
+            ->where('estado', ContractStatus::ACTIVO->value)
+            ->orderBy('id')
+            ->get(['id']);
+
+        if ($activos->count() === 0) {
+            throw ValidationException::withMessages([
+                'contrato_id' => "El tipo de visita {$tipo->value} requiere contrato, pero el cliente no tiene contratos activos",
+            ]);
+        }
+
+        if ($activos->count() > 1) {
+            throw ValidationException::withMessages([
+                'contrato_id' => "El cliente tiene {$activos->count()} contratos activos, selecciona uno",
+            ]);
+        }
+
+        return (int) $activos->first()->id;
     }
 
     public function update(Request $request, Visit $visit): VisitResource|JsonResponse

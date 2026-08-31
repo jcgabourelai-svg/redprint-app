@@ -95,3 +95,16 @@ export function useSocios(enabled = true) {
     enabled,
   })
 }
+
+export interface VisitClientOption {
+  id: number
+  razon_social: string
+  contratos: { id: number; codigo_negocio: string }[]
+}
+
+export function useVisitClientOptions() {
+  return useQuery<VisitClientOption[]>({
+    queryKey: ['visits', 'clientes'],
+    queryFn: () => api.get('/visits/clientes').then(r => r.data),
+  })
+}

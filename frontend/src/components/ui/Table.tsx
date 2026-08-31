@@ -39,6 +39,7 @@ export interface TableProps<T> {
   filterState?: Record<string, string>
   onFilterChange?: (filters: Record<string, string>) => void
   onRowClick?: (row: T) => void
+  rowClassName?: (row: T) => string
   currentPage?: number
   totalPages?: number
   onPageChange?: (page: number) => void
@@ -68,6 +69,7 @@ export default function Table<T extends Record<string, any>>({
   filterState,
   onFilterChange,
   onRowClick,
+  rowClassName,
   currentPage,
   totalPages,
   onPageChange,
@@ -337,7 +339,8 @@ export default function Table<T extends Record<string, any>>({
                   onClick={() => onRowClick?.(row)}
                   className={cn(
                     'transition-colors hover:bg-muted',
-                    onRowClick && 'cursor-pointer'
+                    onRowClick && 'cursor-pointer',
+                    rowClassName?.(row)
                   )}
                 >
                   {columns.map((column) => (

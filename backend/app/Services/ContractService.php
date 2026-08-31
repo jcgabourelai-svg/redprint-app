@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Enums\ContractStatus;
 use App\Enums\PrinterStatus;
+use App\Enums\VisitStatus;
+use App\Enums\VisitType;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
 use App\Models\ContractPrinter;
@@ -11,7 +13,9 @@ use App\Models\ContractPrinterPlan;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\User;
+use App\Models\Visit;
 use App\Support\PrinterColorPalette;
+use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
@@ -36,6 +40,10 @@ class ContractService
             $planRows = $data['plan_impresoras'] ?? [];
             unset($data['plan_impresoras']);
 
+            $programarInstalacion = filter_var($data['programar_visita_instalacion'] ?? true, FILTER_VALIDATE_BOOLEAN);
+            $fechaInstalacion = $data['fecha_visita_instalacion'] ?? null;
+            unset($data['programar_visita_instalacion'], $data['fecha_visita_instalacion']);
+
             $contract = Contract::create($data);
 
             foreach ($planRows as $row) {
@@ -59,6 +67,23 @@ class ContractService
             // Genera la 1ra visita recurrente (rolling) sin esperar al cron,
             // dentro de la misma transaccion para garantizar atomicidad.
             $this->visitScheduler->generateNextCycle($contract, $creator->id);
+
+            $totalPlan = (int) $contract->planImpresoras->sum('cantidad');
+            $pendientes = max(0, $totalPlan - (int) $contract->active_printers_count);
+
+            if ($pendientes > 0 && $programarInstalacion && !empty($fechaInstalacion)) {
+                Visit::create([
+                    'cliente_id' => $contract->cliente_id,
+                    'contrato_id' => $contract->id,
+                    'tipo_visita' => VisitType::INSTALACION,
+                    'fecha_programada' => Carbon::parse($fechaInstalacion)->startOfDay(),
+                    'socio_id' => $creator->id,
+                    'estado' => VisitStatus::PENDIENTE,
+                    'creado_por' => $creator->id,
+                    'fecha_creacion' => now(),
+                    'notas' => 'Instalación inicial: vincular series del plan desde la app móvil.',
+                ]);
+            }
 
             return $contract;
         });

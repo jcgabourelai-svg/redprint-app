@@ -31,6 +31,8 @@ class StoreContractRequest extends FormRequest
             'plan_impresoras' => 'nullable|array',
             'plan_impresoras.*.modelo_id' => 'required_with:plan_impresoras|exists:printer_models,id',
             'plan_impresoras.*.cantidad' => 'required_with:plan_impresoras|integer|between:1,20',
+            'programar_visita_instalacion' => 'nullable|boolean',
+            'fecha_visita_instalacion' => 'required_if:programar_visita_instalacion,true|nullable|date',
         ];
     }
 

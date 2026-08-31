@@ -16,6 +16,7 @@ import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Badge from '@/components/ui/Badge'
+import Checkbox from '@/components/ui/Checkbox'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
 import { useClients } from '@/hooks/useClients'
@@ -80,6 +81,9 @@ export default function CreateContract() {
   const [paginas_incluidas, setPaginasIncluidas] = useState('500')
   const [costo_por_pagina_excedente, setCostoPorPagina] = useState('0.01')
 
+  const [programarVisitaInstalacion, setProgramarVisitaInstalacion] = useState(true)
+  const [fechaVisitaInstalacion, setFechaVisitaInstalacion] = useState('')
+
   const clientOptions = clients.map((c) => ({
     value: c.id,
     label: `${c.razon_social} (${c.nombre_contacto})`,
@@ -100,6 +104,10 @@ export default function CreateContract() {
         modelo_id: parseInt(r.modelo_id),
         cantidad: parseInt(r.cantidad) || 1,
       }))
+
+  const planTotal = getPlanRows().reduce((s, r) => s + r.cantidad, 0)
+  const pendientesInstalacion = Math.max(0, planTotal - selectedPrinters.length)
+  const fechaInstalacionEfectiva = fechaVisitaInstalacion || fecha_inicio
 
   const getPlanModelLabel = (modeloId: string) => {
     const m = models.find((mm) => String(mm.id) === modeloId)
@@ -155,6 +163,12 @@ export default function CreateContract() {
         lectura_inicial: getLecturaInicial(printerId),
         alias: aliases[printerId]?.trim() || null,
       })),
+      ...(pendientesInstalacion > 0
+        ? {
+            programar_visita_instalacion: programarVisitaInstalacion,
+            fecha_visita_instalacion: programarVisitaInstalacion ? fechaInstalacionEfectiva : null,
+          }
+        : {}),
     }
     
     createContract.mutate(contractData, {
@@ -689,6 +703,38 @@ export default function CreateContract() {
                   </div>
                 )}
 
+                {pendientesInstalacion > 0 && (
+                  <div className="bg-warning/10 rounded-lg p-4">
+                    <p className="font-medium text-warning mb-2 flex items-center gap-2">
+                      <ClipboardCheck className="h-4 w-4" />
+                      Visita de Instalación
+                    </p>
+                    <div className="space-y-3">
+                      <Checkbox
+                        id="programar-visita-instalacion"
+                        label="Programar visita de instalación"
+                        checked={programarVisitaInstalacion}
+                        onChange={(e) => setProgramarVisitaInstalacion(e.target.checked)}
+                      />
+                      <div className="max-w-xs">
+                        <label className="block text-sm font-medium text-muted-foreground mb-1">
+                          Fecha de la visita
+                        </label>
+                        <Input
+                          type="date"
+                          value={fechaInstalacionEfectiva}
+                          onChange={(e) => setFechaVisitaInstalacion(e.target.value)}
+                          disabled={!programarVisitaInstalacion}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Quedan {pendientesInstalacion} equipo(s) por instalar. La visita se
+                        cierra automáticamente al vincular las series desde la app móvil.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 {selectedPrinterDetails.length > 0 && (
                   <div className="bg-primary/10 rounded-lg p-4">
                     <p className="font-medium text-primary mb-2">
@@ -768,6 +814,12 @@ export default function CreateContract() {
             {getPlanRows().length > 0 && (
               <p>• Los modelos quedarán como plan de instalación en campo (sin cobro hasta vincular serie)</p>
             )}
+            {pendientesInstalacion > 0 && programarVisitaInstalacion && (
+              <p>
+                • Programará una visita de instalación el {fechaInstalacionEfectiva} (pendiente
+                instalar {pendientesInstalacion} equipo{pendientesInstalacion === 1 ? '' : 's'})
+              </p>
+            )}
             <p>• Generará visitas en el calendario</p>
           </div>
           <div className="flex justify-end gap-2 pt-2">
@@ -791,6 +843,8 @@ export default function CreateContract() {
             <p className="text-sm text-muted-foreground">
               {selectedPrinters.length > 0
                 ? `${selectedPrinters.length} impresoras asignadas: ${selectedPrinters.join(', ')}`
+                : pendientesInstalacion > 0 && programarVisitaInstalacion
+                ? `Visita de instalación programada el ${fechaInstalacionEfectiva}: vincula las ${pendientesInstalacion} serie(s) pendientes desde la app móvil.`
                 : getPlanRows().length > 0
                 ? 'Plan de modelos registrado; instala las series desde la app de campo.'
                 : 'Contrato sin equipos; instala desde la app de campo.'}

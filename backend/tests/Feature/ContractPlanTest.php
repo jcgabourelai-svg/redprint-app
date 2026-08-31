@@ -13,6 +13,7 @@ use App\Models\PrinterModel;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\VisitSchedulerService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -294,6 +295,174 @@ class ContractPlanTest extends TestCase
 
         // Σcantidad = 3, activas = 2 (incluye el sustituto) → 1 pendiente.
         $this->assertSame(1, $show->json('pendientes_instalacion'));
+    }
+
+    public function test_crea_visita_instalacion_pendiente_cuando_hay_pendientes(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'VisitaInstalacion SA');
+        $model = $this->createModel('LaserJet Pro M404');
+
+        $payload = $this->contractPayload($client, null, [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = true;
+        $payload['fecha_visita_instalacion'] = today()->toDateString();
+
+        $response = $this->postJson('/api/v1/contracts', $payload);
+
+        $response->assertCreated();
+        $contractId = (int) $response->json('id');
+
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'INSTALACION')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->count());
+
+        $this->assertDatabaseHas('visits', [
+            'contrato_id' => $contractId,
+            'tipo_visita' => 'INSTALACION',
+            'estado' => 'PENDIENTE',
+            'fecha_programada' => today()->toDateString(),
+            'socio_id' => $admin->id,
+            'creado_por' => $admin->id,
+        ]);
+    }
+
+    public function test_opt_out_no_crea_visita_instalacion(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'OptOut SA');
+        $model = $this->createModel('LaserJet Pro M404');
+
+        $payload = $this->contractPayload($client, null, [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = false;
+
+        $response = $this->postJson('/api/v1/contracts', $payload);
+
+        $response->assertCreated();
+        $contractId = (int) $response->json('id');
+
+        $this->assertSame(0, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'INSTALACION')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->count());
+    }
+
+    public function test_flag_de_instalacion_se_ignora_sin_pendientes(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'SinPendientes SA');
+        $model = $this->createModel('LaserJet Pro M404');
+        $p1 = $this->createPrinter($admin, $model, 100);
+        $p2 = $this->createPrinter($admin, $model, 200);
+
+        $payload = $this->contractPayload($client, [
+            ['id' => $p1->id, 'lectura_inicial' => 100],
+            ['id' => $p2->id, 'lectura_inicial' => 200],
+        ], [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = true;
+        $payload['fecha_visita_instalacion'] = today()->toDateString();
+
+        $response = $this->postJson('/api/v1/contracts', $payload);
+
+        $response->assertCreated();
+        $contractId = (int) $response->json('id');
+
+        $this->assertSame(0, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'INSTALACION')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->count());
+    }
+
+    public function test_flag_true_sin_fecha_de_instalacion_es_rechazado(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'SinFecha SA');
+        $model = $this->createModel('LaserJet Pro M404');
+
+        $payload = $this->contractPayload($client, null, [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = true;
+
+        $this->postJson('/api/v1/contracts', $payload)->assertStatus(422);
+
+        $this->assertDatabaseCount('contracts', 0);
+    }
+
+    public function test_assign_printer_con_visita_instalacion_la_auto_completa(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'Autocierre SA');
+        $model = $this->createModel('LaserJet Pro M404');
+        $printer = $this->createPrinter($admin, $model, 100);
+
+        $payload = $this->contractPayload($client, null, [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = true;
+        $payload['fecha_visita_instalacion'] = today()->toDateString();
+
+        $response = $this->postJson('/api/v1/contracts', $payload);
+        $response->assertCreated();
+        $contractId = (int) $response->json('id');
+
+        $visita = Visit::where('contrato_id', $contractId)
+            ->where('tipo_visita', 'INSTALACION')
+            ->where('estado', 'PENDIENTE')
+            ->first();
+        $this->assertNotNull($visita);
+
+        $this->postJson("/api/v1/contracts/{$contractId}/assign-printer", [
+            'impresora_id' => $printer->id,
+            'lectura_inicial' => 100,
+            'visita_id' => $visita->id,
+        ])->assertOk();
+
+        $this->assertDatabaseHas('visits', [
+            'id' => $visita->id,
+            'estado' => 'COMPLETADA',
+        ]);
+        $this->assertDatabaseHas('contract_printer', [
+            'contrato_id' => $contractId,
+            'impresora_id' => $printer->id,
+            'activa' => true,
+        ]);
+    }
+
+    public function test_scheduler_regenera_lectura_con_visita_instalacion_pendiente(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $client = $this->createClient($admin, 'SchedulerInstalacion SA');
+        $model = $this->createModel('LaserJet Pro M404');
+
+        $payload = $this->contractPayload($client, null, [
+            ['modelo_id' => $model->id, 'cantidad' => 2],
+        ]);
+        $payload['programar_visita_instalacion'] = true;
+        $payload['fecha_visita_instalacion'] = today()->addDays(3)->toDateString();
+
+        $response = $this->postJson('/api/v1/contracts', $payload);
+        $response->assertCreated();
+        $contractId = (int) $response->json('id');
+
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'INSTALACION')->where('estado', 'PENDIENTE')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->where('estado', 'PENDIENTE')->count());
+
+        Visit::where('contrato_id', $contractId)
+            ->where('tipo_visita', 'LECTURA')
+            ->update(['estado' => 'CANCELADA']);
+
+        app(VisitSchedulerService::class)->generateRecurringVisits();
+
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->where('estado', 'PENDIENTE')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'LECTURA')->where('estado', 'CANCELADA')->count());
+        $this->assertSame(1, Visit::where('contrato_id', $contractId)->where('tipo_visita', 'INSTALACION')->where('estado', 'PENDIENTE')->count());
     }
 
     public function test_estimacion_advierte_plan_incompleto_y_mantiene_tarifa_base(): void

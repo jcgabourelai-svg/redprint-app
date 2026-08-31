@@ -9,11 +9,13 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import PrinterForm, { type PrinterFormData } from '@/components/printer/PrinterForm'
 import api from '@/lib/api'
+import { cn } from '@/lib/utils'
 import { useCreatePrinter } from '@/hooks/usePrinters'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency, formatDate, getPrinterStatusColor } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { PrinterStatus } from '@/types/enums'
+import { printerStatusColors } from '@/types/colors'
 import type { Printer } from '@/types/printer'
 
 const PRINTER_FILTERS: FilterConfig[] = [
@@ -103,17 +105,30 @@ export default function PrinterList() {
           return <p>ALMACÉN: {row.warehouse.nombre || row.warehouse.id}</p>
         }
         if (row.estado === PrinterStatus.RENTADA) {
-          if (row.cliente?.nombre) {
-            return (
-              <div>
-                <p>CLIENTE: {row.cliente.nombre}</p>
-                {row.cliente.contrato_codigo && (
-                  <p className="text-xs text-muted-foreground">CONTRATO: {row.cliente.contrato_codigo}</p>
-                )}
-              </div>
-            )
-          }
-          return <p className="text-muted-foreground">Sitio del cliente</p>
+          // Callout verde sutil (misma paleta que el badge RENTADA) para
+          // distinguir de un vistazo las impresoras rentadas.
+          const rentada = printerStatusColors.rentada
+          return (
+            <div
+              className="inline-flex flex-col gap-0.5 rounded-md border px-2 py-1"
+              style={{
+                backgroundColor: rentada.background,
+                borderColor: rentada.DEFAULT,
+                color: rentada.foreground,
+              }}
+            >
+              <span className="flex items-center gap-1.5 font-medium">
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full"
+                  style={{ backgroundColor: rentada.DEFAULT }}
+                />
+                CLIENTE: {row.cliente?.nombre ?? 'Sitio del cliente'}
+              </span>
+              {row.cliente?.contrato_codigo && (
+                <span className="pl-3 text-xs opacity-80">CONTRATO: {row.cliente.contrato_codigo}</span>
+              )}
+            </div>
+          )
         }
         return <p className="text-muted-foreground">—</p>
       },
@@ -186,6 +201,13 @@ export default function PrinterList() {
             {...tableProps}
             emptyMessage="No se encontraron impresoras con los filtros aplicados."
             onRowClick={(printer) => navigate(`/inventario/impresoras/${printer.id}`)}
+            rowClassName={(printer) =>
+              cn(
+                '[&>td:first-child]:border-l-4 [&>td:first-child]:border-l-transparent',
+                printer.estado === PrinterStatus.RENTADA &&
+                  '[&>td:first-child]:border-l-success/60'
+              )
+            }
           />
         )}
       </div>

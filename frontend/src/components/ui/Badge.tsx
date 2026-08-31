@@ -29,7 +29,9 @@ const Badge = ({ className, variant = 'primary', color, ...props }: BadgeProps) 
 
   let inlineStyle: React.CSSProperties | undefined
   if ((variant === 'printer_status' || variant === 'document_status' || variant === 'contract_status' || variant === 'client_status') && color) {
-    const statusColors = statusColorMap[variant]?.[color]
+    // El API envia enums en mayusculas y las llaves del mapa son minusculas;
+    // normalizamos para que el lookup siempre funcione.
+    const statusColors = statusColorMap[variant]?.[String(color).toLowerCase()]
     if (statusColors) {
       inlineStyle = {
         backgroundColor: statusColors.background,
