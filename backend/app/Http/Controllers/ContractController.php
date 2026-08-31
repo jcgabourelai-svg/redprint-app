@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Enums\VisitStatus;
-use App\Enums\VisitType;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\StoreContractRequest;
 use App\Http\Requests\UpdateContractPlanRequest;
@@ -12,7 +11,6 @@ use App\Models\Contract;
 use App\Models\ContractPrinter;
 use App\Models\Visit;
 use App\Services\ContractService;
-use App\Services\VisitService;
 use App\Support\PrinterColorPalette;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
@@ -24,8 +22,7 @@ class ContractController extends Controller
     use Sortable;
 
     public function __construct(
-        private ContractService $contractService,
-        private VisitService $visitService
+        private ContractService $contractService
     ) {}
 
     public function index(Request $request)
@@ -108,7 +105,9 @@ class ContractController extends Controller
             $data['color'] ?? null
         );
 
-        $this->autoCompletarVisita($visita, VisitType::INSTALACION);
+        // Sin autocierre: la visita queda abierta para seguir registrando
+        // actividades (insumos, lecturas, más instalaciones...) y se cierra
+        // de forma explícita desde la app/web.
 
         $contract = $contract->fresh(['client', 'printers', 'planImpresoras.printerModel.brand']);
         $contract->loadCount('activePrinters');
@@ -169,7 +168,7 @@ class ContractController extends Controller
             $visita?->id
         );
 
-        $this->autoCompletarVisita($visita, VisitType::RETIRO);
+        // Sin autocierre (misma regla que la instalación): cierre explícito.
 
         return response()->json(new ContractResource($this->freshConPlan($contract)));
     }
@@ -200,32 +199,5 @@ class ContractController extends Controller
         }
 
         return $visita;
-    }
-
-    /**
-     * Auto-completa la visita si su tipo coincide con la operacion y sigue
-     * editable; el guard es silencioso: nunca interrumpe la operacion.
-     */
-    private function autoCompletarVisita(?Visit $visita, VisitType $tipoEsperado): void
-    {
-        if (! $visita) {
-            return;
-        }
-
-        $visita->refresh();
-
-        if ($visita->tipo_visita !== $tipoEsperado) {
-            return;
-        }
-
-        if (! in_array($visita->estado, [VisitStatus::PENDIENTE, VisitStatus::REPROGRAMADA], true)) {
-            return;
-        }
-
-        try {
-            $this->visitService->complete($visita);
-        } catch (BusinessRuleException) {
-            // Guard silencioso: el cambio de impresora ya quedo registrado.
-        }
     }
 }

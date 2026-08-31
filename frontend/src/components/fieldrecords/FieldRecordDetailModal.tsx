@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import { FieldRecordEstadoBadge, FieldRecordTipoBadge } from '@/components/fieldrecords/FieldRecordBadges'
-import { FieldRecordStatusLabels, FieldRecordTypeLabels } from '@/types/enums'
+import { FieldRecordStatusLabels } from '@/types/enums'
 import { formatDateTime } from '@/lib/formatters'
 import type { FieldRecord } from '@/types/field-record'
 
@@ -161,7 +161,7 @@ export default function FieldRecordDetailModal({
                 Descartar…
               </Button>
               <Button onClick={() => onVincular(record)}>
-                Vincular a {FieldRecordTypeLabels[record.tipo].toLowerCase()}…
+                Regularizar…
               </Button>
             </>
           )}

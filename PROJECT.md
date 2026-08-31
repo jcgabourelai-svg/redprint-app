@@ -129,7 +129,7 @@ que los viola debe justificar explícitamente por qué.
    nunca decide montos. La facturación por lecturas **recalcula en servidor** aunque el
    cliente envíe detalles. Ver `InvoiceService::create` / `InvoiceCalculationService`.
 2. **Toda mutación compuesta es transaccional.** Crear contrato (+ asignar impresoras +
-   1ª visita), capturar lectura (+ contador + autocierre de visita), registrar pago
+   1ª visita), capturar lectura (+ contador), registrar pago
    (+ estado de factura), completar mantenimiento (+ descargo de stock), recibir compra
    (+ entradas), conciliar, cerrar periodo: todo vive en `DB::transaction`. Las reglas de
    negocio violadas se lanzan como `BusinessRuleException` → HTTP **422**.
@@ -296,7 +296,9 @@ toque una entidad con estado debe respetar (o ampliar explícitamente) su máqui
 ### Visita — `PENDIENTE / COMPLETADA / REPROGRAMADA / CANCELADA / OMITIDA`
 
 - Completar exige **actividad** (lectura, entrega, orden, cambio de impresora) **o motivo
-  explícito**. Autocierre: al capturar la última lectura pendiente del contrato.
+  explícito**. **Sin autocierre**: ni lecturas ni instalación/retiro cierran la visita;
+  el cierre es siempre explícito (excepción: la regularización de registros de campo
+  crea su visita ya completada en la misma transacción).
 - Semántica clave (frecuentemente malentendida): **OMITIDA** = eliminación manual del slot,
   **bloquea la regeneración** del scheduler; **CANCELADA** = cancelación contractual,
   **permite regenerar** si el contrato se reactiva.
@@ -358,7 +360,7 @@ sequenceDiagram
     S->>API: visits:generate-upcoming (rolling 1 mes)
     O->>API: GET /visits (Hoy / Calendario)
     O->>API: POST /readings (con foto/GPS, cola offline si no hay red)
-    API-->>O: paginas_periodo + monto_estimado (+ autocierre de visita si era la última)
+    API-->>O: paginas_periodo + monto_estimado (la visita se cierra de forma explícita)
     A->>API: GET /invoices/calcular (estimación + advertencias)
     A->>API: POST /invoices (servidor recalcula; index unique evita doble facturación)
     A->>API: POST /payments (monto ≤ saldo; estados automáticos)
@@ -380,7 +382,9 @@ se ignoran? ¿el ciclo cierra sin intervention manual?
    pagar → conciliar.
 3. **Rotación de flota**: retiro (contrato → almacén, estado `EN_ALMACEN`) / instalación
    (almacén → contrato, `RENTADA`, nueva `lectura_inicial`), ambos desde el móvil durante una
-   visita, con autocierre de visitas INSTALACION/RETIRO.
+   visita (quedan estampados en `printer_histories` con `visita_id`; **sin autocierre**: la
+   visita se cierra de forma explícita, lo que permite seguir capturando actividades —p. ej.
+   entrega de tóner— en la misma visita).
 4. **Cierre mensual**: validaciones previas (bloquea errores) → snapshot KPIs → historial de
    periodos. Nota: el cierre **no congela escritura** de periodos pasados.
 

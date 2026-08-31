@@ -5,8 +5,10 @@ import { AlertTriangle, ArrowLeft, ArrowRight, CheckCircle2 } from 'lucide-react
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
+import ClientFormModal from '@/components/clients/ClientFormModal'
 import api from '@/lib/api'
 import { useLinkFieldRecord } from '@/hooks/useFieldRecords'
+import { useTienePermiso } from '@/contexts/AuthContext'
 import { parseApiError } from '@/lib/api-errors'
 import { formatDate } from '@/lib/formatters'
 import { VisitTypeLabels } from '@/types/enums'
@@ -63,8 +65,11 @@ export default function LinkFieldRecordModal({
   const [tipoVisita, setTipoVisita] = useState('')
   const [motivoCierre, setMotivoCierre] = useState('')
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [showNewClient, setShowNewClient] = useState(false)
 
   const linkMutation = useLinkFieldRecord()
+  const puedeCrearClientes = useTienePermiso('clientes')
+  const puedeCrearContratos = useTienePermiso('contratos')
 
   const esLectura = record?.tipo === 'LECTURA'
   const esEntrega = record?.tipo === 'ENTREGA_INSUMOS'
@@ -86,6 +91,8 @@ export default function LinkFieldRecordModal({
         .get('/contracts', { params: { cliente_id: clienteId, estado: 'ACTIVO', per_page: 100 } })
         .then((r) => r.data),
     enabled: isOpen && !!clienteId,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   })
 
   const contratoSeleccionado = useMemo(
@@ -117,6 +124,17 @@ export default function LinkFieldRecordModal({
     enabled: isOpen && esEntrega,
   })
 
+  const newClientInitialValues = useMemo(() => {
+    if (!record) return undefined
+    return {
+      razon_social: record.nombre_cliente_reportado ?? '',
+      direccion_instalacion: record.direccion_reportada ?? '',
+      notas:
+        `Cliente derivado del registro de campo #${record.id} — capturado por ` +
+        `${record.socio_nombre ?? `#${record.socio_id}`} el ${formatDate(record.capturado_en)}.`,
+    }
+  }, [record])
+
   useEffect(() => {
     if (!isOpen || !record) return
     setStep(1)
@@ -130,6 +148,7 @@ export default function LinkFieldRecordModal({
     setSubmitError(null)
     setTipoVisita('')
     setMotivoCierre('')
+    setShowNewClient(false)
     const evidencia = record.articulos_entregados ?? []
     setArticuloRows(
       evidencia.length > 0
@@ -255,7 +274,8 @@ export default function LinkFieldRecordModal({
   const articulosMap = new Map(articleOptions.map((a) => [a.value, a.label]))
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={`Vincular registro #${record.id}`} size="lg">
+    <>
+      <Modal isOpen={isOpen} onClose={onClose} title={`Vincular registro #${record.id}`} size="lg">
       <div className="space-y-5">
         {/* Progreso */}
         <div className="flex items-center gap-2 text-xs">
@@ -296,30 +316,40 @@ export default function LinkFieldRecordModal({
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
               Elige a qué cliente y contrato reales corresponde el registro capturado en campo.
-              Si el cliente o el contrato aún no existen,{' '}
-              <Link to="/clientes" className="text-primary hover:underline" target="_blank">
-                da de alta el cliente
-              </Link>{' '}
-              y{' '}
-              <Link to="/contratos/crear" className="text-primary hover:underline" target="_blank">
-                el contrato
-              </Link>{' '}
-              primero, y vuelve a esta bandeja.
+              Si el cliente aún no existe, dalo de alta aquí mismo con{' '}
+              <strong className="text-foreground">+ Crear cliente nuevo</strong>; si no tiene
+              contratos activos, puedes crear el contrato en otra pestaña (se abrirá con este
+              cliente precargado) y al volver a esta ventana el listado de contratos se
+              actualizará solo.
             </p>
 
             <div>
               <label className="block text-xs font-medium text-muted-foreground mb-1">Cliente</label>
-              <Select
-                options={clientOptions}
-                value={clienteId}
-                onChange={(v) => {
-                  setClienteId(v)
-                  setContratoId('')
-                  setImpresoraContratoId('')
-                }}
-                placeholder="Buscar y seleccionar cliente…"
-                searchable
-              />
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select
+                    options={clientOptions}
+                    value={clienteId}
+                    onChange={(v) => {
+                      setClienteId(v)
+                      setContratoId('')
+                      setImpresoraContratoId('')
+                    }}
+                    placeholder="Buscar y seleccionar cliente…"
+                    searchable
+                  />
+                </div>
+                {puedeCrearClientes && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="shrink-0"
+                    onClick={() => setShowNewClient(true)}
+                  >
+                    + Crear cliente nuevo…
+                  </Button>
+                )}
+              </div>
             </div>
 
             {clienteId !== '' && (
@@ -328,9 +358,22 @@ export default function LinkFieldRecordModal({
                   Contrato activo
                 </label>
                 {contractOptions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    El cliente no tiene contratos activos. Crea el contrato antes de vincular.
-                  </p>
+                  <div className="space-y-1">
+                    <p className="text-sm text-muted-foreground">
+                      El cliente no tiene contratos activos. Crea el contrato antes de vincular.
+                    </p>
+                    {puedeCrearContratos && (
+                      <p className="text-sm">
+                        <Link
+                          to={`/contratos/crear?cliente_id=${clienteId}`}
+                          target="_blank"
+                          className="text-primary hover:underline"
+                        >
+                          Crear contrato para este cliente…
+                        </Link>
+                      </p>
+                    )}
+                  </div>
                 ) : (
                   <Select
                     options={contractOptions}
@@ -691,6 +734,18 @@ export default function LinkFieldRecordModal({
           </div>
         </div>
       </div>
-    </Modal>
+      </Modal>
+
+      <ClientFormModal
+        isOpen={showNewClient}
+        onClose={() => setShowNewClient(false)}
+        initialValues={newClientInitialValues}
+        onCreated={(client) => {
+          setClienteId(String(client.id))
+          setContratoId('')
+          setImpresoraContratoId('')
+        }}
+      />
+    </>
   )
 }

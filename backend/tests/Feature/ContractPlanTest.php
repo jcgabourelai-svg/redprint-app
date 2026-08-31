@@ -393,11 +393,11 @@ class ContractPlanTest extends TestCase
         $this->assertDatabaseCount('contracts', 0);
     }
 
-    public function test_assign_printer_con_visita_instalacion_la_auto_completa(): void
+    public function test_assign_printer_con_visita_instalacion_la_mantiene_pendiente(): void
     {
         $admin = $this->adminUser();
         Sanctum::actingAs($admin);
-        $client = $this->createClient($admin, 'Autocierre SA');
+        $client = $this->createClient($admin, 'SinAutocierre SA');
         $model = $this->createModel('LaserJet Pro M404');
         $printer = $this->createPrinter($admin, $model, 100);
 
@@ -423,9 +423,12 @@ class ContractPlanTest extends TestCase
             'visita_id' => $visita->id,
         ])->assertOk();
 
+        // Sin autocierre: la visita queda PENDIENTE para permitir mas
+        // actividades (segunda impresora del plan, insumos...) antes del
+        // cierre explicito.
         $this->assertDatabaseHas('visits', [
             'id' => $visita->id,
-            'estado' => 'COMPLETADA',
+            'estado' => 'PENDIENTE',
         ]);
         $this->assertDatabaseHas('contract_printer', [
             'contrato_id' => $contractId,

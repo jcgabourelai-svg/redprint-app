@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Check,
@@ -19,7 +19,7 @@ import Badge from '@/components/ui/Badge'
 import Checkbox from '@/components/ui/Checkbox'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Modal from '@/components/ui/Modal'
-import { useClients } from '@/hooks/useClients'
+import { useClients, useClient } from '@/hooks/useClients'
 import { usePrinters } from '@/hooks/usePrinters'
 import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useCreateContract } from '@/hooks/useContracts'
@@ -50,22 +50,32 @@ interface PlanRow {
 
 export default function CreateContract() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [step, setStep] = useState(0)
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [error, setError] = useState('')
 
-  const { data: clientsData, isLoading: clientsLoading } = useClients()
+  const clienteIdParam = searchParams.get('cliente_id') ?? ''
+  const { data: clientsData, isLoading: clientsLoading } = useClients({ per_page: 100 })
+  const { data: prefillClient } = useClient(Number(clienteIdParam))
   const { data: printersData, isLoading: printersLoading } = usePrinters({ estado: 'EN_ALMACEN' })
   const { data: printerModels, isLoading: modelsLoading } = usePrinterModels(undefined, true)
   const createContract = useCreateContract()
 
-  const clients = clientsData?.data || []
+  const baseClients = clientsData?.data || []
+  const clients =
+    prefillClient && !baseClients.some((c) => String(c.id) === String(prefillClient.id))
+      ? [prefillClient, ...baseClients]
+      : baseClients
   const printers = printersData?.data || []
   const models = printerModels || []
 
-  const [cliente_id, setClienteId] = useState('')
-  const [fecha_inicio, setFechaInicio] = useState('2026-05-15')
+  const today = new Date()
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+  const [cliente_id, setClienteId] = useState(clienteIdParam)
+  const [fecha_inicio, setFechaInicio] = useState(todayStr)
   const [fecha_fin, setFechaFin] = useState('')
   const [dias_gracia, setDiasGracia] = useState('15')
   const [frecuencia, setFrecuencia] = useState<VisitFrequency>('MENSUAL')
@@ -85,7 +95,7 @@ export default function CreateContract() {
   const [fechaVisitaInstalacion, setFechaVisitaInstalacion] = useState('')
 
   const clientOptions = clients.map((c) => ({
-    value: c.id,
+    value: String(c.id),
     label: `${c.razon_social} (${c.nombre_contacto})`,
   }))
 
@@ -94,7 +104,7 @@ export default function CreateContract() {
     label: m.marca ? `${m.marca} ${m.nombre}` : m.nombre,
   }))
 
-  const selectedClient = clients.find((c) => c.id === cliente_id)
+  const selectedClient = clients.find((c) => String(c.id) === cliente_id)
   const selectedPrinterDetails = printers.filter((p) => selectedPrinters.includes(p.id))
 
   const getPlanRows = () =>
@@ -728,8 +738,9 @@ export default function CreateContract() {
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Quedan {pendientesInstalacion} equipo(s) por instalar. La visita se
-                        cierra automáticamente al vincular las series desde la app móvil.
+                        Quedan {pendientesInstalacion} equipo(s) por instalar. Tras vincular
+                        las series desde la app móvil, el operador cierra la visita con el
+                        botón «Completar visita».
                       </p>
                     </div>
                   </div>

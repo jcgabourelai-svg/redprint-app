@@ -265,7 +265,7 @@ class VisitCompletionTest extends TestCase
             ->assertJsonPath('estado', 'COMPLETADA');
     }
 
-    public function test_assign_printer_con_visita_id_vincula_y_auto_completa(): void
+    public function test_assign_printer_con_visita_id_vincula_y_mantiene_visita_pendiente(): void
     {
         $admin = $this->adminUser();
         Sanctum::actingAs($admin);
@@ -287,17 +287,65 @@ class VisitCompletionTest extends TestCase
                 ->exists()
         );
 
+        // Sin autocierre: la instalación no cierra la visita; el cierre es
+        // siempre explicito (permite seguir capturando insumos, lecturas...).
         $this->assertDatabaseHas('visits', [
             'id' => $visit->id,
-            'estado' => VisitStatus::COMPLETADA->value,
+            'estado' => VisitStatus::PENDIENTE->value,
         ]);
 
         $this->getJson("/api/v1/visits/{$visit->id}")
             ->assertOk()
-            ->assertJsonPath('estado', 'COMPLETADA')
+            ->assertJsonPath('estado', 'PENDIENTE')
             ->assertJsonPath('cambios_impresoras.0.evento', 'ASIGNACION_CONTRATO')
             ->assertJsonPath('cambios_impresoras.0.impresora.id', $printer->id)
             ->assertJsonPath('cambios_impresoras.0.impresora.marca', 'HP');
+    }
+
+    public function test_assign_printer_y_luego_entrega_de_insumos_en_la_misma_visita(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $printer = $this->createPrinter($admin);
+        $visit = $this->createVisit($contract, $admin, ['tipo_visita' => VisitType::INSTALACION]);
+
+        $this->postJson("/api/v1/contracts/{$contract->id}/assign-printer", [
+            'impresora_id' => $printer->id,
+            'lectura_inicial' => 100,
+            'visita_id' => $visit->id,
+        ])->assertOk();
+
+        $article = Article::create([
+            'tipo_articulo' => ArticleType::CONSUMIBLE,
+            'subtipo' => 'TONER',
+            'nombre' => 'Tóner Post-Instalación',
+            'marca' => 'HP',
+            'modelo_sku' => '85A',
+            'stock_actual' => 10,
+            'umbral_reposicion' => 2,
+            'costo_unitario' => 50.00,
+            'activo' => true,
+            'fecha_creacion' => now(),
+        ]);
+
+        // Regresion del caso real: instalar y despues entregar un tóner en
+        // la MISMA visita (antes del autocierre esto devolvía 422).
+        $this->postJson("/api/v1/visits/{$visit->id}/deliver-article", [
+            'articulo_id' => $article->id,
+            'cantidad' => 1,
+        ])->assertCreated();
+
+        $this->assertDatabaseHas('article_deliveries', [
+            'visita_id' => $visit->id,
+            'articulo_id' => $article->id,
+            'cantidad' => 1,
+        ]);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::PENDIENTE->value,
+        ]);
     }
 
     public function test_assign_printer_segunda_instalacion_sobre_visita_completada_no_falla(): void
@@ -314,6 +362,12 @@ class VisitCompletionTest extends TestCase
             'impresora_id' => $printerA->id,
             'visita_id' => $visit->id,
         ])->assertOk();
+
+        // Cierre explicito por el operador (la instalación ya cuenta como
+        // actividad registrada), y aun así una segunda instalación es válida.
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [])
+            ->assertOk()
+            ->assertJsonPath('estado', 'COMPLETADA');
 
         $this->postJson("/api/v1/contracts/{$contract->id}/assign-printer", [
             'impresora_id' => $printerB->id,
@@ -356,7 +410,7 @@ class VisitCompletionTest extends TestCase
         $this->assertDatabaseMissing('printer_histories', ['impresora_id' => $printer->id]);
     }
 
-    public function test_release_printer_con_visita_id_auto_completa_retiro(): void
+    public function test_release_printer_con_visita_id_vincula_y_mantiene_visita_pendiente(): void
     {
         $admin = $this->adminUser();
         Sanctum::actingAs($admin);
@@ -389,9 +443,10 @@ class VisitCompletionTest extends TestCase
                 ->exists()
         );
 
+        // Sin autocierre (misma regla que la instalación): cierre explicito.
         $this->assertDatabaseHas('visits', [
             'id' => $visit->id,
-            'estado' => VisitStatus::COMPLETADA->value,
+            'estado' => VisitStatus::PENDIENTE->value,
         ]);
 
         $this->getJson("/api/v1/visits/{$visit->id}")

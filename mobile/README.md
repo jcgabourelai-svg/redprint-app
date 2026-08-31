@@ -52,11 +52,11 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
   - 📦 Entregar insumos (online-only, permiso `inventario.articulos`)
   - 🔧 Reportar falla → orden `CORRECTIVO` con `visita_id` (online-only,
     permiso `inventario.mantenimiento`; completar la orden queda en el panel
-    web y **no** auto-completa la visita)
-  - 📥 Instalar impresora → `assign-printer` con `visita_id` (auto-completa
-    la visita `INSTALACION`)
-  - 📤 Retirar impresora → `release-printer` con `visita_id` (auto-completa
-    la visita `RETIRO`)
+    web y **no** completa la visita)
+  - 📥 Instalar impresora → `assign-printer` con `visita_id` (la visita queda
+    abierta: el cierre es siempre explícito)
+  - 📤 Retirar impresora → `release-printer` con `visita_id` (la visita queda
+    abierta: el cierre es siempre explícito)
 - **Registrado en la visita** (independiente del motivo): lecturas, insumos
   entregados, órdenes de mantenimiento (`mantenimientos`) y cambios de
   impresora (`cambios_impresoras`)
@@ -82,12 +82,12 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
 
 ### Comportamientos del backend a tener en cuenta
 
-- La visita **se auto-completa** cuando todas las impresoras activas del
-  contrato tienen lectura (`ReadingService::checkVisitCompletion`); la app no
-  llama a `/visits/{id}/complete` en el flujo de lecturas.
-- Instalación/retiro con `visita_id` también auto-completan la visita cuando
-  el motivo coincide (`INSTALACION`/`RETIRO`); una segunda operación sobre la
-  misma visita ya completada no falla (solo registra el cambio).
+- **El cierre de una visita es siempre explícito**: ni las lecturas ni la
+  instalación/retiro auto-completan la visita. El operador la cierra con el
+  botón *Completar visita* (modal con resumen de actividades; si no hay
+  ninguna, el backend exige `motivo_cierre`).
+- Una instalación/retiro sobre una visita ya completada no falla (solo
+  registra el cambio de impresora).
 - El `lectura_anterior` del `VisitResource` puede diferir del "previous" que
   usa el backend para validar anomalías (última lectura por impresora+contrato):
   si el backend responde 422 pidiendo justificación, la app revela el campo y
