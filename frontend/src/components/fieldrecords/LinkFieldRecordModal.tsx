@@ -252,8 +252,15 @@ export default function LinkFieldRecordModal({
     linkMutation.mutate(
       { id: record.id, data },
       {
-        onSuccess: () => {
-          onSuccess(`Registro #${record.id} vinculado correctamente.`)
+        onSuccess: (data) => {
+          const visitaId = data?.visit?.id ?? data?.visita_id ?? null
+          const mensaje =
+            visitaId == null
+              ? `Registro #${record.id} vinculado correctamente.`
+              : data?.visit?.origen === 'CAMPO'
+                ? `Registro #${record.id} vinculado: se creó la visita de campo #${visitaId}.`
+                : `Registro #${record.id} vinculado a la visita programada #${visitaId}.`
+          onSuccess(mensaje)
           onClose()
         },
         onError: (err) => {
@@ -644,10 +651,23 @@ export default function LinkFieldRecordModal({
               <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
               <div>
                 <p>
-                  Se creará una <strong>visita de campo</strong> del{' '}
-                  {formatDate(record.capturado_en)} para <strong>{clienteNombre}</strong>{' '}
-                  (contrato {contratoNombre}), asignada al socio que capturó el registro
-                  ({record.socio_nombre ?? `#${record.socio_id}`}).
+                  {esOtro ? (
+                    <>
+                      Se creará una <strong>visita de campo</strong> del{' '}
+                      {formatDate(record.capturado_en)} para <strong>{clienteNombre}</strong>{' '}
+                      (contrato {contratoNombre}), asignada al socio que capturó el registro
+                      ({record.socio_nombre ?? `#${record.socio_id}`}).
+                    </>
+                  ) : (
+                    <>
+                      Se registrará en la <strong>visita del{' '}
+                      {formatDate(record.capturado_en)}</strong> para{' '}
+                      <strong>{clienteNombre}</strong> (contrato {contratoNombre}), asignada al
+                      socio que capturó el registro ({record.socio_nombre ?? `#${record.socio_id}`}
+                      ): si existe una <strong>visita programada</strong> para ese día se usará; de
+                      lo contrario se creará una <strong>visita de campo</strong>.
+                    </>
+                  )}
                 </p>
 
                 {esLectura && (

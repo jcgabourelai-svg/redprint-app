@@ -9,6 +9,7 @@ use App\Enums\FieldRecordType;
 use App\Enums\PrinterStatus;
 use App\Enums\VisitFrequency;
 use App\Enums\VisitStatus;
+use App\Enums\VisitType;
 use App\Models\Article;
 use App\Models\Client;
 use App\Models\Contract;
@@ -20,6 +21,7 @@ use App\Models\PrinterHistory;
 use App\Models\PrinterModel;
 use App\Models\Role;
 use App\Models\User;
+use App\Models\Visit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
@@ -148,6 +150,23 @@ class FieldRecordTest extends TestCase
             'capturado_en' => now()->subDays(1),
             'socio_id' => $socio->id,
             'creado_por' => $socio->id,
+        ], $overrides));
+    }
+
+    /**
+     * Visita programada "de scheduler" (sin origen CAMPO) para el contrato.
+     */
+    private function createPendingVisit(Contract $contract, User $socio, array $overrides = []): Visit
+    {
+        return Visit::create(array_merge([
+            'cliente_id' => $contract->cliente_id,
+            'contrato_id' => $contract->id,
+            'tipo_visita' => VisitType::LECTURA,
+            'fecha_programada' => today(),
+            'socio_id' => $socio->id,
+            'estado' => VisitStatus::PENDIENTE,
+            'creado_por' => $socio->id,
+            'fecha_creacion' => now()->subDays(7),
         ], $overrides));
     }
 
@@ -492,6 +511,254 @@ class FieldRecordTest extends TestCase
             'id' => $visitaId,
             'tipo_visita' => 'ENTREGA_INSUMOS',
             'estado' => VisitStatus::COMPLETADA->value,
+        ]);
+    }
+
+    public function test_link_reutiliza_visita_pendiente_de_la_misma_fecha(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $socio = $this->userWithPermissions([]);
+
+        $client = $this->createClient($admin, 'Cliente Reutiliza SA');
+        $contract = $this->createContract($client, $admin);
+        $printer = $this->createPrinter($admin);
+        $this->attachActivePrinter($contract, $printer, 1000);
+
+        $record = $this->createFieldRecord($socio, FieldRecordType::LECTURA, [
+            'valor_contador' => 1500,
+            'notas' => 'Cliente reportó ruido en la impresora',
+        ]);
+
+        // Visita programada por el scheduler ese mismo dia, con otro socio
+        $visit = $this->createPendingVisit($contract, $admin, [
+            'fecha_programada' => $record->capturado_en->toDateString(),
+            'notas' => 'Visita programada por el scheduler',
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'impresora_id' => $printer->id,
+        ]);
+
+        $response->assertOk()->assertJsonPath('visita_id', $visit->id);
+
+        // La visita programada fue reutilizada, no duplicada
+        $this->assertDatabaseCount('visits', 1);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::COMPLETADA->value,
+            'origen' => null,
+            'tipo_visita' => 'LECTURA',
+            'socio_id' => $socio->id,
+        ]);
+
+        $notas = Visit::find($visit->id)->notas;
+        $this->assertStringContainsString('Visita programada por el scheduler', $notas);
+        $this->assertStringContainsString('Cliente reportó ruido en la impresora', $notas);
+        $this->assertStringContainsString("Regularizada desde registro de campo #{$record->id}", $notas);
+
+        $this->assertDatabaseHas('readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'valor_contador' => 1500,
+            'socio_id' => $socio->id,
+        ]);
+        $this->assertDatabaseHas('field_records', [
+            'id' => $record->id,
+            'estado' => FieldRecordStatus::VINCULADO->value,
+            'visita_id' => $visit->id,
+            'lectura_id' => $response->json('lectura_id'),
+        ]);
+    }
+
+    public function test_link_crea_visita_cuando_la_pendiente_es_de_otra_fecha(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        $client = $this->createClient($admin, 'Cliente Otra Fecha SA');
+        $contract = $this->createContract($client, $admin);
+        $printer = $this->createPrinter($admin);
+        $this->attachActivePrinter($contract, $printer, 1000);
+
+        $record = $this->createFieldRecord($admin, FieldRecordType::LECTURA, [
+            'valor_contador' => 1500,
+        ]);
+
+        $visit = $this->createPendingVisit($contract, $admin, [
+            'fecha_programada' => today()->addDays(5)->toDateString(),
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'impresora_id' => $printer->id,
+        ]);
+
+        $response->assertOk();
+        $this->assertNotEquals($visit->id, $response->json('visita_id'));
+
+        // La programada de otra fecha queda PENDIENTE; la nueva es CAMPO COMPLETADA
+        $this->assertDatabaseCount('visits', 2);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::PENDIENTE->value,
+        ]);
+        $this->assertDatabaseHas('visits', [
+            'id' => $response->json('visita_id'),
+            'origen' => 'CAMPO',
+            'estado' => VisitStatus::COMPLETADA->value,
+        ]);
+    }
+
+    public function test_link_entrega_reutiliza_visita_pendiente(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $socio = $this->userWithPermissions([]);
+
+        $client = $this->createClient($admin, 'Cliente Entrega Reutiliza SA');
+        $contract = $this->createContract($client, $admin);
+
+        $toner = Article::create([
+            'tipo_articulo' => ArticleType::CONSUMIBLE,
+            'subtipo' => 'TONER',
+            'nombre' => 'Tóner 85A',
+            'marca' => 'HP',
+            'modelo_sku' => '85A',
+            'stock_actual' => 10,
+            'umbral_reposicion' => 2,
+            'costo_unitario' => 50.00,
+            'activo' => true,
+            'fecha_creacion' => now(),
+        ]);
+
+        $record = $this->createFieldRecord($socio, FieldRecordType::ENTREGA_INSUMOS, [
+            'articulos_entregados' => [
+                ['descripcion' => 'Tóner negro', 'cantidad' => 2],
+            ],
+        ]);
+
+        // Aunque la programada es LECTURA, la entrega la reutiliza
+        $visit = $this->createPendingVisit($contract, $admin, [
+            'tipo_visita' => VisitType::LECTURA,
+            'fecha_programada' => $record->capturado_en->toDateString(),
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'articulos' => [
+                ['articulo_id' => $toner->id, 'cantidad' => 2],
+            ],
+        ]);
+
+        $response->assertOk()->assertJsonPath('visita_id', $visit->id);
+
+        // 1 sola visita: tipo/origen de la programada intactos, ya COMPLETADA
+        $this->assertDatabaseCount('visits', 1);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'tipo_visita' => 'LECTURA',
+            'origen' => null,
+            'estado' => VisitStatus::COMPLETADA->value,
+            'socio_id' => $socio->id,
+        ]);
+
+        $this->assertDatabaseHas('article_deliveries', [
+            'visita_id' => $visit->id,
+            'articulo_id' => $toner->id,
+            'cantidad' => 2,
+        ]);
+        $this->assertEquals(8, $toner->fresh()->stock_actual);
+
+        $salidas = DB::table('inventory_movements')
+            ->where('tipo_movimiento', 'SALIDA')
+            ->where('articulo_id', $toner->id)
+            ->count();
+        $this->assertEquals(1, $salidas);
+    }
+
+    public function test_link_otro_no_reutiliza_visita_pendiente(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        $client = $this->createClient($admin, 'Cliente Otro No Reutiliza SA');
+        $contract = $this->createContract($client, $admin);
+
+        $record = $this->createFieldRecord($admin, FieldRecordType::OTRO);
+
+        $visit = $this->createPendingVisit($contract, $admin, [
+            'fecha_programada' => $record->capturado_en->toDateString(),
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'tipo_visita' => 'MANTENIMIENTO',
+            'motivo_cierre' => 'Limpieza preventiva no programada',
+        ]);
+
+        $response->assertOk();
+        $this->assertNotEquals($visit->id, $response->json('visita_id'));
+
+        // OTRO siempre crea visita nueva; la programada queda PENDIENTE
+        $this->assertDatabaseCount('visits', 2);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::PENDIENTE->value,
+        ]);
+        $this->assertDatabaseHas('visits', [
+            'id' => $response->json('visita_id'),
+            'tipo_visita' => 'MANTENIMIENTO',
+            'origen' => 'CAMPO',
+            'estado' => VisitStatus::COMPLETADA->value,
+        ]);
+    }
+
+    public function test_link_prefiere_visita_lectura_si_hay_dos_pendientes_el_mismo_dia(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        $client = $this->createClient($admin, 'Cliente Preferencia SA');
+        $contract = $this->createContract($client, $admin);
+        $printer = $this->createPrinter($admin);
+        $this->attachActivePrinter($contract, $printer, 1000);
+
+        $record = $this->createFieldRecord($admin, FieldRecordType::LECTURA, [
+            'valor_contador' => 1500,
+        ]);
+
+        // La INSTALACION tiene id menor: sin preferencia seria la elegida
+        $instalacion = $this->createPendingVisit($contract, $admin, [
+            'tipo_visita' => VisitType::INSTALACION,
+            'fecha_programada' => $record->capturado_en->toDateString(),
+        ]);
+        $lectura = $this->createPendingVisit($contract, $admin, [
+            'tipo_visita' => VisitType::LECTURA,
+            'fecha_programada' => $record->capturado_en->toDateString(),
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'impresora_id' => $printer->id,
+        ]);
+
+        $response->assertOk()->assertJsonPath('visita_id', $lectura->id);
+
+        $this->assertDatabaseCount('visits', 2);
+        $this->assertDatabaseHas('visits', [
+            'id' => $lectura->id,
+            'estado' => VisitStatus::COMPLETADA->value,
+        ]);
+        $this->assertDatabaseHas('visits', [
+            'id' => $instalacion->id,
+            'estado' => VisitStatus::PENDIENTE->value,
         ]);
     }
 

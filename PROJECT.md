@@ -259,7 +259,7 @@ erDiagram
 | **XmlComprobante** | CFDI importado del SAT | Match de cliente por RFC exacto (nunca crea clientes); auto-enlace por serie+folio |
 | **PeriodClose** | Cierre mensual | Snapshot de KPIs + 3 validaciones; **no bloquea escritura** del periodo |
 | **PrinterHistory** | Bitácora inmutable | Toda transición de estado de impresora deja evento |
-| **FieldRecord** | Registro de campo (staging): visita no catalogada (cliente/impresora fuera de sistema) con datos crudos + evidencia (foto/GPS/`capturado_en`) | Capturar ≠ registrar: se regulariza desde la bandeja web (visita + lectura + entregas en una transacción); VINCULADO/DESCARTADO son **inmutables**; dedup idempotente por `client_uuid`; la salida de stock nace solo al vincular |
+| **FieldRecord** | Registro de campo (staging): visita no catalogada (cliente/impresora fuera de sistema) con datos crudos + evidencia (foto/GPS/`capturado_en`) | Capturar ≠ registrar: se regulariza desde la bandeja web (visita + lectura + entregas en una transacción); al regularizar se **reutiliza** la visita PENDIENTE programada del mismo contrato y fecha exacta (`capturado_en`) si existe —si no, se crea una visita `origen=CAMPO` ya completada—; VINCULADO/DESCARTADO son **inmutables**; dedup idempotente por `client_uuid`; la salida de stock nace solo al vincular |
 
 ### Glosario mínimo (español del dominio)
 
@@ -298,7 +298,10 @@ toque una entidad con estado debe respetar (o ampliar explícitamente) su máqui
 - Completar exige **actividad** (lectura, entrega, orden, cambio de impresora) **o motivo
   explícito**. **Sin autocierre**: ni lecturas ni instalación/retiro cierran la visita;
   el cierre es siempre explícito (excepción: la regularización de registros de campo
-  crea su visita ya completada en la misma transacción).
+  cierra visita en la misma transacción — si hay visita PENDIENTE programada del mismo
+  contrato en la fecha exacta del registro la **reutiliza** (actualiza `socio_id` y
+  anota el marcador, sin tocar `tipo_visita`/`origen`/`fecha_programada`); si no,
+  crea su visita `origen=CAMPO` ya completada).
 - Semántica clave (frecuentemente malentendida): **OMITIDA** = eliminación manual del slot,
   **bloquea la regeneración** del scheduler; **CANCELADA** = cancelación contractual,
   **permite regenerar** si el contrato se reactiva.
@@ -411,7 +414,7 @@ propuesto contradice una decisión consciente (malo) o corrige una omisión (bue
 | D12 | **Estados calculados de CFDI en vez de columnas** | Menos sincronización manual | Evaluar si escala (filtros/contadores derivan de relaciones) |
 | D13 | **Cierre de periodo como snapshot informativo** | Cerrar rápido, sin bloquear operación | Pregunta abierta: ¿debería congelar? (ver §11.2) |
 | D14 | **Build de frontends que vacía `dist` sin borrar la carpeta** | Bind mount de nginx en Windows/OneDrive se rompe si cambia el inodo | No cambiar por `rm -rf dist` (detalles en AGENTS.md) |
-| D15 | **Registros de campo: staging móvil + regularización web diferida** | El contrato toca dinero y la impresora toca catálogo: no se dan de alta desde el móvil (extiende D4/D5). El hecho físico se captura como evidencia cruda y un admin la vincula a entidades reales en una sola transacción | Al vincular, instalación implícita con `lectura_inicial = contador capturado` (línea base, no se cobra histórico previo) y la salida de stock (kardex) nace solo ahí; los registros vinculados/descartados son inmutables |
+| D15 | **Registros de campo: staging móvil + regularización web diferida** | El contrato toca dinero y la impresora toca catálogo: no se dan de alta desde el móvil (extiende D4/D5). El hecho físico se captura como evidencia cruda y un admin la vincula a entidades reales en una sola transacción | Al vincular, instalación implícita con `lectura_inicial = contador capturado` (línea base, no se cobra histórico previo) y la salida de stock (kardex) nace solo ahí; los registros vinculados/descartados son inmutables. Anti-duplicidad: los registros LECTURA/ENTREGA **reutilizan por fecha exacta** la visita PENDIENTE programada del mismo contrato (`capturado_en->toDateString()`); los OTRO siempre crean visita nueva (tipo+motivo explícitos); el scheduler no regenera el slot consumido |
 | D16 | **Plan de modelos ≠ asignación: el plan nunca es fuente de cobro** | Separar la intención comercial (qué modelos se contratan, `contract_printer_plan`) del hecho físico (qué serie queda instalada, pivot `contract_printer`). La `tarifa_base` corre desde `fecha_inicio` aunque falte instalar; el binding diferido solo traslada cuándo empieza a contar páginas (desde la `lectura_inicial` capturada en campo) | Cualquier cálculo de dinero debe seguir leyendo el pivot (nunca el plan); el plan solo alimenta visibilidad (`pendientes_instalacion`, badge) y advertencias de estimación; `PUT /contracts/{id}/plan` solo en ACTIVO y replace-all |
 
 ---

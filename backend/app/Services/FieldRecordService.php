@@ -48,8 +48,10 @@ class FieldRecordService
 
     /**
      * Regulariza un registro PENDIENTE contra entidades reales en una sola
-     * transaccion: visita CAMPO + lectura (+ instalacion implicita si la
-     * impresora estaba en almacen) o entregas con salida de stock.
+     * transaccion: reutiliza la visita PENDIENTE programada del mismo
+     * contrato/fecha si existe (LECTURA/ENTREGA) o crea una visita CAMPO;
+     * luego lectura (+ instalacion implicita si la impresora estaba en
+     * almacen) o entregas con salida de stock.
      */
     public function link(FieldRecord $record, array $data, User $admin): FieldRecord
     {
@@ -72,18 +74,33 @@ class FieldRecordService
 
             $socio = $record->socio;
 
-            $visit = Visit::create([
-                'cliente_id' => $contract->cliente_id,
-                'contrato_id' => $contract->id,
-                'tipo_visita' => $this->resolveVisitType($record, $data),
-                'fecha_programada' => $record->capturado_en->toDateString(),
-                'socio_id' => $socio->id,
-                'estado' => VisitStatus::PENDIENTE,
-                'notas' => $record->notas,
-                'origen' => 'CAMPO',
-                'creado_por' => $admin->id,
-                'fecha_creacion' => now(),
-            ]);
+            $visit = $this->findReusableVisit($contract, $record);
+
+            if ($visit) {
+                $notas = implode("\n", array_filter([
+                    $visit->notas ? trim($visit->notas) : null,
+                    $record->notas ? trim($record->notas) : null,
+                    "Regularizada desde registro de campo #{$record->id}",
+                ], fn ($parte) => $parte !== null && $parte !== ''));
+
+                $visit->update([
+                    'socio_id' => $socio->id,
+                    'notas' => $notas,
+                ]);
+            } else {
+                $visit = Visit::create([
+                    'cliente_id' => $contract->cliente_id,
+                    'contrato_id' => $contract->id,
+                    'tipo_visita' => $this->resolveVisitType($record, $data),
+                    'fecha_programada' => $record->capturado_en->toDateString(),
+                    'socio_id' => $socio->id,
+                    'estado' => VisitStatus::PENDIENTE,
+                    'notas' => $record->notas,
+                    'origen' => 'CAMPO',
+                    'creado_por' => $admin->id,
+                    'fecha_creacion' => now(),
+                ]);
+            }
 
             $lecturaId = null;
             $impresoraId = null;
@@ -115,7 +132,7 @@ class FieldRecordService
 
             $visit = $visit->fresh();
             if ($visit->estado === VisitStatus::PENDIENTE) {
-                $this->visitService->complete($visit, $data['motivo_cierre'] ?? 'Regularizado desde registro de campo');
+                $this->visitService->complete($visit, $data['motivo_cierre'] ?? "Regularizado desde registro de campo #{$record->id}");
             }
 
             $record->update([
@@ -151,6 +168,30 @@ class FieldRecordService
         ]);
 
         return $record->fresh(['socio', 'vinculadoPor']);
+    }
+
+    /**
+     * Visita programada (scheduler o alta del contrato) que la regularizacion
+     * puede reutilizar en vez de crear una visita CAMPO duplicada: misma
+     * fecha exacta que capturado_en, PENDIENTE, del mismo contrato. Los
+     * registros OTRO nunca reutilizan (el admin eligio tipo + motivo
+     * explicitos). Prefiere tipo LECTURA si hay varias candidas.
+     */
+    private function findReusableVisit(Contract $contract, FieldRecord $record): ?Visit
+    {
+        if ($record->tipo === FieldRecordType::OTRO) {
+            return null;
+        }
+
+        return Visit::query()
+            ->where('contrato_id', $contract->id)
+            ->where('cliente_id', $contract->cliente_id)
+            ->where('estado', VisitStatus::PENDIENTE)
+            ->where('fecha_programada', $record->capturado_en->toDateString())
+            ->orderByRaw("tipo_visita = 'LECTURA' DESC")
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->first();
     }
 
     private function resolveVisitType(FieldRecord $record, array $data): VisitType

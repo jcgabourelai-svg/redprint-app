@@ -38,7 +38,7 @@ export interface FieldRecord {
   client?: { id: number; razon_social: string } | null
   contract?: Contract | null
   printer?: Printer | null
-  visit?: { id: number; tipo_visita: string; estado: string } | null
+  visit?: { id: number; tipo_visita: string; estado: string; origen?: string | null } | null
   vinculado_por?: string | null
 }
 
