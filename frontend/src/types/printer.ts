@@ -13,6 +13,7 @@ export interface Printer {
   estado: PrinterStatus
   ubicacion: string
   warehouse?: { id: number; nombre: string; direccion?: string | null } | null
+  cliente?: { id: number; nombre: string; contrato_id?: number; contrato_codigo?: string } | null
   contador_actual: number
   ultima_lectura?: number
   fecha_ultima_lectura?: string

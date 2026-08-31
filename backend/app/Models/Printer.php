@@ -109,6 +109,18 @@ class Printer extends Model
         return $this->hasMany(ContractPrinter::class, 'impresora_id');
     }
 
+    /**
+     * Asignacion activa (pivot contract_printer con activa=true). Define donde
+     * esta fisicamente la impresora cuando esta rentada: el contrato y su
+     * cliente. Si hay varias filas activas anomalias, gana la mas reciente.
+     */
+    public function currentAssignment(): HasOne
+    {
+        return $this->hasOne(ContractPrinter::class, 'impresora_id')
+            ->where('activa', true)
+            ->latestOfMany('fecha_asignacion');
+    }
+
     public function invoiceDetails(): HasMany
     {
         return $this->hasMany(InvoiceDetail::class, 'impresora_id');

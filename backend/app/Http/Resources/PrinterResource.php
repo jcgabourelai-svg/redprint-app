@@ -28,6 +28,18 @@ class PrinterResource extends JsonResource
             'history_count' => $this->whenNotNull($this->history_count),
             'maintenance_orders_count' => $this->whenNotNull($this->maintenance_orders_count),
             'warehouse' => $this->whenLoaded('warehouse'),
+            // Cliente del contrato con asignacion activa (ubicacion real cuando
+            // la impresora esta rentada). null si no hay asignacion activa.
+            'cliente' => $this->whenLoaded('currentAssignment', function () {
+                $contract = $this->currentAssignment?->contract;
+
+                return $contract === null ? null : [
+                    'id' => $contract->client?->id,
+                    'nombre' => $contract->client?->razon_social,
+                    'contrato_id' => $contract->id,
+                    'contrato_codigo' => $contract->codigo_negocio,
+                ];
+            }),
             'creator' => $this->whenLoaded('creator'),
             'fecha_creacion' => $this->fecha_creacion?->toIso8601String(),
         ];

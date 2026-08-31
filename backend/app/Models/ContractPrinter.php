@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class ContractPrinter extends Pivot
@@ -27,5 +28,15 @@ class ContractPrinter extends Pivot
             'activa' => 'boolean',
             'lectura_inicial' => 'integer',
         ];
+    }
+
+    public function contract(): BelongsTo
+    {
+        return $this->belongsTo(Contract::class, 'contrato_id');
+    }
+
+    public function printer(): BelongsTo
+    {
+        return $this->belongsTo(Printer::class, 'impresora_id');
     }
 }

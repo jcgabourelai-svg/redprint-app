@@ -22,7 +22,12 @@ class PrinterController extends Controller
 
     public function index(Request $request)
     {
-        $query = Printer::with(['warehouse', 'creator'])
+        $query = Printer::with([
+            'warehouse',
+            'creator',
+            'currentAssignment.contract:id,cliente_id,codigo_negocio',
+            'currentAssignment.contract.client:id,razon_social',
+        ])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->marca, fn($q, $m) => $q->where('marca', 'ilike', "%{$m}%"))
             ->when($request->modelo, fn($q, $m) => $q->where('modelo', 'ilike', "%{$m}%"))
@@ -41,6 +46,8 @@ class PrinterController extends Controller
     {
         $printer->load([
             'warehouse',
+            'currentAssignment.contract:id,cliente_id,codigo_negocio',
+            'currentAssignment.contract.client:id,razon_social',
             'history' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(100),
             'readings' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),
             'maintenanceOrders' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),

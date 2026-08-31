@@ -189,7 +189,11 @@ export default function PrinterDetail() {
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Ubicación Actual</p>
-                    <p className="text-foreground">{printerData.warehouse?.direccion || printerData.codigo_negocio || '-'}</p>
+                    <p className="text-foreground">
+                      {printerData.cliente
+                        ? `Cliente: ${printerData.cliente.nombre}`
+                        : printerData.warehouse?.direccion || '-'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Almacén</p>

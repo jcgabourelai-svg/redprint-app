@@ -13,6 +13,7 @@ import { useCreatePrinter } from '@/hooks/usePrinters'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency, formatDate, getPrinterStatusColor } from '@/lib/formatters'
 import { useIsAdmin } from '@/contexts/AuthContext'
+import { PrinterStatus } from '@/types/enums'
 import type { Printer } from '@/types/printer'
 
 const PRINTER_FILTERS: FilterConfig[] = [
@@ -54,9 +55,15 @@ export default function PrinterList() {
 
   const columns = [
     {
-      key: 'id',
-      label: 'ID',
+      key: 'codigo_negocio',
+      label: 'Código',
       sortable: true,
+      render: (value: string, row: any) => (
+        <div>
+          <p className="font-medium">{value}</p>
+          <p className="text-xs text-muted-foreground">ID: {row.id}</p>
+        </div>
+      ),
     },
     {
       key: 'modelo',
@@ -89,17 +96,27 @@ export default function PrinterList() {
       ),
     },
     {
-      key: 'codigo_negocio',
+      key: 'warehouse',
       label: 'Ubicación',
-      sortable: true,
-      render: (_value: string, row: any) => (
-        <div>
-          <p>{row.codigo_negocio}</p>
-          {row.warehouse && (
-            <p className="text-xs text-muted-foreground">ALMACÉN: {row.warehouse.nombre || row.warehouse.id}</p>
-          )}
-        </div>
-      ),
+      render: (_value: string, row: any) => {
+        if (row.warehouse) {
+          return <p>ALMACÉN: {row.warehouse.nombre || row.warehouse.id}</p>
+        }
+        if (row.estado === PrinterStatus.RENTADA) {
+          if (row.cliente?.nombre) {
+            return (
+              <div>
+                <p>CLIENTE: {row.cliente.nombre}</p>
+                {row.cliente.contrato_codigo && (
+                  <p className="text-xs text-muted-foreground">CONTRATO: {row.cliente.contrato_codigo}</p>
+                )}
+              </div>
+            )
+          }
+          return <p className="text-muted-foreground">Sitio del cliente</p>
+        }
+        return <p className="text-muted-foreground">—</p>
+      },
     },
     {
       key: 'contador_actual',
