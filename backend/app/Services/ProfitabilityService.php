@@ -27,12 +27,25 @@ class ProfitabilityService
             return [];
         }
 
-        $ingresos = DB::table('invoices')
-            ->join('contracts', 'invoices.contrato_id', '=', 'contracts.id')
-            ->join('contract_printer', 'contracts.id', '=', 'contract_printer.contrato_id')
+        /**
+         * Ingresos atribuidos por impresora desde invoice_details (D19):
+         * SUM(monto_calculado) de los detalles de cada contrato, filtrado por
+         * el periodo de la factura y sin BORRADORES (aún no son CxC).
+         *
+         * Nota semántica: pasa de monto_total por encabezado a atribuido por
+         * detalles. Limitaciones pre-existentes que se conservan: solo se
+         * joinea contract_printer con activa = true (impresoras liberadas no
+         * atribuyen) y cada impresora activa del contrato le atribuye el
+         * monto completo de los detalles de ese contrato (no se reparte entre
+         * equipos).
+         */
+        $ingresos = DB::table('invoice_details')
+            ->join('invoices', 'invoice_details.factura_id', '=', 'invoices.id')
+            ->join('contract_printer', 'invoice_details.contrato_id', '=', 'contract_printer.contrato_id')
             ->where('contract_printer.activa', true)
+            ->where('invoices.estado', '!=', 'BORRADOR')
             ->whereBetween('invoices.periodo_inicio', [$periodoInicio, $periodoFin])
-            ->selectRaw('contract_printer.impresora_id, SUM(invoices.monto_total) AS total')
+            ->selectRaw('contract_printer.impresora_id, SUM(invoice_details.monto_calculado) AS total')
             ->groupBy('contract_printer.impresora_id')
             ->pluck('total', 'impresora_id')
             ->mapWithKeys(fn ($value, $key) => [(string) $key => (float) $value]);

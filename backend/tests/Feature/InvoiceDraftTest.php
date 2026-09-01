@@ -252,7 +252,23 @@ class InvoiceDraftTest extends TestCase
         $this->assertEquals('2026-08-09', $emitida->fecha_vencimiento?->toDateString());
     }
 
-    public function test_dos_borradores_no_reservan_la_misma_lectura(): void
+    public function test_dos_borradores_del_mismo_periodo_se_bloquean(): void
+    {
+        [$user, $client, , , $reading] = $this->setupDraftScenario();
+        $service = app(InvoiceService::class);
+
+        $first = $service->createDraft($this->draftPayload($client), $user)['invoice'];
+        $this->assertNotNull($first->details->firstWhere('lectura_id', $reading->id));
+
+        // Bloqueo duro (D20): un segundo borrador del mismo periodo para el
+        // mismo alcance ya no se crea (antes caia a renta base).
+        $this->expectException(BusinessRuleException::class);
+        $this->expectExceptionMessage('No se puede facturar dos veces');
+
+        $service->createDraft($this->draftPayload($client), $user);
+    }
+
+    public function test_indice_unico_impide_duplicar_detalle_de_lectura(): void
     {
         [$user, $client, $contract, $printer, $reading] = $this->setupDraftScenario();
         $service = app(InvoiceService::class);
@@ -260,18 +276,12 @@ class InvoiceDraftTest extends TestCase
         $first = $service->createDraft($this->draftPayload($client), $user)['invoice'];
         $this->assertNotNull($first->details->firstWhere('lectura_id', $reading->id));
 
-        // Un segundo borrador del mismo periodo NO vuelve a reservar la
-        // lectura: el calculo la excluye y solo cobra la renta base.
-        $second = $service->createDraft($this->draftPayload($client), $user)['invoice'];
-        $this->assertNull($second->details->firstWhere('lectura_id', $reading->id));
-        $this->assertEquals(1500.0, (float) $second->monto_total);
-
         // La garantia dura es la BD: el indice unico parcial sobre
         // invoice_details.lectura_id rechaza cualquier detalle duplicado
         // (el helper del servicio lo traduce a BusinessRuleException 422).
         $this->expectException(QueryException::class);
         InvoiceDetail::create([
-            'factura_id' => $second->id,
+            'factura_id' => $first->id,
             'contrato_id' => $contract->id,
             'impresora_id' => $printer->id,
             'lectura_id' => $reading->id,
@@ -433,14 +443,15 @@ class InvoiceDraftTest extends TestCase
         $detallesOriginales = $draft->details->count();
         $this->assertGreaterThan(0, $detallesOriginales);
 
-        // El contrato se desactiva: el recalculo del periodo daria monto 0.
+        // El contrato se desactiva: el recalculo del borrador mono-contrato
+        // se rechaza con diagnostico explicito (guarda de contrato activo).
         $client->contracts()->update(['estado' => ContractStatus::SUSPENDIDO]);
 
         try {
             $service->recalcular($draft);
             $this->fail('Recalcular sin monto debio lanzar BusinessRuleException.');
         } catch (BusinessRuleException $e) {
-            $this->assertStringContainsString('no genera monto', $e->getMessage());
+            $this->assertStringContainsString('no está activo', $e->getMessage());
         }
 
         // La excepcion revierte la transaccion: los detalles originales

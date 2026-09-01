@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\InvoiceStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Client;
+use App\Models\Contract;
 use App\Models\Invoice;
 use App\Models\User;
 use Illuminate\Database\QueryException;
@@ -69,15 +70,49 @@ class InvoiceService
      * periodo (via invoice_details) pero todavia no es cuenta por cobrar
      * (sin folio, sin fechas, saldo 0). Luego se "emite" con el folio real.
      *
+     * @param  array{cliente_id: int, contrato_id?: int|null, periodo_inicio: string, periodo_fin: string, notas?: string|null}
      * @return array{invoice: Invoice, advertencias: array}
      */
     public function createDraft(array $data, User $creator): array
     {
+        [$invoice, $advertencias] = DB::transaction(function () use ($data, $creator) {
+            $cliente = Client::findOrFail((int) $data['cliente_id']);
+
+            return $this->crearBorradorInterno(
+                $cliente,
+                $data['periodo_inicio'],
+                $data['periodo_fin'],
+                isset($data['contrato_id']) ? (int) $data['contrato_id'] : null,
+                $data['notas'] ?? null,
+                $creator,
+            );
+        });
+
+        return ['invoice' => $invoice->fresh(['client', 'details']), 'advertencias' => $advertencias];
+    }
+
+    /**
+     * Nucleo compartido por createDraft y createDraftBatch. Debe ejecutarse
+     * dentro de una transaccion del llamador.
+     *
+     * @return array{0: Invoice, 1: array}
+     */
+    private function crearBorradorInterno(
+        Client $cliente,
+        string $periodoInicio,
+        string $periodoFin,
+        ?int $contratoId,
+        ?string $notas,
+        User $creator,
+    ): array {
         // D1: el monto SIEMPRE se calcula en el servidor; nunca se confia.
+        // contratoId valida pertenencia al cliente + estado ACTIVO dentro.
         $calc = $this->calculationService->calcularEstimacion(
-            (int) $data['cliente_id'],
-            $data['periodo_inicio'],
-            $data['periodo_fin'],
+            $cliente->id,
+            $periodoInicio,
+            $periodoFin,
+            null,
+            $contratoId,
         );
 
         if ((float) $calc['monto_total'] <= 0.0) {
@@ -87,33 +122,168 @@ class InvoiceService
             );
         }
 
-        $invoice = DB::transaction(function () use ($data, $calc, $creator) {
-            $invoice = Invoice::create([
-                'numero_factura' => null,
-                'cliente_id' => (int) $data['cliente_id'],
-                'contrato_id' => null,
-                'fecha_emision' => null,
-                'fecha_vencimiento' => null,
-                'periodo_inicio' => $data['periodo_inicio'],
-                'periodo_fin' => $data['periodo_fin'],
-                'monto_total' => $calc['monto_total'],
-                'monto_pagado' => 0,
-                'saldo_pendiente' => 0,
-                'estado' => InvoiceStatus::BORRADOR,
-                'notas' => $data['notas'] ?? null,
-                'socio_id' => $creator->id,
-                'creado_por' => $creator->id,
-                'fecha_creacion' => now(),
-            ]);
+        // Auto-derivacion (D19): si el calculo cubre exactamente un contrato,
+        // el encabezado se llena con el (mono-contrato) aunque nadie lo pidio.
+        $contratoFinal = $contratoId;
+        if ($contratoFinal === null && count($calc['contratos']) === 1) {
+            $contratoFinal = (int) $calc['contratos'][0]['contrato_id'];
+        }
 
-            // Los detalles del borrador reservan las lecturas: el indice
-            // unico parcial impide que otra factura/borrador las reclame.
-            $this->crearDetallesConProteccion($invoice, $calc['detalles']);
+        // Bloqueo duro de periodo duplicado (D20): mismo cliente + rangos que
+        // se intersectan + alcance de contrato solapado.
+        $this->validarPeriodoNoDuplicado($cliente->id, $periodoInicio, $periodoFin, $contratoFinal, null);
 
-            return $invoice->fresh(['client', 'details']);
+        $invoice = Invoice::create([
+            'numero_factura' => null,
+            'cliente_id' => $cliente->id,
+            'contrato_id' => $contratoFinal,
+            'fecha_emision' => null,
+            'fecha_vencimiento' => null,
+            'periodo_inicio' => $periodoInicio,
+            'periodo_fin' => $periodoFin,
+            'monto_total' => $calc['monto_total'],
+            'monto_pagado' => 0,
+            'saldo_pendiente' => 0,
+            'estado' => InvoiceStatus::BORRADOR,
+            'notas' => $notas,
+            'socio_id' => $creator->id,
+            'creado_por' => $creator->id,
+            'fecha_creacion' => now(),
+        ]);
+
+        // Los detalles del borrador reservan las lecturas: el indice
+        // unico parcial impide que otra factura/borrador las reclame.
+        $this->crearDetallesConProteccion($invoice, $calc['detalles']);
+
+        return [$invoice, $calc['advertencias']];
+    }
+
+    /**
+     * Batch de borradores por contrato con periodos fijos mensuales (D17/D18):
+     * UNA transaccion all-or-nothing; un borrador por periodo, nunca
+     * fusionados (cada mes conserva su tarifa base y sus paginas incluidas).
+     *
+     * @param  array{cliente_id: int, contrato_id: int, periodos: string[], notas?: string|null}
+     * @return array<string, array{invoice: Invoice, advertencias: array}>por periodo Y-m
+     */
+    public function createDraftBatch(array $data, User $creator): array
+    {
+        $cliente = Client::findOrFail((int) $data['cliente_id']);
+        $contrato = Contract::findOrFail((int) $data['contrato_id']);
+        $notas = $data['notas'] ?? null;
+
+        // Meses en orden cronologico (D18: un borrador por mes).
+        $meses = collect($data['periodos'])
+            ->unique()
+            ->map(fn (string $periodo) => Carbon::createFromFormat('Y-m', $periodo)->startOfMonth())
+            ->sortBy(fn (Carbon $mes) => $mes->format('Y-m'))
+            ->values();
+
+        return DB::transaction(function () use ($cliente, $contrato, $notas, $creator, $meses) {
+            $resultados = [];
+
+            foreach ($meses as $mes) {
+                // Regla 3: bounds del mes calendario recortados a la vigencia
+                // del contrato (primer/ultimo periodo parcial).
+                $inicio = $mes->copy()->startOfMonth();
+                $inicioContrato = $contrato->fecha_inicio->copy()->startOfDay();
+                if ($inicioContrato->gt($inicio)) {
+                    $inicio = $inicioContrato;
+                }
+
+                $fin = $mes->copy()->endOfMonth();
+                if ($contrato->fecha_fin !== null) {
+                    $finContrato = $contrato->fecha_fin->copy()->endOfDay();
+                    if ($finContrato->lt($fin)) {
+                        $fin = $finContrato;
+                    }
+                }
+
+                if ($inicio->gt($fin)) {
+                    throw new BusinessRuleException(sprintf(
+                        'El periodo %s esta fuera de la vigencia del contrato.',
+                        $mes->format('Y-m'),
+                    ));
+                }
+
+                try {
+                    [$invoice, $advertencias] = $this->crearBorradorInterno(
+                        $cliente,
+                        $inicio->toDateString(),
+                        $fin->toDateString(),
+                        (int) $contrato->id,
+                        $notas,
+                        $creator,
+                    );
+                } catch (BusinessRuleException $e) {
+                    // Regla 4 (all-or-nothing): identificar el periodo fallido;
+                    // la excepcion aborta y revierte toda la transaccion.
+                    throw new BusinessRuleException(sprintf(
+                        'El periodo %s no se pudo facturar: %s',
+                        $mes->format('Y-m'),
+                        $e->getMessage(),
+                    ));
+                }
+
+                $resultados[$mes->format('Y-m')] = [
+                    'invoice' => $invoice->fresh(['client', 'details']),
+                    'advertencias' => $advertencias,
+                ];
+            }
+
+            return $resultados;
         });
+    }
 
-        return ['invoice' => $invoice, 'advertencias' => $calc['advertencias']];
+    /**
+     * Bloqueo duro de periodo duplicado (D20): facturas del cliente cuyo
+     * [periodo_inicio, periodo_fin] intersecta el objetivo Y con alcance de
+     * contrato solapado. Incluye borradores (reservan lecturas).
+     */
+    private function validarPeriodoNoDuplicado(
+        int $clienteId,
+        string $periodoInicio,
+        string $periodoFin,
+        ?int $contratoId,
+        ?int $excluirFacturaId,
+    ): void {
+        $solapadas = Invoice::where('cliente_id', $clienteId)
+            ->whereNotNull('periodo_inicio')
+            ->whereNotNull('periodo_fin')
+            ->where('periodo_inicio', '<=', $periodoFin)
+            ->where('periodo_fin', '>=', $periodoInicio)
+            ->when($excluirFacturaId, fn ($query, $id) => $query->where('id', '!=', $id))
+            ->get(['id', 'numero_factura', 'contrato_id', 'periodo_inicio', 'periodo_fin']);
+
+        foreach ($solapadas as $existente) {
+            if ($this->alcanceSolapado($existente, $contratoId)) {
+                throw new BusinessRuleException(sprintf(
+                    'El periodo se solapa con la factura %s (%s a %s) del mismo alcance. ' .
+                    'No se puede facturar dos veces el mismo periodo.',
+                    $existente->numero_factura ?? ('borrador #' . $existente->id),
+                    $existente->periodo_inicio->toDateString(),
+                    $existente->periodo_fin->toDateString(),
+                ));
+            }
+        }
+    }
+
+    /**
+     * D20: el alcance solapa cuando el objetivo es a nivel cliente
+     * (contrato_id null: cubre todo) o cuando la factura existente toca el
+     * mismo contrato (por encabezado mono-contrato o por detalles).
+     */
+    private function alcanceSolapado(Invoice $existente, ?int $contratoId): bool
+    {
+        if ($contratoId === null) {
+            return true;
+        }
+
+        if ($existente->contrato_id !== null && (int) $existente->contrato_id === $contratoId) {
+            return true;
+        }
+
+        return $existente->details()->where('contrato_id', $contratoId)->exists();
     }
 
     /**
@@ -156,7 +326,18 @@ class InvoiceService
                 );
             }
 
-            // Fase 1: aqui ira el re-chequeo duro de solapamiento de periodos.
+            // Bloqueo duro de periodo duplicado (D20): re-chequeo dentro del
+            // lock contra facturas creadas mientras el borrador esperaba
+            // emision (excluyendose a si mismo).
+            if ($locked->periodo_inicio !== null && $locked->periodo_fin !== null) {
+                $this->validarPeriodoNoDuplicado(
+                    (int) $locked->cliente_id,
+                    $locked->periodo_inicio->toDateString(),
+                    $locked->periodo_fin->toDateString(),
+                    $locked->contrato_id !== null ? (int) $locked->contrato_id : null,
+                    (int) $locked->id,
+                );
+            }
 
             try {
                 $locked->update([
@@ -203,11 +384,14 @@ class InvoiceService
             // para que el calculo pueda volver a incluirlas.
             $invoice->details()->delete();
 
+            // Un borrador mono-contrato conserva su alcance: se re-limita el
+            // calculo a ese contrato (no muta a multi-contrato).
             $calc = $this->calculationService->calcularEstimacion(
                 $invoice->cliente_id,
                 $invoice->periodo_inicio->toDateString(),
                 $invoice->periodo_fin->toDateString(),
                 (int) $invoice->id,
+                $invoice->contrato_id !== null ? (int) $invoice->contrato_id : null,
             );
 
             if ((float) $calc['monto_total'] <= 0.0) {

@@ -59,6 +59,8 @@ export interface Contract {
   ingresos?: number
   costos?: number
   margen?: number
+  /** Estimado del periodo actual (intención comercial); NO es ingreso cobrado. */
+  estimado_periodo_total?: number | null
   proxima_visita?: string
   visitas_programadas?: string[]
   facturas?: string[]

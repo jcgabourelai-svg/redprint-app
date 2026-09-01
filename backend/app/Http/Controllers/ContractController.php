@@ -10,6 +10,7 @@ use App\Http\Resources\ContractResource;
 use App\Models\Contract;
 use App\Models\ContractPrinter;
 use App\Models\Visit;
+use App\Services\ContractBillingService;
 use App\Services\ContractService;
 use App\Support\PrinterColorPalette;
 use App\Traits\Sortable;
@@ -22,7 +23,8 @@ class ContractController extends Controller
     use Sortable;
 
     public function __construct(
-        private ContractService $contractService
+        private ContractService $contractService,
+        private ContractBillingService $contractBillingService,
     ) {}
 
     public function index(Request $request)
@@ -54,6 +56,17 @@ class ContractController extends Controller
         ]);
         $contract->loadCount('activePrinters');
         return new ContractResource($contract);
+    }
+
+    /**
+     * Estado de facturación del contrato: periodos facturados vs pendientes
+     * (D17). Expone datos de dinero: vive tras el permiso finanzas.facturas.
+     */
+    public function facturacion(Contract $contract): JsonResponse
+    {
+        return response()->json(
+            $this->contractBillingService->estadoFacturacion($contract)
+        );
     }
 
     public function store(StoreContractRequest $request): JsonResponse

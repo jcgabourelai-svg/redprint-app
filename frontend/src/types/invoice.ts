@@ -72,3 +72,42 @@ export interface InvoiceCalculation {
   detalles: InvoiceCalcDetalle[]
   advertencias: string[]
 }
+
+/** Factura que toca un contrato (por encabezado o por detalles), D19. */
+export interface BilledInvoice {
+  factura_id: number
+  numero_factura: string | null
+  estado: InvoiceStatus
+  periodo_inicio: string
+  periodo_fin: string
+  /** Mes calendario derivado (AAAA-MM). */
+  periodo: string
+  /** Suma de los detalles del contrato en esa factura. */
+  monto_contrato: number
+  monto_total: number
+}
+
+/** Mes pendiente de facturar de un contrato (periodos fijos, D17). */
+export interface PendingPeriod {
+  periodo: string
+  periodo_inicio: string
+  periodo_fin: string
+  lecturas: number
+  paginas: number
+  monto_estimado: number
+  advertencias: string[]
+  actual: boolean
+}
+
+/** Respuesta de GET /contracts/{id}/facturacion. */
+export interface ContractBillingStatus {
+  facturados: BilledInvoice[]
+  pendientes: PendingPeriod[]
+  ultimo_periodo_cubierto: string | null
+}
+
+/** Respuesta de POST /invoices/draft-batch. */
+export interface DraftBatchResponse {
+  data: Invoice[]
+  advertencias: Record<string, string[]>
+}

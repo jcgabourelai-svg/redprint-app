@@ -13,6 +13,7 @@ class InvoiceResource extends JsonResource
             'id' => $this->id,
             'numero_factura' => $this->numero_factura,
             'cliente_id' => $this->cliente_id,
+            'contrato_id' => $this->contrato_id,
             'fecha_emision' => $this->fecha_emision?->toDateString(),
             'fecha_vencimiento' => $this->fecha_vencimiento?->toDateString(),
             'periodo_inicio' => $this->periodo_inicio?->toDateString(),

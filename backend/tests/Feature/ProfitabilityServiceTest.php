@@ -11,6 +11,7 @@ use App\Enums\VisitFrequency;
 use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Invoice;
+use App\Models\InvoiceDetail;
 use App\Models\MaintenanceOrder;
 use App\Models\Printer;
 use App\Models\PrinterBrand;
@@ -114,7 +115,7 @@ class ProfitabilityServiceTest extends TestCase
         $inicio = now()->startOfMonth()->toDateString();
         $fin = now()->endOfMonth()->toDateString();
 
-        Invoice::create([
+        $factura = Invoice::create([
             'numero_factura' => 'F-' . uniqid(),
             'cliente_id' => $client->id,
             'contrato_id' => $contract->id,
@@ -129,6 +130,17 @@ class ProfitabilityServiceTest extends TestCase
             'socio_id' => $user->id,
             'creado_por' => $user->id,
             'fecha_creacion' => now(),
+        ]);
+
+        // D19: los ingresos se atribuyen desde invoice_details (no desde el
+        // encabezado); sin detalles la factura no atribuye ingresos.
+        InvoiceDetail::create([
+            'factura_id' => $factura->id,
+            'contrato_id' => $contract->id,
+            'impresora_id' => $printer->id,
+            'lectura_id' => null,
+            'paginas_consumidas' => 0,
+            'monto_calculado' => 3000,
         ]);
 
         PrinterExpense::create([

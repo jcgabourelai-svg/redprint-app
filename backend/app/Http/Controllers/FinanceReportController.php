@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
 use App\Models\Client;
 use App\Models\ContractPrinter;
 use App\Services\CashFlowService;
 use App\Services\ProfitabilityService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class FinanceReportController extends Controller
 {
@@ -68,9 +68,14 @@ class FinanceReportController extends Controller
                 continue;
             }
 
-            $ingresos = Invoice::whereIn('contrato_id', $contractIds)
-                ->whereBetween('periodo_inicio', [$periodoInicio, $periodoFin])
-                ->sum('monto_total');
+            // D19: ingresos atribuidos vía invoice_details de los contratos
+            // del cliente (factura mono o multi-contrato), sin BORRADORES.
+            $ingresos = DB::table('invoice_details')
+                ->join('invoices', 'invoice_details.factura_id', '=', 'invoices.id')
+                ->whereIn('invoice_details.contrato_id', $contractIds)
+                ->where('invoices.estado', '!=', 'BORRADOR')
+                ->whereBetween('invoices.periodo_inicio', [$periodoInicio, $periodoFin])
+                ->sum('invoice_details.monto_calculado');
 
             $printerIds = ContractPrinter::whereIn('contrato_id', $contractIds)
                 ->where('activa', true)

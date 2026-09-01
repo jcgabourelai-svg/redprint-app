@@ -20,6 +20,9 @@ class StoreInvoiceDraftRequest extends FormRequest
             'fecha_emision' => 'prohibited',
             'fecha_vencimiento' => 'prohibited',
             'cliente_id' => 'required|exists:clients,id',
+            // Opcional: limita el borrador a un contrato del cliente. Si no
+            // viene y el calculo cubre un solo contrato, se auto-deriva (D19).
+            'contrato_id' => 'nullable|exists:contracts,id',
             'periodo_inicio' => 'required|date',
             'periodo_fin' => 'required|date|after_or_equal:periodo_inicio',
             'notas' => 'nullable|string',

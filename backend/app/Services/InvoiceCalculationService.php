@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ContractStatus;
+use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
 use App\Models\Invoice;
 use App\Models\Reading;
@@ -15,9 +16,15 @@ class InvoiceCalculationService
      * agrupando las lecturas no facturadas por contrato y aplicando la
      * formula de tarifa de cada contrato.
      *
-     * @param  int|null  $excluirFacturaId  Excluye una factura del detector de
-     *                                      solapamiento (usado al recalcular un
-     *                                      borrador para no advertir contra si mismo).
+     * @param  int|null  $excluirFacturaId    Excluye una factura del detector de
+     *                                        solapamiento (usado al recalcular un
+     *                                        borrador para no advertir contra si mismo).
+     * @param  int|null  $contratoId          Limita el calculo a un contrato del
+     *                                        cliente (borradores por contrato).
+     * @param  bool      $exigirContratoActivo  La guarda ACTIVO aplica a los flujos
+     *                                        de facturacion; el estado de facturacion
+     *                                        la omite para listar pendientes de
+     *                                        contratos FINALIZADOS (informativos).
      * @return array{monto_total: float, contratos: array, detalles: array, advertencias: array}
      */
     public function calcularEstimacion(
@@ -25,9 +32,16 @@ class InvoiceCalculationService
         string $periodoInicio,
         string $periodoFin,
         ?int $excluirFacturaId = null,
+        ?int $contratoId = null,
+        bool $exigirContratoActivo = true,
     ): array {
+        if ($contratoId !== null) {
+            $this->validarContratoFacturable($contratoId, $clienteId, $exigirContratoActivo);
+        }
+
         $contratos = Contract::where('cliente_id', $clienteId)
             ->where('estado', ContractStatus::ACTIVO)
+            ->when($contratoId, fn ($query) => $query->where('id', $contratoId))
             ->with(['activePrinters', 'planImpresoras'])
             ->get();
 
@@ -226,5 +240,22 @@ class InvoiceCalculationService
             'detalles' => $detalles,
             'advertencias' => $advertencias,
         ];
+    }
+
+    /**
+     * Guarda de dominio: un calculo/borrador por contrato exige que el
+     * contrato pertenezca al cliente y (en flujos de facturacion) este ACTIVO.
+     */
+    private function validarContratoFacturable(int $contratoId, int $clienteId, bool $exigirActivo): void
+    {
+        $contrato = Contract::find($contratoId);
+
+        if ($contrato === null || (int) $contrato->cliente_id !== $clienteId) {
+            throw new BusinessRuleException('El contrato indicado no pertenece al cliente seleccionado.');
+        }
+
+        if ($exigirActivo && $contrato->estado !== ContractStatus::ACTIVO) {
+            throw new BusinessRuleException('El contrato indicado no está activo; solo se facturan contratos activos.');
+        }
     }
 }

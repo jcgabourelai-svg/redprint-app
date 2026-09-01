@@ -3,12 +3,14 @@
 namespace App\Models;
 
 use App\Enums\ContractStatus;
+use App\Enums\InvoiceStatus;
 use App\Enums\VisitFrequency;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\DB;
 
 class Contract extends Model
 {
@@ -104,9 +106,55 @@ class Contract extends Model
         return (float) ($this->tarifa_base + ($excess * $this->costo_pag_excedente));
     }
 
+    /**
+     * Ingresos (cobrado) atribuidos a este contrato según D19:
+     * - Factura mono-contrato (contrato_id del encabezado = este contrato):
+     *   atribuye su monto_pagado completo.
+     * - Factura multi-contrato (agrupada por cliente): atribuye
+     *   monto_pagado x (Σ detalles del contrato / monto_total), con guard
+     *   monto_total > 0.
+     * Los BORRADORES no aportan (aún no son cuenta por cobrar).
+     * Mismo patrón de costo por-contrato que el resto de $appends (N+1
+     * pre-existente, documentado; fuera de alcance optimizarlo aquí).
+     */
     public function getIngresosAttribute(): float
     {
-        return $this->invoices()->sum('monto_pagado');
+        $facturas = Invoice::where('cliente_id', $this->cliente_id)
+            ->where('estado', '!=', InvoiceStatus::BORRADOR)
+            ->where(function ($query) {
+                $query->where('contrato_id', $this->id)
+                    ->orWhereHas('details', fn ($d) => $d->where('contrato_id', $this->id));
+            })
+            ->get(['id', 'contrato_id', 'monto_pagado', 'monto_total']);
+
+        if ($facturas->isEmpty()) {
+            return 0.0;
+        }
+
+        $shares = DB::table('invoice_details')
+            ->where('contrato_id', $this->id)
+            ->whereIn('factura_id', $facturas->modelKeys())
+            ->groupBy('factura_id')
+            ->selectRaw('factura_id, SUM(monto_calculado) AS total')
+            ->pluck('total', 'factura_id');
+
+        $ingresos = 0.0;
+        foreach ($facturas as $factura) {
+            if ($factura->contrato_id !== null && (int) $factura->contrato_id === (int) $this->id) {
+                $ingresos += (float) $factura->monto_pagado;
+                continue;
+            }
+
+            $montoTotal = (float) $factura->monto_total;
+            if ($montoTotal <= 0.0) {
+                continue;
+            }
+
+            $share = (float) ($shares[$factura->id] ?? 0);
+            $ingresos += round((float) $factura->monto_pagado * ($share / $montoTotal), 2);
+        }
+
+        return round($ingresos, 2);
     }
 
     public function getCostosAttribute(): float

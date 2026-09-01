@@ -1,6 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import api from '@/lib/api'
-import type { Invoice, InvoiceCalculation } from '@/types/invoice'
+import type {
+  ContractBillingStatus,
+  DraftBatchResponse,
+  Invoice,
+  InvoiceCalculation,
+} from '@/types/invoice'
 import type { PaginatedResponse } from '@/types/api'
 
 export function useInvoices(params?: Record<string, string | number>) {
@@ -34,11 +39,47 @@ export interface DraftResponse {
 export function useCreateInvoiceDraft() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (data: { cliente_id: number; periodo_inicio: string; periodo_fin: string; notas?: string }) =>
+    mutationFn: (data: {
+      cliente_id: number
+      periodo_inicio: string
+      periodo_fin: string
+      contrato_id?: number
+      notas?: string
+    }) =>
       api
         .post<{ data: DraftResponse; advertencias: string[] }>('/invoices/draft', data)
         .then((r) => r.data.data),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['invoices'] }) },
+  })
+}
+
+/**
+ * Batch de borradores por contrato: un borrador por periodo mensual
+ * seleccionado (D17/D18). All-or-nothing en servidor.
+ */
+export function useCreateInvoiceDraftBatch() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (data: {
+      cliente_id: number
+      contrato_id: number
+      periodos: string[]
+      notas?: string
+    }) => api.post<DraftBatchResponse>('/invoices/draft-batch', data).then((r) => r.data),
+    onSuccess: (_, vars) => {
+      qc.invalidateQueries({ queryKey: ['invoices'] })
+      qc.invalidateQueries({ queryKey: ['contract-billing', vars.contrato_id] })
+      qc.invalidateQueries({ queryKey: ['contracts'] })
+    },
+  })
+}
+
+/** Estado de facturación de un contrato: periodos facturados vs pendientes. */
+export function useContractBilling(contratoId: number, enabled: boolean) {
+  return useQuery<ContractBillingStatus>({
+    queryKey: ['contract-billing', contratoId],
+    queryFn: () => api.get(`/contracts/${contratoId}/facturacion`).then((r) => r.data),
+    enabled: enabled && !!contratoId,
   })
 }
 
@@ -91,13 +132,19 @@ export function useInvoiceCalculation(
   periodoInicio: string,
   periodoFin: string,
   enabled: boolean,
+  contratoId?: number | null,
 ) {
   return useQuery<InvoiceCalculation>({
-    queryKey: ['invoice-calc', clienteId, periodoInicio, periodoFin],
+    queryKey: ['invoice-calc', clienteId, periodoInicio, periodoFin, contratoId ?? null],
     queryFn: () =>
       api
         .get('/invoices/calcular', {
-          params: { cliente_id: clienteId, periodo_inicio: periodoInicio, periodo_fin: periodoFin },
+          params: {
+            cliente_id: clienteId,
+            periodo_inicio: periodoInicio,
+            periodo_fin: periodoFin,
+            ...(contratoId ? { contrato_id: contratoId } : {}),
+          },
         })
         .then((r) => r.data),
     enabled: enabled && !!clienteId && !!periodoInicio && !!periodoFin,

@@ -13,6 +13,8 @@ import {
   Plus,
   FileText,
   Trash2,
+  AlertTriangle,
+  Receipt,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -24,7 +26,7 @@ import Modal from '@/components/ui/Modal'
 import Toast from '@/components/ui/Toast'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useIsAdmin } from '@/contexts/AuthContext'
+import { useIsAdmin, useTienePermiso } from '@/contexts/AuthContext'
 import {
   useContract,
   useUpdateContract,
@@ -33,14 +35,15 @@ import {
   useUpdateAssignmentAlias,
   useUpdateContractPlan,
 } from '@/hooks/useContracts'
+import { useContractBilling, useCreateInvoiceDraftBatch } from '@/hooks/useInvoices'
 import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useVisits } from '@/hooks/useVisits'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useWarehouses } from '@/hooks/useWarehouses'
 import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency } from '@/types/contract'
-import { PrinterStatus } from '@/types/enums'
+import { PrinterStatus, InvoiceStatusLabels } from '@/types/enums'
 import type { VisitStatus } from '@/types/operations'
-import { formatCurrency, formatDate } from '@/lib/formatters'
+import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
 const frecuenciaOptions = [
@@ -88,6 +91,13 @@ function getEsquemaFormula(contract: Contract): string {
   return `monto = ${formatCurrency(contract.tarifa_base)} + max(0, páginas - ${contract.paginas_incluidas}) × ${formatCurrency(contract.costo_por_pagina_excedente)}`
 }
 
+/** "2026-08" -> "Agosto 2026" (mes calendario de facturación, D17). */
+function periodoLabel(periodo: string): string {
+  const [anio, mes] = periodo.split('-').map(Number)
+  const nombre = new Date(anio, mes - 1, 1).toLocaleDateString('es-MX', { month: 'long' })
+  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`
+}
+
 export default function ContractDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -109,6 +119,15 @@ export default function ContractDetail() {
     per_page: 200,
   })
   const { data: warehousesData } = useWarehouses({ per_page: 100 })
+
+  // Facturación del contrato (periodos fijos): requiere permiso de facturas.
+  const puedeFacturar = useTienePermiso('finanzas.facturas')
+  const billing = useContractBilling(idNum, puedeFacturar)
+  const createDraftBatch = useCreateInvoiceDraftBatch()
+
+  const [showGenerarFacturas, setShowGenerarFacturas] = useState(false)
+  const [periodosSeleccionados, setPeriodosSeleccionados] = useState<string[]>([])
+  const [batchError, setBatchError] = useState('')
 
   const [showEdit, setShowEdit] = useState(false)
   const [editError, setEditError] = useState('')
@@ -320,6 +339,52 @@ export default function ContractDetail() {
           setToast({ open: true, variant: 'success', message: 'Plan de equipos actualizado' })
         },
         onError: (err) => setPlanError(parseApiError(err)),
+      }
+    )
+  }
+
+  const pendientes = billing.data?.pendientes ?? []
+  const facturados = billing.data?.facturados ?? []
+
+  const openGenerarFacturas = () => {
+    // Default: periodos pasados pre-seleccionados; el mes en curso queda sin
+    // marcar (lecturas incompletas).
+    setPeriodosSeleccionados(pendientes.filter((p) => !p.actual).map((p) => p.periodo))
+    setBatchError('')
+    setShowGenerarFacturas(true)
+  }
+
+  const togglePeriodo = (periodo: string) => {
+    setPeriodosSeleccionados((prev) =>
+      prev.includes(periodo) ? prev.filter((p) => p !== periodo) : [...prev, periodo]
+    )
+  }
+
+  const seleccion = pendientes.filter((p) => periodosSeleccionados.includes(p.periodo))
+  const totalEstimadoSeleccion = seleccion.reduce((sum, p) => sum + p.monto_estimado, 0)
+
+  const handleGenerarFacturas = () => {
+    setBatchError('')
+    if (!contract || seleccion.length === 0) return
+    createDraftBatch.mutate(
+      {
+        cliente_id: parseInt(contract.cliente_id),
+        contrato_id: idNum,
+        periodos: seleccion.map((p) => p.periodo),
+      },
+      {
+        onSuccess: (res) => {
+          setShowGenerarFacturas(false)
+          setToast({
+            open: true,
+            variant: 'success',
+            message: `${res.data.length} borrador(es) de factura creados`,
+          })
+          // Los borradores vienen en orden cronológico: ir al más reciente.
+          const ultimo = res.data[res.data.length - 1]
+          if (ultimo) navigate(`/finanzas/facturas/${ultimo.id}`)
+        },
+        onError: (err) => setBatchError(parseApiError(err)),
       }
     )
   }
@@ -616,7 +681,7 @@ export default function ContractDetail() {
                                 <p className="font-medium text-success">{formatCurrency(pa.estimado_del_periodo)}</p>
                               </div>
                               <div>
-                                <p className="text-xs text-muted-foreground">Rentabilidad acumulada</p>
+                                <p className="text-xs text-muted-foreground">Rentabilidad estimada</p>
                                 <p className={`font-medium ${pa.rentabilidad_acumulada >= 0 ? 'text-success' : 'text-destructive'}`}>
                                   {formatCurrency(pa.rentabilidad_acumulada)}
                                 </p>
@@ -684,12 +749,75 @@ export default function ContractDetail() {
                   },
                   {
                     id: 'facturas',
-                    label: 'Facturas Asociadas',
+                    label: `Facturas Asociadas (${facturados.length})`,
                     content: (
-                      <div className="pb-4">
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground">No hay facturas asociadas</p>
-                        </div>
+                      <div className="space-y-3 pb-4">
+                        {!puedeFacturar ? (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">
+                              Sin permiso de facturas para consultar la facturación de este contrato.
+                            </p>
+                          </div>
+                        ) : billing.isLoading ? (
+                          <div className="text-center py-8">
+                            <p className="text-muted-foreground">Cargando facturación...</p>
+                          </div>
+                        ) : billing.isError ? (
+                          <div className="text-center py-8">
+                            <p className="text-destructive">{parseApiError(billing.error)}</p>
+                          </div>
+                        ) : (
+                          <>
+                            {isAdmin && contract.estado === 'ACTIVO' && pendientes.length > 0 && (
+                              <div className="flex justify-end">
+                                <Button size="sm" onClick={openGenerarFacturas}>
+                                  <Plus className="mr-2 h-4 w-4" />
+                                  Generar factura
+                                </Button>
+                              </div>
+                            )}
+                            {facturados.length === 0 ? (
+                              <div className="text-center py-8">
+                                <Receipt className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                                <p className="text-muted-foreground">
+                                  {pendientes.length > 0
+                                    ? 'Este contrato aún no tiene facturas y tiene periodos pendientes de facturar.'
+                                    : 'Este contrato no tiene facturas asociadas.'}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-2">
+                                {facturados.map((f) => (
+                                  <div
+                                    key={f.factura_id}
+                                    className="flex items-center justify-between border border-border rounded-lg p-3 hover:bg-muted/50 cursor-pointer"
+                                    onClick={() => navigate(`/finanzas/facturas/${f.factura_id}`)}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <FileText className="h-4 w-4 text-muted-foreground" />
+                                      <div>
+                                        <p className="text-sm font-medium">
+                                          {f.numero_factura ?? `Borrador #${f.factura_id}`}
+                                        </p>
+                                        <p className="text-xs text-muted-foreground">
+                                          Periodo {periodoLabel(f.periodo)} · {formatDate(f.periodo_inicio)} – {formatDate(f.periodo_fin)}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-sm font-medium" title="Monto de este contrato en la factura">
+                                        {formatCurrency(f.monto_contrato)}
+                                      </span>
+                                      <Badge className={getInvoiceStatusColor(f.estado)}>
+                                        {(InvoiceStatusLabels as Record<string, string>)[f.estado] || f.estado}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     ),
                   },
@@ -700,7 +828,7 @@ export default function ContractDetail() {
                       <div className="space-y-4 pb-4">
                         <div className="grid grid-cols-3 gap-4">
                           <div className="text-center p-4 bg-primary/10 rounded-lg">
-                            <p className="text-xs text-muted-foreground mb-1">Ingresos</p>
+                            <p className="text-xs text-muted-foreground mb-1">Ingresos (cobrado a la fecha)</p>
                             <p className="text-xl font-bold text-primary">
                               {formatCurrency(contract.ingresos ?? 0)}
                             </p>
@@ -718,6 +846,12 @@ export default function ContractDetail() {
                             </p>
                           </div>
                         </div>
+                        {contract.estimado_periodo_total != null && (
+                          <p className="text-xs text-muted-foreground">
+                            Estimado del periodo actual: {formatCurrency(contract.estimado_periodo_total)}{' '}
+                            (intención comercial según contadores; no es ingreso cobrado).
+                          </p>
+                        )}
                         <div className="grid grid-cols-2 gap-4">
                           <div className="p-3 bg-muted rounded-lg">
                             <p className="text-xs text-muted-foreground">Margen</p>
@@ -734,7 +868,9 @@ export default function ContractDetail() {
                         </div>
                         {contract.impresoras.length > 0 && (
                           <div>
-                            <p className="text-sm font-medium text-muted-foreground mb-2">Desglose por impresora:</p>
+                            <p className="text-sm font-medium text-muted-foreground mb-2">
+                              Rentabilidad estimada por impresora:
+                            </p>
                             {contract.impresoras.map((pa) => (
                               <div key={pa.id} className="flex justify-between py-1 text-sm">
                                 <span className="text-muted-foreground inline-flex items-center gap-1.5">
@@ -1087,6 +1223,97 @@ export default function ContractDetail() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        isOpen={showGenerarFacturas}
+        onClose={() => setShowGenerarFacturas(false)}
+        title="Generar facturas del contrato"
+        size="xl"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Se crearán <strong>{seleccion.length}</strong> borrador(es), uno por periodo
+            seleccionado. Cada borrador reserva las lecturas de su periodo y <strong>no es
+            cuenta por cobrar</strong> hasta emitirse con el folio del PAC. No se fusionan
+            periodos: cada mes conserva sus páginas incluidas y su tarifa base.
+          </p>
+
+          <div className="space-y-2">
+            {pendientes.map((p) => {
+              const sinMonto = p.monto_estimado <= 0
+              const marcado = periodosSeleccionados.includes(p.periodo)
+              return (
+                <label
+                  key={p.periodo}
+                  className={`flex items-start gap-3 border border-border rounded-lg p-3 ${
+                    sinMonto ? 'opacity-60' : 'cursor-pointer hover:bg-muted/50'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={marcado}
+                    disabled={sinMonto}
+                    onChange={() => togglePeriodo(p.periodo)}
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium">{periodoLabel(p.periodo)}</p>
+                      {p.actual && <Badge variant="info">en curso</Badge>}
+                      {p.advertencias.length > 0 && (
+                        <span
+                          className="text-warning inline-flex items-center"
+                          title={p.advertencias.join('\n')}
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {p.lecturas} lectura(s) · {p.paginas.toLocaleString('es-MX')} páginas ·
+                      Monto estimado {formatCurrency(p.monto_estimado)}
+                    </p>
+                    {sinMonto && (
+                      <p className="text-xs text-destructive mt-1">
+                        Sin monto a facturar (sin lecturas y tarifa base 0). Si se incluyera,
+                        el lote completo se cancelaría.
+                      </p>
+                    )}
+                    {!sinMonto && p.advertencias.length > 0 && (
+                      <p className="text-xs text-warning mt-1">{p.advertencias.join(' · ')}</p>
+                    )}
+                  </div>
+                </label>
+              )
+            })}
+          </div>
+
+          <div className="flex items-center justify-between border-t pt-3">
+            <p className="text-sm">
+              <strong>{seleccion.length}</strong> borrador(es) · Total estimado{' '}
+              <strong>{formatCurrency(totalEstimadoSeleccion)}</strong>
+            </p>
+          </div>
+
+          {batchError && (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-2 rounded text-sm">
+              {batchError}
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="secondary" onClick={() => setShowGenerarFacturas(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleGenerarFacturas}
+              disabled={createDraftBatch.isPending || seleccion.length === 0}
+            >
+              {createDraftBatch.isPending ? 'Creando borradores...' : 'Crear borradores'}
+            </Button>
+          </div>
+        </div>
       </Modal>
 
       <Toast

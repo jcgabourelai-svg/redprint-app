@@ -149,10 +149,15 @@ Route::prefix('v1')->group(function () {
         Route::middleware('permission:finanzas.facturas')->group(function () {
             Route::get('invoices/calcular', [InvoiceController::class, 'calcular']);
             Route::post('invoices/draft', [InvoiceController::class, 'storeDraft']);
+            Route::post('invoices/draft-batch', [InvoiceController::class, 'storeDraftBatch']);
             Route::post('invoices/{invoice}/emitir', [InvoiceController::class, 'emitir']);
             Route::post('invoices/{invoice}/recalcular', [InvoiceController::class, 'recalcular']);
             Route::apiResource('invoices', InvoiceController::class);
             Route::apiResource('payments', PaymentController::class)->only(['index', 'store']);
+
+            // Estado de facturación por contrato (periodos facturados/pendientes).
+            // URI bajo contracts pero tras permiso de facturas: expone datos de dinero.
+            Route::get('contracts/{contract}/facturacion', [ContractController::class, 'facturacion']);
         });
 
         Route::middleware('permission:finanzas.cfdi')->group(function () {

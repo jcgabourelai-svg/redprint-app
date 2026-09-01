@@ -11,11 +11,11 @@ class ContractResource extends JsonResource
     {
         $impresoras = $this->resolverImpresoras();
 
+        // Estimado del periodo (intención comercial basada en contadores);
+        // se expone como campo propio, nunca como "ingresos".
         $estimadoTotal = null;
-        $rentabilidadTotal = null;
         if ($impresoras !== null) {
             $estimadoTotal = round(collect($impresoras)->sum('estimado_del_periodo'), 2);
-            $rentabilidadTotal = round(collect($impresoras)->sum('rentabilidad_acumulada'), 2);
         }
 
         return [
@@ -36,12 +36,13 @@ class ContractResource extends JsonResource
             'dias_adelanto' => $this->dias_adelanto,
             'dia_visita' => $this->dia_visita,
             'estado' => $this->when($this->estado, $this->estado?->value),
-            'ingresos' => $impresoras !== null ? $estimadoTotal : $this->ingresos,
-            'costos' => $impresoras !== null ? round($estimadoTotal - $rentabilidadTotal, 2) : $this->costos,
-            'rentabilidad' => $impresoras !== null ? $rentabilidadTotal : $this->rentabilidad,
-            'margen' => $impresoras !== null
-                ? round(($rentabilidadTotal / max($estimadoTotal, 1)) * 100, 2)
-                : $this->margen,
+            // Ingresos/costos/rentabilidad/margen son datos REALES del
+            // contrato (cobrado vs costos). El estimado se expone aparte.
+            'ingresos' => $this->ingresos,
+            'costos' => $this->costos,
+            'rentabilidad' => $this->rentabilidad,
+            'margen' => $this->margen,
+            'estimado_periodo_total' => $this->whenNotNull($estimadoTotal),
             'printers_count' => $this->whenNotNull($this->printers_count),
             'active_printers_count' => $this->whenNotNull($this->active_printers_count),
             'client' => $this->whenLoaded('client'),
