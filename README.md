@@ -36,13 +36,13 @@ Plataforma web para la **gestión de flotas de impresoras**: control de inventar
 | **Estado / Datos** | TanStack Query · Zustand · React Hook Form · Zod |
 | **UI** | Framer Motion · Lucide Icons · Recharts |
 | **Testing** | Vitest · Testing Library · PHPUnit |
-| **Infraestructura** | Docker Compose · Nginx · PHP-FPM · Caddy (proxy inverso en producción) |
+| **Infraestructura** | Docker Compose · Nginx · PHP-FPM · Traefik (proxy inverso en producción, VPS con Dokploy) |
 
 ## Arquitectura
 
 ```
                  ┌──────────────────────────────────────────────┐
-  Producción:    │  Caddy (TLS) ──► Nginx :${APP_PORT}          │
+  Producción:    │  Traefik/TLS ──► Nginx :${APP_PORT} (127.0.0.1) │
                  └──────────────────────────────────────────────┘
                                         │
                  ┌──────────────────────┼───────────────────┐
@@ -58,7 +58,7 @@ Plataforma web para la **gestión de flotas de impresoras**: control de inventar
 ```
 
 - **Nginx** sirve el frontend compilado (`frontend/dist`) como SPA en `/`, la app móvil (`mobile/dist`) en `/m/`, y enruta `/api/`, `/sanctum/` y `/storage/` a PHP-FPM.
-- En producción, **Caddy** se coloca por delante terminando TLS y reenvía a `APP_PORT`.
+- En producción, el **Traefik existente en el VPS** (Dokploy) termina TLS y enruta el dominio al nginx del stack vía labels (ver `deploy/docker-compose.prod.yml` y [`deploy/DEPLOY.md`](deploy/DEPLOY.md)).
 - La API se versiona bajo `/api/v1`.
 
 ### Servicios (docker-compose.yml)
@@ -262,16 +262,15 @@ La API REST está versionada bajo `/api/v1` y protegida con **Laravel Sanctum** 
 
 ## Despliegue en producción
 
-1. Configura `.env` con `APP_DOMAIN`, `APP_ENV=production`, `RUN_MIGRATIONS=0` y credenciales seguras.
-2. Levanta el stack: `docker compose up -d --build` (los frontales se compilan solos si el `dist` no existe).
-3. Ejecuta migraciones: `docker compose exec app php artisan migrate --force`.
-4. Optimiza Laravel:
-   ```bash
-   docker compose exec app php artisan config:cache
-   docker compose exec app php artisan route:cache
-   docker compose exec app php artisan view:cache
-   ```
-5. Coloca **Caddy** por delante exponiendo `https://${APP_DOMAIN}` y reenviando a `APP_PORT`.
+La guía completa (despliegue inicial, actualizaciones, backups, dominio y
+troubleshooting) está en [`deploy/DEPLOY.md`](deploy/DEPLOY.md). Resumen:
+
+1. Empaquetar solo lo trackeado: `git archive --format=tar.gz -o /tmp/redprint.tar.gz HEAD`.
+2. Extraer en `/opt/redprint` del VPS y crear ahí el `.env` de producción
+   (`APP_ENV=production`, `PUBLIC_URL=https://...`, contraseña de BD generada
+   en el propio VPS; nunca en el repo).
+3. Levantar: `docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build`.
+4. El TLS lo resuelve el Traefik del VPS (labels en el override de producción).
 
 ## Licencia
 

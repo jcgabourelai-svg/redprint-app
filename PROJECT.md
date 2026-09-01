@@ -169,7 +169,7 @@ que los viola debe justificar explícitamente por qué.
 ## 4. Arquitectura y mapa de "dónde mirar"
 
 ```
-Producción: Caddy (TLS) ─► Nginx :${APP_PORT:-8080}
+Producción: Traefik/TLS ─► Nginx :${APP_PORT:-8080} (bind 127.0.0.1)
                               │
         ┌─────────────────────┼────────────────────┐
         ▼                     ▼                    ▼
