@@ -1,26 +1,29 @@
-# Override de produccion (solo VPS): agrega Caddy como proxy inverso con
-# HTTPS automatico en :80/:443. No se usa en desarrollo local.
+# Override de produccion (solo VPS): integra el nginx del stack con el Traefik
+# existente (Dokploy) que ya publica 80/443 y resuelve certificados Let's Encrypt.
+# El dominio erp.redprint.cloud entra por Traefik -> nginx (puerto 80 interno).
 #
-#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d
 services:
-  caddy:
-    image: caddy:2-alpine
-    container_name: redprint-caddy
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp" # HTTP/3
-    volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      nginx:
-        condition: service_started
+  nginx:
     networks:
       - redprint
+      - dokploy-network
+    labels:
+      - traefik.enable=true
+      # HTTPS (websecure) — certificado automatico letsencrypt del entrypoint
+      - traefik.http.routers.redprint-erp.rule=Host(`erp.redprint.cloud`)
+      - traefik.http.routers.redprint-erp.entrypoints=websecure
+      - traefik.http.routers.redprint-erp.service=redprint-erp
+      # HTTP (web) — redirige a HTTPS
+      - traefik.http.routers.redprint-erp-http.rule=Host(`erp.redprint.cloud`)
+      - traefik.http.routers.redprint-erp-http.entrypoints=web
+      - traefik.http.routers.redprint-erp-http.service=redprint-erp
+      - traefik.http.routers.redprint-erp-http.middlewares=redprint-erp-https
+      - traefik.http.middlewares.redprint-erp-https.redirectscheme.scheme=https
+      # Puerto interno del nginx del stack
+      - traefik.http.services.redprint-erp.loadbalancer.server.port=80
 
-volumes:
-  caddy_data:
-  caddy_config:
+networks:
+  # Red overlay de Dokploy a la que Traefik esta conectado (attachable).
+  dokploy-network:
+    external: true

@@ -83,6 +83,11 @@ else
 fi
 set_env SANCTUM_STATEFUL_DOMAINS "${SANCTUM_DOMAINS}"
 
+# SESSION_DOMAIN: vacio por defecto (cookie host-only). El .env.example puede
+# traer un valor heredado (p. ej. localhost) que romperia la sesion al servir
+# la app desde otro dominio. Compose puede fijarlo via variable del mismo nombre.
+set_env SESSION_DOMAIN "${SESSION_DOMAIN:-}"
+
 # vendor/: el volumen ./backend oculta el vendor instalado durante el build,
 # asi que en un clone fresco NO existe vendor/autoload.php. Hay que instalar
 # ANTES de cualquier comando artisan (key:generate, migrate, storage:link...),
