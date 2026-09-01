@@ -1,0 +1,9 @@
+# Caddy — proxy inverso con HTTPS automatico (Let's Encrypt) para produccion.
+# Uso (solo en el VPS):
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d
+erp.redprint.cloud {
+	encode zstd gzip
+
+	# Termina TLS y reenvia al nginx interno del stack (puerto 80 del contenedor).
+	reverse_proxy nginx:80
+}

@@ -182,19 +182,30 @@ class VisitSchedulerService
      *
      * Para MENSUAL con dia_visita, el dia se proyecta sobre el proximo mes
      * donde aun no se paso esa fecha respecto a $reference.
+     *
+     * D21: si el contrato aun no inicia (fecha_inicio >= $reference), la
+     * primera visita LECTURA nace a +1 periodo del inicio (primera ocurrencia
+     * de la cadencia estrictamente posterior a fecha_inicio), nunca el mismo
+     * dia del alta: evita la lectura cero del dia 1.
      */
     public function computeNextVisitDate(Contract $contract, Carbon $reference): ?Carbon
     {
         $frequency = $contract->frecuencia_visitas;
         $diaVisita = $contract->dia_visita;
 
-        if ($frequency === VisitFrequency::MENSUAL && $diaVisita !== null) {
-            return $this->nextMonthlyDate((int) $diaVisita, $reference);
-        }
-
         $anchor = $contract->fecha_inicio
             ? Carbon::instance($contract->fecha_inicio)
             : $reference->copy();
+
+        if ($frequency === VisitFrequency::MENSUAL && $diaVisita !== null) {
+            // Contrato no iniciado: primera ocurrencia de dia_visita despues
+            // de fecha_inicio (con clamp de mes corto).
+            if ($anchor->startOfDay()->gte($reference->copy()->startOfDay())) {
+                return $this->nextMonthlyDate((int) $diaVisita, $anchor->copy()->addDay());
+            }
+
+            return $this->nextMonthlyDate((int) $diaVisita, $reference);
+        }
 
         // Para SEMANAL/QUINCENAL se avanza desde fecha_inicio a saltos fijos.
         // Se calcula el proximo salto >= hoy en O(1) en lugar de iterar semana
@@ -210,7 +221,9 @@ class VisitSchedulerService
             // diff con signo: negativo si fecha_inicio esta en el futuro.
             $diff = (int) $anchor->startOfDay()->diffInDays($reference->copy()->startOfDay(), false);
             if ($diff <= 0) {
-                return $anchor->copy();
+                // Contrato no iniciado (o inicio hoy): +1 periodo desde el
+                // inicio, nunca el mismo dia del alta (D21).
+                return $anchor->copy()->addDays($stepDays);
             }
             $steps = (int) ceil($diff / $stepDays);
             $next = $anchor->copy()->addDays($steps * $stepDays);
@@ -222,7 +235,8 @@ class VisitSchedulerService
 
         // MENSUAL/CUSTOM: avanza de mes en mes en O(1) usando diffInMonths.
         if ($anchor->gte($reference)) {
-            return $anchor->copy();
+            // Contrato no iniciado (o inicio hoy): +1 mes desde el inicio (D21).
+            return $anchor->copy()->addMonthNoOverflow();
         }
         $months = (int) ceil($anchor->floatDiffInMonths($reference));
         $next = $anchor->copy()->addMonthsNoOverflow($months);

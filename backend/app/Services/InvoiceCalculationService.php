@@ -7,6 +7,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
 use App\Models\Invoice;
 use App\Models\Reading;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class InvoiceCalculationService
@@ -49,6 +50,18 @@ class InvoiceCalculationService
         $detalles = [];
         $contratosResult = [];
         $montoTotal = 0.0;
+
+        // Advertencia de periodo multi-mes: tarifa_base y paginas_incluidas
+        // se aplican una sola vez por factura, asi que un rango largo
+        // subcobra la renta. Umbral 1.5 meses para evitar falsos positivos
+        // con meses de 31 dias. No bloqueante (como el resto de advertencias).
+        $duracionMeses = abs(Carbon::parse($periodoFin)->floatDiffInMonths(Carbon::parse($periodoInicio)));
+        if ($duracionMeses > 1.5) {
+            $advertencias[] = sprintf(
+                'El periodo cubre aproximadamente %d meses: la tarifa base y las páginas incluidas se aplican una sola vez por factura. Considera facturar mes a mes.',
+                (int) ceil($duracionMeses)
+            );
+        }
 
         if ($contratos->isEmpty()) {
             $advertencias[] = 'El cliente no tiene contratos activos. Se recomienda usar el modo de monto manual.';

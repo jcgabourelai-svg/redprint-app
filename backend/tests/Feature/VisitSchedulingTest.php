@@ -134,17 +134,187 @@ class VisitSchedulingTest extends TestCase
 
     public function test_clamp_de_mes_corto_para_dia_31(): void
     {
-        $user = $this->createUser();
-        $client = $this->createClient($user);
-        $contract = $this->createContract($client, $user, ['dia_visita' => 31]);
-
-        $service = app(VisitSchedulerService::class);
-
         // Simular referencia en febrero (mes corto, 2026 no bisiesto).
         Carbon::setTestNow(Carbon::create(2026, 2, 5));
         try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            // Inicio hoy (feb 5): D21 proyecta el dia 31 desde feb 6 -> clamp feb 28.
+            $contract = $this->createContract($client, $user, ['dia_visita' => 31]);
+
+            $service = app(VisitSchedulerService::class);
+
             $next = $service->computeNextVisitDate($contract, today());
             $this->assertEquals('2026-02-28', $next->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_clamp_de_mes_corto_para_dia_31_contrato_ya_iniciado(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 2, 5));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            // Inicio en enero (ya paso): rama clasica, dia 31 de febrero -> clamp feb 28.
+            $contract = $this->createContract($client, $user, [
+                'fecha_inicio' => Carbon::create(2026, 1, 10),
+                'dia_visita' => 31,
+            ]);
+
+            $service = app(VisitSchedulerService::class);
+
+            $next = $service->computeNextVisitDate($contract, today());
+            $this->assertEquals('2026-02-28', $next->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_primera_visita_mensual_sin_dia_nace_a_un_mes_del_inicio(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            // Alta hoy con inicio hoy: antes nacia el mismo dia 1 (lectura cero).
+            $contract = $this->createContract($client, $user);
+
+            $service = app(VisitSchedulerService::class);
+            $visit = $service->generateNextCycle($contract, $user->id);
+
+            $this->assertNotNull($visit);
+            $this->assertEquals('2026-07-10', $visit->fecha_programada->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_primera_visita_semanal_y_quincenal_desde_inicio_hoy(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            $service = app(VisitSchedulerService::class);
+
+            $semanal = $this->createContract($client, $user, [
+                'codigo_negocio' => 'CTR-TEST-SEM',
+                'frecuencia_visitas' => VisitFrequency::SEMANAL,
+            ]);
+            $visit = $service->generateNextCycle($semanal, $user->id);
+            $this->assertNotNull($visit);
+            $this->assertEquals('2026-06-17', $visit->fecha_programada->toDateString());
+
+            $quincenal = $this->createContract($client, $user, [
+                'codigo_negocio' => 'CTR-TEST-QUI',
+                'frecuencia_visitas' => VisitFrequency::QUINCENAL,
+            ]);
+            $visit = $service->generateNextCycle($quincenal, $user->id);
+            $this->assertNotNull($visit);
+            $this->assertEquals('2026-06-24', $visit->fecha_programada->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_primera_visita_con_dia_visita_ya_pasado_va_al_mes_siguiente(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            // El dia 5 ya paso respecto al inicio (jun 10): primera ocurrencia
+            // posterior = julio 5 (D21), no el dia del alta.
+            $contract = $this->createContract($client, $user, ['dia_visita' => 5]);
+
+            $service = app(VisitSchedulerService::class);
+            $visit = $service->generateNextCycle($contract, $user->id);
+
+            $this->assertNotNull($visit);
+            $this->assertEquals('2026-07-05', $visit->fecha_programada->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_inicio_futuro_lejano_no_genera_al_alta_y_el_cron_la_crea_despues(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        $service = app(VisitSchedulerService::class);
+
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+        // Inicio dentro de 3 semanas: inicio + 1 mes (ago 1) cae fuera de la
+        // ventana rolling (jul 10) -> sin visita al alta.
+        $contract = $this->createContract($client, $user, [
+            'fecha_inicio' => Carbon::create(2026, 7, 1),
+        ]);
+
+        try {
+            $this->assertNull($service->generateNextCycle($contract, $user->id));
+            $this->assertEquals(0, Visit::where('contrato_id', $contract->id)->count());
+
+            // El cron tampoco crea nada mientras la fecha este fuera de ventana.
+            $service->generateRecurringVisits();
+            $this->assertEquals(0, Visit::where('contrato_id', $contract->id)->count());
+
+            // Avanzado el tiempo, la fecha entra en la ventana rolling y el
+            // cron crea la visita en inicio + 1 mes exacto.
+            Carbon::setTestNow(Carbon::create(2026, 7, 5));
+            $created = $service->generateRecurringVisits();
+            $this->assertCount(1, $created);
+            $this->assertEquals(
+                '2026-08-01',
+                Visit::where('contrato_id', $contract->id)->value('fecha_programada')->toDateString()
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_alta_retroactiva_genera_siguiente_aniversario_desde_hoy(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            // Inicio un mes atras (contrato ya vigente): siguiente aniversario
+            // desde hoy = jul 5. Comportamiento previo intacto.
+            $contract = $this->createContract($client, $user, [
+                'fecha_inicio' => Carbon::create(2026, 5, 5),
+            ]);
+
+            $service = app(VisitSchedulerService::class);
+            $visit = $service->generateNextCycle($contract, $user->id);
+
+            $this->assertNotNull($visit);
+            $this->assertEquals('2026-07-05', $visit->fecha_programada->toDateString());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_generate_recurring_visits_corrido_dos_veces_no_duplica(): void
+    {
+        Carbon::setTestNow(Carbon::create(2026, 6, 10));
+        try {
+            $user = $this->createUser();
+            $client = $this->createClient($user);
+            $contract = $this->createContract($client, $user, ['dia_visita' => 15]);
+
+            $service = app(VisitSchedulerService::class);
+
+            $first = $service->generateRecurringVisits();
+            $this->assertCount(1, $first);
+            $this->assertEquals('2026-06-15', $first[0]->fecha_programada->toDateString());
+
+            // Segunda corrida: ya existe visita pendiente en la ventana (D8).
+            $second = $service->generateRecurringVisits();
+            $this->assertCount(0, $second);
+
+            $this->assertEquals(1, Visit::where('contrato_id', $contract->id)->count());
         } finally {
             Carbon::setTestNow();
         }

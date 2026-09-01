@@ -6,10 +6,14 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Reading;
 use App\Models\Printer;
 use App\Models\User;
+use App\Models\Visit;
 use Illuminate\Support\Facades\DB;
 
 class ReadingService
 {
+    public function __construct(
+        private VisitService $visitService
+    ) {}
 
     /**
      * $creator es el socio que capturó la lectura (dueño del negocio);
@@ -20,6 +24,12 @@ class ReadingService
     public function captureReading(array $data, User $creator, ?User $creadoPor = null): Reading
     {
         return DB::transaction(function () use ($data, $creator, $creadoPor) {
+            // lockForUpdate: serializa el doble submit contra la misma visita
+            // (la guardia es check-then-act; sin lock dos capturas simultaneas
+            // pasarian ambas y duplicarian lecturas facturables).
+            $visit = Visit::whereKey($data['visita_id'])->lockForUpdate()->firstOrFail();
+            $this->visitService->assertCapturable($visit);
+
             $printer = Printer::findOrFail($data['impresora_id']);
             $previousReading = $this->getPreviousReading($printer->id, $data['contrato_id']);
             $pagesConsumed = $data['valor_contador'] - $previousReading;

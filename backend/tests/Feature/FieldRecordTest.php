@@ -573,6 +573,51 @@ class FieldRecordTest extends TestCase
         ]);
     }
 
+    /**
+     * Regresion D15 x guardia D21: la regularizacion reutiliza una visita
+     * PENDIENTE vencida (varios dias atras) sin que la ventana de captura
+     * la bloquee: crea la lectura y cierra la visita.
+     */
+    public function test_link_reutiliza_visita_pendiente_vencida_con_guardia_de_captura(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $socio = $this->userWithPermissions([]);
+
+        $client = $this->createClient($admin, 'Cliente Vencida SA');
+        $contract = $this->createContract($client, $admin);
+        $printer = $this->createPrinter($admin);
+        $this->attachActivePrinter($contract, $printer, 1000);
+
+        $record = $this->createFieldRecord($socio, FieldRecordType::LECTURA, [
+            'valor_contador' => 1800,
+            'capturado_en' => now()->subDays(5),
+        ]);
+
+        $visit = $this->createPendingVisit($contract, $admin, [
+            'fecha_programada' => $record->capturado_en->toDateString(),
+        ]);
+
+        $response = $this->postJson("/api/v1/field-records/{$record->id}/link", [
+            'cliente_id' => $client->id,
+            'contrato_id' => $contract->id,
+            'impresora_id' => $printer->id,
+        ]);
+
+        $response->assertOk()->assertJsonPath('visita_id', $visit->id);
+
+        $this->assertDatabaseCount('visits', 1);
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::COMPLETADA->value,
+        ]);
+        $this->assertDatabaseHas('readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'valor_contador' => 1800,
+        ]);
+    }
+
     public function test_link_crea_visita_cuando_la_pendiente_es_de_otra_fecha(): void
     {
         $admin = $this->adminUser();

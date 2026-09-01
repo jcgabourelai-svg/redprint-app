@@ -71,8 +71,16 @@ set_env() {
     printf '%s=%s\n' "${key}" "${val}" >> .env
 }
 
-set_env APP_URL          "http://${APP_HOST_PORT}"
-set_env FRONTEND_URL     "http://${APP_HOST_PORT}"
+# PUBLIC_URL (opcional, produccion detras de proxy con HTTPS): URL publica
+# real (esquema + dominio, sin puerto interno). Si no se define, se usa el
+# comportamiento por defecto http://host:puerto (desarrollo local).
+if [ -n "${PUBLIC_URL:-}" ]; then
+    set_env APP_URL      "${PUBLIC_URL}"
+    set_env FRONTEND_URL "${PUBLIC_URL}"
+else
+    set_env APP_URL          "http://${APP_HOST_PORT}"
+    set_env FRONTEND_URL     "http://${APP_HOST_PORT}"
+fi
 set_env SANCTUM_STATEFUL_DOMAINS "${SANCTUM_DOMAINS}"
 
 # vendor/: el volumen ./backend oculta el vendor instalado durante el build,

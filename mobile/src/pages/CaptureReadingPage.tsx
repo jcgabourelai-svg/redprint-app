@@ -10,7 +10,7 @@ import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, isNetworkError } from '../lib/api'
 import { SyncManager } from '../lib/sync'
 import { compressImage } from '../lib/photo'
-import { formatMoney, formatNumber, todayISO } from '../lib/format'
+import { formatDateLong, formatMoney, formatNumber, todayISO } from '../lib/format'
 import type { ReadingPayload, ReadingQueueItem } from '../lib/db'
 import type { StoreReadingResponse, Visit } from '../types/api'
 import {
@@ -346,6 +346,14 @@ export default function CaptureReadingPage() {
         onBack={backToPrinter}
       />
       <Page>
+        {visit.fecha_programada !== null && visit.fecha_programada > todayISO() && (
+          <div className="mb-4">
+            <Banner tone="warn">
+              Visita adelantada: está programada para el {formatDateLong(visit.fecha_programada)}. Si
+              el cliente no corresponde a esta visita, reprograma o crea una nueva.
+            </Banner>
+          </div>
+        )}
         {!online && (
           <div className="mb-4">
             <Banner tone="warn">

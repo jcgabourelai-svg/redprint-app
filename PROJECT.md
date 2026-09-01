@@ -306,6 +306,16 @@ toque una entidad con estado debe respetar (o ampliar explícitamente) su máqui
   **bloquea la regeneración** del scheduler; **CANCELADA** = cancelación contractual,
   **permite regenerar** si el contrato se reactiva.
 - `COMPLETADA`/`CANCELADA`/`OMITIDA` son inmutables (422 si se intenta modificar).
+- **Invariante de captura (D21)**: una visita solo admite captura de lecturas y cierre en
+  estados abiertos (`PENDIENTE`/`REPROGRAMADA`) y programada a **≤ 5 días en el futuro**
+  (`VisitService::assertCapturable`, única fuente de la regla). Capturar o completar una
+  visita más lejana quema el slot del ciclo (el guard anticopia del scheduler cuenta
+  estados `!= CANCELADA` sobre la fecha exacta). La UI muestra un aviso suave (banner)
+  para visitas 1–5 días adelantadas; el servidor decide (422 accionable).
+- **Primera visita de lectura a +1 periodo del inicio (D21)**: la primera visita LECTURA
+  de un contrato nace en la primera ocurrencia de la cadencia estrictamente posterior a
+  `fecha_inicio` (nunca el mismo día del alta). Contratos ya iniciados conservan el
+  aniversario desde hoy.
 
 ### Mantenimiento — `PROGRAMADA → COMPLETADA | CANCELADA` (soft deletes)
 
@@ -416,6 +426,11 @@ propuesto contradice una decisión consciente (malo) o corrige una omisión (bue
 | D14 | **Build de frontends que vacía `dist` sin borrar la carpeta** | Bind mount de nginx en Windows/OneDrive se rompe si cambia el inodo | No cambiar por `rm -rf dist` (detalles en AGENTS.md) |
 | D15 | **Registros de campo: staging móvil + regularización web diferida** | El contrato toca dinero y la impresora toca catálogo: no se dan de alta desde el móvil (extiende D4/D5). El hecho físico se captura como evidencia cruda y un admin la vincula a entidades reales en una sola transacción | Al vincular, instalación implícita con `lectura_inicial = contador capturado` (línea base, no se cobra histórico previo) y la salida de stock (kardex) nace solo ahí; los registros vinculados/descartados son inmutables. Anti-duplicidad: los registros LECTURA/ENTREGA **reutilizan por fecha exacta** la visita PENDIENTE programada del mismo contrato (`capturado_en->toDateString()`); los OTRO siempre crean visita nueva (tipo+motivo explícitos); el scheduler no regenera el slot consumido |
 | D16 | **Plan de modelos ≠ asignación: el plan nunca es fuente de cobro** | Separar la intención comercial (qué modelos se contratan, `contract_printer_plan`) del hecho físico (qué serie queda instalada, pivot `contract_printer`). La `tarifa_base` corre desde `fecha_inicio` aunque falte instalar; el binding diferido solo traslada cuándo empieza a contar páginas (desde la `lectura_inicial` capturada en campo) | Cualquier cálculo de dinero debe seguir leyendo el pivot (nunca el plan); el plan solo alimenta visibilidad (`pendientes_instalacion`, badge) y advertencias de estimación; `PUT /contracts/{id}/plan` solo en ACTIVO y replace-all |
+| D17 | **Estado de facturación por contrato con periodos mensuales fijos** | El socio necesita saber qué meses cobró por contrato, no solo qué lecturas facturó; los periodos derivan de `fecha_inicio` (mes calendario) | `ContractBillingService`/`GET /contracts/{id}/facturacion` es la fuente de periodos facturados vs pendientes |
+| D18 | **Batch de borradores: un borrador por periodo mensual, nunca fusionados** | Cada mes debe conservar su `tarifa_base` y `paginas_incluidas`; fusionar meses en una factura subcobra renta | La estimación advierte (no bloquea) cuando un rango manual cubre >~1.5 meses: tarifa única por factura |
+| D19 | **Ingresos atribuidos por contrato desde `invoice_details`** | La rentabilidad por contrato/impresora nace de lo realmente facturado, no de lecturas | Auto-derivación de `contrato_id` cuando el cálculo cubre exactamente un contrato |
+| D20 | **Bloqueo duro de periodos duplicados en facturas** | Evitar doble cobro del mismo periodo (mismo cliente + rangos solapados), incluso entre borradores | Re-chequeo dentro de la transacción de emisión/borrador (además del detector de solapamiento informativo) |
+| D21 | **Primera visita de lectura a +1 periodo; captura/cierre limitados a 5 días de adelanto** | Evita la lectura cero del día 1 (alta en/antes del inicio), la inconsistencia según la fecha de alta, y quemar el slot del ciclo completando/capturando una visita lejana | `VisitService::assertCapturable` es la única fuente de la regla (la consumen `ReadingService::captureReading` y `VisitService::complete`); la UI avisa con banner para visitas 1–5 días adelantadas; el servidor responde 422 accionable; entregas/mantenimiento quedan como follow-up |
 
 ---
 
@@ -676,6 +691,7 @@ rg -n "users.rol|->rol\b" backend/app/Services              # usos de columna le
 | Catálogo de permisos | `backend/config/permisos.php` (20 claves / 6 módulos) |
 | Registros de campo (staging + bandeja) | `backend/app/Services/FieldRecordService.php`, bandeja `frontend/src/pages/operations/fieldrecords/`, captura `mobile/src/pages/NewFieldRecordPage.tsx` |
 | Plan de modelos (D16) | `backend/app/Models/ContractPrinterPlan.php`, migración `2026_08_28_200000_create_contract_printer_plan_table.php`, `ContractService::updatePlan`, wizard `CreateContract.tsx` (paso 2), instalación con plan `mobile/src/pages/InstallationPage.tsx` |
+| Guardia de captura y primera visita a +1 periodo (D21) | `backend/app/Services/VisitService.php` (`assertCapturable`, `MAX_DIAS_ADELANTO`), `ReadingService::captureReading`, `VisitSchedulerService::computeNextVisitDate`, tests `ReadingVisitGuardTest`/`VisitSchedulingTest`, banners `mobile/src/pages/CaptureReadingPage.tsx` y `frontend/src/pages/operations/readings/CaptureReadingPage.tsx` |
 | Mocks del frontend | §10 + grep `mock` en `frontend/src/pages/finance`, `components/layout/Header.tsx` |
 | Bug legacy `users.rol` | `backend/app/Services/InventoryService.php::generateLowStockNotification` |
 | Resumen de cierre por `tipo` | `backend/app/Http/Controllers/PeriodController.php` |

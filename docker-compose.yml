@@ -6,6 +6,9 @@ x-app-env: &app-env
   # con el host:puerto correcto (el bug del puerto de Sanctum en SPA auth).
   APP_PORT: ${APP_PORT:-8080}
   APP_DOMAIN: ${APP_DOMAIN:-localhost}
+  # URL publica real (produccion tras proxy con HTTPS, ej: https://app.dom.com).
+  # Vacio en desarrollo: el entrypoint usa http://APP_DOMAIN:APP_PORT.
+  PUBLIC_URL: ${PUBLIC_URL:-}
   DB_HOST: database
   DB_PORT: "5432"
   DB_DATABASE: ${DB_DATABASE:-redprint}
@@ -91,7 +94,9 @@ services:
       POSTGRES_USER: ${DB_USERNAME:-redprint}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-secret}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      # Solo localhost: en produccion Caddy (proxy) es el unico punto de entrada
+      # publico; evita exponer Postgres/app directamente a Internet.
+      - "127.0.0.1:${DB_PORT:-5432}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
@@ -107,7 +112,9 @@ services:
     container_name: redprint-nginx
     restart: unless-stopped
     ports:
-      - "0.0.0.0:${APP_PORT:-8080}:80"
+      # Solo localhost: en produccion el trafico publico entra por Caddy (80/443).
+      # En desarrollo se accede igual via http://localhost:8080.
+      - "127.0.0.1:${APP_PORT:-8080}:80"
     volumes:
       - ./nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ./backend:/var/www/html:ro

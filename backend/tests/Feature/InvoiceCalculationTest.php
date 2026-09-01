@@ -247,6 +247,55 @@ class InvoiceCalculationTest extends TestCase
         $this->assertNotEmpty($result['advertencias']);
     }
 
+    public function test_periodo_multi_mes_agrega_advertencia_de_renta(): void
+    {
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+        $contract = $this->createContract($client, $user);
+        $printer = $this->createPrinter($user);
+        $this->attachPrinter($contract, $printer);
+        $this->createReading($contract, $printer, $user, '2026-06-05', 700);
+
+        $service = app(InvoiceCalculationService::class);
+        $result = $service->calcularEstimacion($client->id, '2026-06-01', '2026-07-31');
+
+        // Tarifa base y paginas incluidas se cobran una sola vez: 2 meses en
+        // una sola factura subcobrarian la renta del segundo mes.
+        $this->assertTrue(
+            collect($result['advertencias'])->contains(
+                fn ($a) => str_contains($a, 'la tarifa base y las páginas incluidas se aplican una sola vez por factura')
+            )
+        );
+    }
+
+    public function test_periodo_de_un_mes_calendario_no_agrega_advertencia_multi_mes(): void
+    {
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+        $contract = $this->createContract($client, $user);
+        $printer = $this->createPrinter($user);
+        $this->attachPrinter($contract, $printer);
+        $this->createReading($contract, $printer, $user, '2026-06-05', 700);
+
+        $service = app(InvoiceCalculationService::class);
+
+        // Mes calendario completo...
+        $result = $service->calcularEstimacion($client->id, '2026-06-01', '2026-06-30');
+        $this->assertFalse(
+            collect($result['advertencias'])->contains(
+                fn ($a) => str_contains($a, 'se aplican una sola vez por factura')
+            )
+        );
+
+        // ...y un rango de 31 dias exactos (jul 1 -> ago 1): ~1.0 mes, sin aviso.
+        $result = $service->calcularEstimacion($client->id, '2026-07-01', '2026-08-01');
+        $this->assertFalse(
+            collect($result['advertencias'])->contains(
+                fn ($a) => str_contains($a, 'se aplican una sola vez por factura')
+            )
+        );
+    }
+
     public function test_varios_contratos_suma_detalles_igual_monto_total(): void
     {
         $user = $this->createUser();

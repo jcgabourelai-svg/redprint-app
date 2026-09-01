@@ -222,6 +222,123 @@ class VisitCompletionTest extends TestCase
             ->assertJsonPath('message', 'La visita ya está completada');
     }
 
+    public function test_complete_sobre_visita_cancelada_devuelve_422(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $visit = $this->createVisit($contract, $admin, ['estado' => VisitStatus::CANCELADA]);
+
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [
+            'motivo_cierre' => 'Cierre tardío',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'La visita está CANCELADA y no puede completarse.');
+
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::CANCELADA->value,
+        ]);
+    }
+
+    public function test_complete_sobre_visita_omitida_devuelve_422(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $visit = $this->createVisit($contract, $admin, ['estado' => VisitStatus::OMITIDA]);
+
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [
+            'motivo_cierre' => 'Cierre tardío',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'La visita está OMITIDA y no puede completarse.');
+
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::OMITIDA->value,
+        ]);
+    }
+
+    public function test_complete_visita_programada_a_6_dias_devuelve_422(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $visit = $this->createVisit($contract, $admin, ['fecha_programada' => today()->addDays(6)]);
+
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [
+            'motivo_cierre' => 'Adelantado',
+        ])
+            ->assertStatus(422)
+            ->assertJsonPath(
+                'message',
+                'La visita está programada para el ' . today()->addDays(6)->format('d/m/Y') . ', a más de 5 días en el futuro. Reprograma la visita o crea una nueva.'
+            );
+
+        $this->assertDatabaseHas('visits', [
+            'id' => $visit->id,
+            'estado' => VisitStatus::PENDIENTE->value,
+        ]);
+    }
+
+    public function test_complete_visita_adelantada_a_3_dias_con_actividad_funciona(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $printer = $this->createPrinter($admin, ['estado' => PrinterStatus::RENTADA]);
+        $contract->printers()->attach($printer->id, [
+            'fecha_asignacion' => now(),
+            'lectura_inicial' => 1000,
+            'activa' => true,
+        ]);
+        $visit = $this->createVisit($contract, $admin, ['fecha_programada' => today()->addDays(3)]);
+
+        $this->postJson('/api/v1/readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'contrato_id' => $contract->id,
+            'fecha' => today()->toDateString(),
+            'valor_contador' => 1200,
+        ])->assertCreated();
+
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [])
+            ->assertOk()
+            ->assertJsonPath('estado', 'COMPLETADA');
+    }
+
+    public function test_complete_visita_vencida_con_lectura_sigue_ok(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+
+        [$client, $contract] = $this->createClientContract($admin);
+        $printer = $this->createPrinter($admin, ['estado' => PrinterStatus::RENTADA]);
+        $contract->printers()->attach($printer->id, [
+            'fecha_asignacion' => now(),
+            'lectura_inicial' => 1000,
+            'activa' => true,
+        ]);
+        $visit = $this->createVisit($contract, $admin, ['fecha_programada' => today()->subDays(3)]);
+
+        $this->postJson('/api/v1/readings', [
+            'visita_id' => $visit->id,
+            'impresora_id' => $printer->id,
+            'contrato_id' => $contract->id,
+            'fecha' => today()->toDateString(),
+            'valor_contador' => 1500,
+        ])->assertCreated();
+
+        $this->postJson("/api/v1/visits/{$visit->id}/complete", [])
+            ->assertOk()
+            ->assertJsonPath('estado', 'COMPLETADA');
+    }
+
     public function test_capturar_lecturas_no_completa_la_visita_automaticamente(): void
     {
         $admin = $this->adminUser();

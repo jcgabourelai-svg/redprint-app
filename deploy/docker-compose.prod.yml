@@ -1,0 +1,26 @@
+# Override de produccion (solo VPS): agrega Caddy como proxy inverso con
+# HTTPS automatico en :80/:443. No se usa en desarrollo local.
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: redprint-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp" # HTTP/3
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      nginx:
+        condition: service_started
+    networks:
+      - redprint
+
+volumes:
+  caddy_data:
+  caddy_config:
