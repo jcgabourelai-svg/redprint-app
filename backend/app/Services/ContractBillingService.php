@@ -5,12 +5,14 @@ namespace App\Services;
 use App\Enums\ContractStatus;
 use App\Models\Contract;
 use App\Models\Invoice;
+use App\Support\CicloFacturacion;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Estado de facturación de un contrato: periodos mensuales (D17) ya
- * facturados vs pendientes, con estimación por mes.
+ * Estado de facturacion de un contrato: ciclos mensuales por aniversario
+ * de fecha_inicio (D17) ya facturados vs pendientes, con estimacion por
+ * ciclo.
  */
 class ContractBillingService
 {
@@ -33,7 +35,7 @@ class ContractBillingService
             ->pluck('total', 'factura_id');
 
         $facturados = $facturas
-            ->sortByDesc(fn (Invoice $f) => $f->periodo_inicio->format('Y-m'))
+            ->sortByDesc(fn (Invoice $f) => $f->periodo_inicio->getTimestamp())
             ->values()
             ->map(fn (Invoice $f) => [
                 'factura_id' => (int) $f->id,
@@ -41,7 +43,7 @@ class ContractBillingService
                 'estado' => $f->estado->value,
                 'periodo_inicio' => $f->periodo_inicio->toDateString(),
                 'periodo_fin' => $f->periodo_fin->toDateString(),
-                'periodo' => $f->periodo_inicio->format('Y-m'),
+                'periodo' => $f->periodo_inicio->toDateString(),
                 'monto_contrato' => round((float) ($montosPorFactura[$f->id] ?? 0), 2),
                 'monto_total' => (float) $f->monto_total,
             ])
@@ -50,14 +52,14 @@ class ContractBillingService
         return [
             'facturados' => $facturados,
             'pendientes' => $this->periodosPendientes($contrato, $facturas),
-            'ultimo_periodo_cubierto' => $this->ultimoPeriodoCubierto($facturas)?->format('Y-m'),
+            'ultimo_periodo_cubierto' => $this->ultimoPeriodoCubierto($contrato, $facturas)?->toDateString(),
         ];
     }
 
     /**
-     * Regla de cobertura (conservadora por intersección): facturas del
+     * Regla de cobertura (conservadora por interseccion): facturas del
      * cliente que tocan el contrato por encabezado (mono-contrato) o por
-     * detalles (multi-contrato). Incluye borradores: también reservan.
+     * detalles (multi-contrato). Incluye borradores: tambien reservan.
      */
     private function facturasQueTocanElContrato(Contract $contrato)
     {
@@ -72,10 +74,10 @@ class ContractBillingService
     }
 
     /**
-     * Meses pendientes según reglas 2/3: desde max(mes de fecha_inicio, mes
-     * siguiente al último cubierto) hasta el mes actual (o el mes de
-     * fecha_fin si el contrato FINALIZÓ). CANCELADO/SUSPENDIDO no generan.
-     * Tope de 24 meses (mismo límite que el batch; acota el loop de cálculo).
+     * Ciclos pendientes según reglas 2/3: del ciclo 0 hasta el ciclo en
+     * curso (o el que contiene fecha_fin si el contrato FINALIZÓ; si
+     * fecha_fin es null → nada pendiente). CANCELADO/SUSPENDIDO no generan.
+     * Tope de 24 pendientes empaquetados (mismo límite que el batch).
      *
      * @param  iterable<Invoice>  $facturas
      * @return array<int, array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, advertencias: string[], actual: bool}>
@@ -86,61 +88,70 @@ class ContractBillingService
             return [];
         }
 
-        $hoy = Carbon::now()->startOfMonth();
+        $hoy = Carbon::now()->startOfDay();
 
-        $fin = $hoy->copy();
         if ($contrato->estado === ContractStatus::FINALIZADO) {
             if ($contrato->fecha_fin === null) {
                 return [];
             }
-            $finContrato = $contrato->fecha_fin->copy()->startOfMonth();
-            if ($finContrato->lt($fin)) {
-                $fin = $finContrato;
-            }
+            $referencia = $contrato->fecha_fin->copy()->startOfDay();
+        } else {
+            $referencia = $hoy;
         }
 
-        $primerPendiente = $contrato->fecha_inicio->copy()->startOfMonth();
-        $ultimoCubierto = $this->ultimoPeriodoCubierto($facturas);
-        if ($ultimoCubierto !== null && $ultimoCubierto->copy()->addMonth()->gt($primerPendiente)) {
-            $primerPendiente = $ultimoCubierto->copy()->addMonth();
-        }
+        $ultimoCiclo = CicloFacturacion::cicloQueContiene($contrato, $referencia);
 
         $pendientes = [];
-        $mes = $primerPendiente->copy();
-        while ($mes->lte($fin) && count($pendientes) < 24) {
-            $pendientes[] = $this->estimadoDelMes($contrato, $mes, $hoy);
-            $mes->addMonth();
+        for ($n = 0; $n <= $ultimoCiclo && count($pendientes) < 24; $n++) {
+            if ($this->cicloCubierto($contrato, $n, $facturas)) {
+                continue;
+            }
+            $pendientes[] = $this->estimadoDelCiclo($contrato, $n, $hoy);
         }
 
         return $pendientes;
     }
 
     /**
-     * Estimación de un mes pendiente reutilizando el motor de cálculo
-     * limitado al contrato. Bounds recortados a la vigencia (regla 3).
+     * Cobertura conservadora: un ciclo esta cubierto si alguna factura que
+     * toca el contrato intersecta su rango.
      *
-     * @return array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, advertencias: string[], actual: bool}
+     * @param  iterable<Invoice>  $facturas
      */
-    private function estimadoDelMes(Contract $contrato, Carbon $mes, Carbon $mesActual): array
+    private function cicloCubierto(Contract $contrato, int $n, $facturas): bool
     {
-        $periodoInicio = $mes->copy()->startOfMonth();
-        $inicioContrato = $contrato->fecha_inicio->copy()->startOfDay();
-        if ($inicioContrato->gt($periodoInicio)) {
-            $periodoInicio = $inicioContrato;
+        $bounds = CicloFacturacion::bounds($contrato, $n);
+        if ($bounds['inicio']->gt($bounds['fin'])) {
+            // Fuera de vigencia: nada que cubrir ni listar.
+            return true;
         }
 
-        $periodoFin = $mes->copy()->endOfMonth();
-        if ($contrato->fecha_fin !== null) {
-            $finContrato = $contrato->fecha_fin->copy()->endOfDay();
-            if ($finContrato->lt($periodoFin)) {
-                $periodoFin = $finContrato;
+        foreach ($facturas as $factura) {
+            $inicioFactura = $factura->periodo_inicio->copy()->startOfDay();
+            $finFactura = $factura->periodo_fin->copy()->startOfDay();
+            if ($inicioFactura->lte($bounds['fin']) && $finFactura->gte($bounds['inicio'])) {
+                return true;
             }
         }
 
+        return false;
+    }
+
+    /**
+     * Estimacion de un ciclo pendiente reutilizando el motor de calculo
+     * limitado al contrato. Bounds del ciclo ya recortados a la vigencia
+     * (regla 3).
+     *
+     * @return array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, advertencias: string[], actual: bool}
+     */
+    private function estimadoDelCiclo(Contract $contrato, int $ciclo, Carbon $hoy): array
+    {
+        $bounds = CicloFacturacion::bounds($contrato, $ciclo);
+
         $calc = $this->calculationService->calcularEstimacion(
             (int) $contrato->cliente_id,
-            $periodoInicio->toDateString(),
-            $periodoFin->toDateString(),
+            $bounds['inicio']->toDateString(),
+            $bounds['fin']->toDateString(),
             null,
             (int) $contrato->id,
             // Los pendientes de contratos no ACTIVO (FINALIZADO) son
@@ -149,22 +160,22 @@ class ContractBillingService
         );
 
         // El detector de solapamiento del motor es a nivel cliente: para los
-        // pendientes (por definición no cubiertos para ESTE contrato) las
+        // pendientes (por definicion no cubiertos para ESTE contrato) las
         // advertencias de solape con otros contratos son ruido.
         $advertencias = array_values(array_filter(
             $calc['advertencias'],
             fn (string $a) => !str_contains($a, 'se solapa'),
         ));
 
-        $actual = $mes->equalTo($mesActual);
+        $actual = CicloFacturacion::cicloQueContiene($contrato, $hoy) === $ciclo;
         if ($actual) {
-            $advertencias[] = 'Periodo en curso: las lecturas del mes aún están incompletas.';
+            $advertencias[] = 'Periodo en curso: las lecturas del ciclo aún están incompletas.';
         }
 
         return [
-            'periodo' => $mes->format('Y-m'),
-            'periodo_inicio' => $periodoInicio->toDateString(),
-            'periodo_fin' => $periodoFin->toDateString(),
+            'periodo' => $bounds['inicio']->toDateString(),
+            'periodo_inicio' => $bounds['inicio']->toDateString(),
+            'periodo_fin' => $bounds['fin']->toDateString(),
             'lecturas' => collect($calc['detalles'])->filter(fn ($d) => !empty($d['lectura_id']))->count(),
             'paginas' => (int) ($calc['contratos'][0]['total_paginas'] ?? 0),
             'monto_estimado' => (float) $calc['monto_total'],
@@ -174,21 +185,22 @@ class ContractBillingService
     }
 
     /**
-     * Último mes cubierto por cualquier factura que toca el contrato (el
-     * rango de una factura cubre todos los meses que intersecta).
+     * Inicio del ultimo ciclo cubierto por cualquier factura que toca el
+     * contrato (conservadora por interseccion: el ultimo ciclo que alguna
+     * factura toca). Null si ninguna factura toca un ciclo del contrato.
      *
      * @param  iterable<Invoice>  $facturas
      */
-    private function ultimoPeriodoCubierto($facturas): ?Carbon
+    private function ultimoPeriodoCubierto(Contract $contrato, $facturas): ?Carbon
     {
-        $ultimo = null;
+        $ultimoN = null;
         foreach ($facturas as $factura) {
-            $mesFin = $factura->periodo_fin->copy()->startOfMonth();
-            if ($ultimo === null || $mesFin->gt($ultimo)) {
-                $ultimo = $mesFin;
+            $n = CicloFacturacion::cicloQueContiene($contrato, $factura->periodo_fin->copy()->startOfDay());
+            if ($n >= 0 && ($ultimoN === null || $n > $ultimoN)) {
+                $ultimoN = $n;
             }
         }
 
-        return $ultimo;
+        return $ultimoN === null ? null : CicloFacturacion::inicioDeCiclo($contrato, $ultimoN);
     }
 }

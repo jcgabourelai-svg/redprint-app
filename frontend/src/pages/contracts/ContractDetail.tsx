@@ -91,11 +91,14 @@ function getEsquemaFormula(contract: Contract): string {
   return `monto = ${formatCurrency(contract.tarifa_base)} + max(0, páginas - ${contract.paginas_incluidas}) × ${formatCurrency(contract.costo_por_pagina_excedente)}`
 }
 
-/** "2026-08" -> "Agosto 2026" (mes calendario de facturación, D17). */
-function periodoLabel(periodo: string): string {
-  const [anio, mes] = periodo.split('-').map(Number)
-  const nombre = new Date(anio, mes - 1, 1).toLocaleDateString('es-MX', { month: 'long' })
-  return `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`
+/** Rango de un ciclo de facturación: "20 ago – 19 sep 2026" (D17, por aniversario). */
+function cicloLabel(inicio: string, fin: string): string {
+  const i = new Date(`${inicio}T00:00:00`)
+  const f = new Date(`${fin}T00:00:00`)
+  const fmt = (d: Date) => d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
+  return i.getFullYear() === f.getFullYear()
+    ? `${fmt(i)} – ${fmt(f)} ${f.getFullYear()}`
+    : `${fmt(i)} ${i.getFullYear()} – ${fmt(f)} ${f.getFullYear()}`
 }
 
 export default function ContractDetail() {
@@ -800,7 +803,7 @@ export default function ContractDetail() {
                                           {f.numero_factura ?? `Borrador #${f.factura_id}`}
                                         </p>
                                         <p className="text-xs text-muted-foreground">
-                                          Periodo {periodoLabel(f.periodo)} · {formatDate(f.periodo_inicio)} – {formatDate(f.periodo_fin)}
+                                          Periodo {cicloLabel(f.periodo_inicio, f.periodo_fin)}
                                         </p>
                                       </div>
                                     </div>
@@ -1233,10 +1236,10 @@ export default function ContractDetail() {
       >
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Se crearán <strong>{seleccion.length}</strong> borrador(es), uno por periodo
-            seleccionado. Cada borrador reserva las lecturas de su periodo y <strong>no es
+            Se crearán <strong>{seleccion.length}</strong> borrador(es), uno por ciclo
+            seleccionado. Cada borrador reserva las lecturas de su ciclo y <strong>no es
             cuenta por cobrar</strong> hasta emitirse con el folio del PAC. No se fusionan
-            periodos: cada mes conserva sus páginas incluidas y su tarifa base.
+            ciclos: cada uno conserva sus páginas incluidas y su tarifa base.
           </p>
 
           <div className="space-y-2">
@@ -1259,7 +1262,7 @@ export default function ContractDetail() {
                   />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <p className="text-sm font-medium">{periodoLabel(p.periodo)}</p>
+                      <p className="text-sm font-medium">{cicloLabel(p.periodo_inicio, p.periodo_fin)}</p>
                       {p.actual && <Badge variant="info">en curso</Badge>}
                       {p.advertencias.length > 0 && (
                         <span

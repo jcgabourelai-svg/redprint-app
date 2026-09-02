@@ -80,15 +80,16 @@ export interface BilledInvoice {
   estado: InvoiceStatus
   periodo_inicio: string
   periodo_fin: string
-  /** Mes calendario derivado (AAAA-MM). */
+  /** Fecha de inicio del rango facturado (AAAA-MM-DD). */
   periodo: string
   /** Suma de los detalles del contrato en esa factura. */
   monto_contrato: number
   monto_total: number
 }
 
-/** Mes pendiente de facturar de un contrato (periodos fijos, D17). */
+/** Ciclo pendiente de facturar de un contrato (periodos por aniversario, D17). */
 export interface PendingPeriod {
+  /** Fecha de inicio del ciclo (AAAA-MM-DD). */
   periodo: string
   periodo_inicio: string
   periodo_fin: string
@@ -103,6 +104,7 @@ export interface PendingPeriod {
 export interface ContractBillingStatus {
   facturados: BilledInvoice[]
   pendientes: PendingPeriod[]
+  /** Fecha de inicio del último ciclo cubierto (AAAA-MM-DD) o null. */
   ultimo_periodo_cubierto: string | null
 }
 

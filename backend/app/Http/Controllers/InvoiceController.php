@@ -97,8 +97,9 @@ class InvoiceController extends Controller
     }
 
     /**
-     * Batch de borradores por contrato: un borrador por periodo mensual
-     * seleccionado (D17/D18). All-or-nothing: 201 con todo o 422 con nada.
+     * Batch de borradores por contrato: un borrador por ciclo de
+     * aniversario seleccionado (D17/D18). All-or-nothing: 201 con todo o
+     * 422 con nada.
      */
     public function storeDraftBatch(StoreInvoiceDraftBatchRequest $request): JsonResponse
     {

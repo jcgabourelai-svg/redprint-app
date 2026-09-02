@@ -54,7 +54,7 @@ export function useCreateInvoiceDraft() {
 }
 
 /**
- * Batch de borradores por contrato: un borrador por periodo mensual
+ * Batch de borradores por contrato: un borrador por ciclo de aniversario
  * seleccionado (D17/D18). All-or-nothing en servidor.
  */
 export function useCreateInvoiceDraftBatch() {

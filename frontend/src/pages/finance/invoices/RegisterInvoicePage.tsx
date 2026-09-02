@@ -24,8 +24,8 @@ export default function RegisterInvoicePage() {
     numero_factura: '',
     cliente_id: '',
     fecha_emision: new Date().toISOString().split('T')[0],
-    // Modo borrador: periodo fijo mensual (D17); los bounds se derivan del mes.
-    periodo_mes: '',
+    // Rango libre capturado directamente (D17): tipicamente el ciclo del
+    // contrato (del día de inicio al día previo al siguiente aniversario).
     periodo_inicio: '',
     periodo_fin: '',
     monto_total: '',
@@ -55,22 +55,6 @@ export default function RegisterInvoicePage() {
     label: `${c.razon_social}${c.rfc ? ` (${c.rfc})` : ''}`,
   }))
   const selectedClientLabel = clients.find((c) => c.id === form.cliente_id)?.razon_social
-
-  // Mes calendario (YYYY-MM) -> bounds periodo_inicio/periodo_fin (D17).
-  const handleMesChange = (value: string) => {
-    if (!value) {
-      setForm({ ...form, periodo_mes: '', periodo_inicio: '', periodo_fin: '' })
-      return
-    }
-    const [anio, mes] = value.split('-').map(Number)
-    const ultimoDia = new Date(anio, mes, 0).getDate()
-    setForm({
-      ...form,
-      periodo_mes: value,
-      periodo_inicio: `${value}-01`,
-      periodo_fin: `${value}-${String(ultimoDia).padStart(2, '0')}`,
-    })
-  }
 
   const calcMonto = calculo.data?.monto_total ?? 0
   const effectiveMonto = isLecturasMode ? calcMonto : Number(form.monto_total) || 0
@@ -177,9 +161,6 @@ export default function RegisterInvoicePage() {
                           destino: 'borrador',
                           metodo_calculo: 'lecturas',
                           monto_total: '',
-                          // Un rango libre tecleado no es un mes calendario:
-                          // se descarta al volver a modo borrador (D17).
-                          ...(form.periodo_mes ? {} : { periodo_inicio: '', periodo_fin: '' }),
                         })}
                         className="text-primary mt-1"
                       />
@@ -250,27 +231,14 @@ export default function RegisterInvoicePage() {
                   </div>
                 )}
 
-                {isDraftMode ? (
-                  <div>
-                    <label className="block text-sm font-medium text-muted-foreground mb-1">Periodo (mes calendario) *</label>
-                    <Input
-                      type="month"
-                      value={form.periodo_mes}
-                      onChange={(e) => handleMesChange(e.target.value)}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Los borradores se facturan por mes calendario: el inicio y el fin del
-                      periodo se derivan del mes seleccionado.
-                    </p>
-                  </div>
-                ) : (
+                <div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-muted-foreground mb-1">Periodo inicio *</label>
                       <Input
                         type="date"
                         value={form.periodo_inicio}
-                        onChange={(e) => setForm({ ...form, periodo_inicio: e.target.value, periodo_mes: '' })}
+                        onChange={(e) => setForm({ ...form, periodo_inicio: e.target.value })}
                       />
                     </div>
                     <div>
@@ -278,11 +246,17 @@ export default function RegisterInvoicePage() {
                       <Input
                         type="date"
                         value={form.periodo_fin}
-                        onChange={(e) => setForm({ ...form, periodo_fin: e.target.value, periodo_mes: '' })}
+                        onChange={(e) => setForm({ ...form, periodo_fin: e.target.value })}
                       />
                     </div>
                   </div>
-                )}
+                  {isDraftMode && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      El rango del periodo se captura directamente (típicamente el ciclo del
+                      contrato: del día de inicio al día previo al siguiente aniversario).
+                    </p>
+                  )}
+                </div>
 
                 {!isDraftMode && (
                   <div>
@@ -457,7 +431,7 @@ export default function RegisterInvoicePage() {
                         </>
                       )}
                       <p>Cliente: <strong>{selectedClientLabel}</strong></p>
-                      <p>Periodo: <strong>{isDraftMode ? form.periodo_mes : `${form.periodo_inicio} - ${form.periodo_fin}`}</strong></p>
+                      <p>Periodo: <strong>{form.periodo_inicio} - {form.periodo_fin}</strong></p>
                       <p>Método de cálculo: <strong>{isLecturasMode ? 'Según lecturas' : 'Manual'}</strong></p>
                       <p>Monto total: <strong>{formatCurrency(effectiveMonto)}</strong></p>
                       {isLecturasMode && calculo.data && calculo.data.detalles.length > 0 && (

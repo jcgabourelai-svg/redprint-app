@@ -24,11 +24,14 @@
         <env name="CACHE_STORE" value="array"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
-        <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_HOST" value="database"/>
-        <env name="DB_PORT" value="5432"/>
-        <env name="DB_DATABASE" value="redprint_test"/>
-        <env name="DB_USERNAME" value="redprint"/>
-        <env name="DB_PASSWORD" value="secret"/>
+        <!-- force="true": el contenedor define DB_* en su entorno (docker-compose)
+             y sin force PHPUnit no sobreescribe variables ya presentes, con lo que
+             los tests apuntarian a la BD de desarrollo. -->
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_HOST" value="database" force="true"/>
+        <env name="DB_PORT" value="5432" force="true"/>
+        <env name="DB_DATABASE" value="redprint_test" force="true"/>
+        <env name="DB_USERNAME" value="redprint" force="true"/>
+        <env name="DB_PASSWORD" value="secret" force="true"/>
     </php>
 </phpunit>

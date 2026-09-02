@@ -407,14 +407,14 @@ class InvoiceContractBillingTest extends TestCase
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contratoA);
 
-            $this->assertEquals('2026-06', $estado['ultimo_periodo_cubierto']);
+            $this->assertEquals('2026-06-01', $estado['ultimo_periodo_cubierto']);
             $this->assertCount(1, $estado['facturados']);
             $this->assertEquals(600.0, $estado['facturados'][0]['monto_contrato']);
             $this->assertEquals('PAGADA', $estado['facturados'][0]['estado']);
 
-            // Pendientes desde julio (sin junio).
+            // Pendientes desde el ciclo de julio (sin el ciclo de junio).
             $periodos = array_column($estado['pendientes'], 'periodo');
-            $this->assertEquals(['2026-07', '2026-08', '2026-09'], $periodos);
+            $this->assertEquals(['2026-07-01', '2026-08-01', '2026-09-01'], $periodos);
             $this->assertTrue($estado['pendientes'][2]['actual']);
         } finally {
             Carbon::setTestNow();
@@ -437,9 +437,9 @@ class InvoiceContractBillingTest extends TestCase
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
 
-            $this->assertEquals('2026-06', $estado['ultimo_periodo_cubierto']);
+            $this->assertEquals('2026-06-01', $estado['ultimo_periodo_cubierto']);
             $this->assertEquals($factura->id, $estado['facturados'][0]['factura_id']);
-            $this->assertNotContains('2026-06', array_column($estado['pendientes'], 'periodo'));
+            $this->assertNotContains('2026-06-01', array_column($estado['pendientes'], 'periodo'));
         } finally {
             Carbon::setTestNow();
         }
@@ -462,10 +462,10 @@ class InvoiceContractBillingTest extends TestCase
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
 
-            // Conservador por intersección: junio Y julio quedan cubiertos.
-            $this->assertEquals('2026-07', $estado['ultimo_periodo_cubierto']);
+            // Conservador por intersección: los ciclos de junio Y julio quedan cubiertos.
+            $this->assertEquals('2026-07-01', $estado['ultimo_periodo_cubierto']);
             $pendientes = array_column($estado['pendientes'], 'periodo');
-            $this->assertEquals(['2026-08', '2026-09'], $pendientes);
+            $this->assertEquals(['2026-08-01', '2026-09-01'], $pendientes);
         } finally {
             Carbon::setTestNow();
         }
@@ -476,16 +476,17 @@ class InvoiceContractBillingTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-09-01'));
 
         try {
-            // Contrato inicia el 15 de junio: primer pendiente 15..30 de junio.
+            // Contrato inicia el 15 de junio: ciclos 15..14 del mes siguiente.
             [$user, $client, $contrato] = $this->setupClientWithContract([
                 'fecha_inicio' => '2026-06-15',
             ]);
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
 
-            $this->assertEquals('2026-06', $estado['pendientes'][0]['periodo']);
+            $periodos = array_column($estado['pendientes'], 'periodo');
+            $this->assertEquals(['2026-06-15', '2026-07-15', '2026-08-15'], $periodos);
             $this->assertEquals('2026-06-15', $estado['pendientes'][0]['periodo_inicio']);
-            $this->assertEquals('2026-06-30', $estado['pendientes'][0]['periodo_fin']);
+            $this->assertEquals('2026-07-14', $estado['pendientes'][0]['periodo_fin']);
         } finally {
             Carbon::setTestNow();
         }
@@ -507,7 +508,7 @@ class InvoiceContractBillingTest extends TestCase
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
 
             $pendientes = array_column($estado['pendientes'], 'periodo');
-            $this->assertEquals(['2026-06', '2026-07', '2026-08'], $pendientes);
+            $this->assertEquals(['2026-06-01', '2026-07-01', '2026-08-01'], $pendientes);
             $ultimo = $estado['pendientes'][2];
             $this->assertEquals('2026-08-01', $ultimo['periodo_inicio']);
             $this->assertEquals('2026-08-10', $ultimo['periodo_fin']);
@@ -518,7 +519,10 @@ class InvoiceContractBillingTest extends TestCase
 
     public function test_estado_facturacion_suspendido_sin_pendientes_pero_lista_facturados(): void
     {
-        [$user, $client, $contrato] = $this->setupClientWithContract(['estado' => ContractStatus::SUSPENDIDO]);
+        [$user, $client, $contrato] = $this->setupClientWithContract([
+            'estado' => ContractStatus::SUSPENDIDO,
+            'fecha_inicio' => '2026-06-01',
+        ]);
 
         $factura = $this->createInvoice($user, $client, [
             'contrato_id' => $contrato->id,
@@ -531,7 +535,7 @@ class InvoiceContractBillingTest extends TestCase
 
         $this->assertEmpty($estado['pendientes']);
         $this->assertCount(1, $estado['facturados']);
-        $this->assertEquals('2026-06', $estado['ultimo_periodo_cubierto']);
+        $this->assertEquals('2026-06-01', $estado['ultimo_periodo_cubierto']);
     }
 
     public function test_estado_facturacion_incluye_borradores_en_cubiertos(): void
@@ -549,13 +553,13 @@ class InvoiceContractBillingTest extends TestCase
 
         $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
 
-        // El borrador reserva el mes: no vuelve a aparecer como pendiente.
+        // El borrador reserva el ciclo: no vuelve a aparecer como pendiente.
         $this->assertNotContains(
-            today()->subMonth()->format('Y-m'),
+            today()->subMonth()->startOfMonth()->toDateString(),
             array_column($estado['pendientes'], 'periodo'),
         );
         $this->assertEquals(
-            today()->subMonth()->format('Y-m'),
+            today()->subMonth()->startOfMonth()->toDateString(),
             $estado['ultimo_periodo_cubierto'],
         );
         $this->assertEquals($borrador->id, $estado['facturados'][0]['factura_id']);
@@ -587,7 +591,7 @@ class InvoiceContractBillingTest extends TestCase
                 'fecha_inicio' => '2026-05-01',
             ]);
 
-            // Una lectura por mes saltado (jun, jul, ago) + una del mes en
+            // Una lectura por ciclo saltado (jun, jul, ago) + una del ciclo en
             // curso que NO se selecciona (queda pendiente, caso 4).
             $readingJun = $this->createReading($contrato, $printer, $user, '2026-06-05', 700);
             $this->createReading($contrato, $printer, $user, '2026-07-05', 800);
@@ -597,11 +601,11 @@ class InvoiceContractBillingTest extends TestCase
             $resultados = app(InvoiceService::class)->createDraftBatch([
                 'cliente_id' => $client->id,
                 'contrato_id' => $contrato->id,
-                'periodos' => ['2026-06', '2026-07', '2026-08'],
+                'periodos' => ['2026-06-01', '2026-07-01', '2026-08-01'],
             ], $user);
 
             $this->assertCount(3, $resultados);
-            $this->assertEquals(['2026-06', '2026-07', '2026-08'], array_keys($resultados));
+            $this->assertEquals(['2026-06-01', '2026-07-01', '2026-08-01'], array_keys($resultados));
 
             foreach ($resultados as $periodo => $r) {
                 $invoice = $r['invoice'];
@@ -617,16 +621,16 @@ class InvoiceContractBillingTest extends TestCase
             }
 
             // 1500 + 200*0.01 = 1502 (jun); 1500+300*0.01=1503 (jul); 1504 (ago).
-            $this->assertEquals(1502.0, (float) $resultados['2026-06']['invoice']->monto_total);
-            $this->assertEquals(1503.0, (float) $resultados['2026-07']['invoice']->monto_total);
-            $this->assertEquals(1504.0, (float) $resultados['2026-08']['invoice']->monto_total);
-            $this->assertNotNull($resultados['2026-06']['invoice']->details->firstWhere('lectura_id', $readingJun->id));
+            $this->assertEquals(1502.0, (float) $resultados['2026-06-01']['invoice']->monto_total);
+            $this->assertEquals(1503.0, (float) $resultados['2026-07-01']['invoice']->monto_total);
+            $this->assertEquals(1504.0, (float) $resultados['2026-08-01']['invoice']->monto_total);
+            $this->assertNotNull($resultados['2026-06-01']['invoice']->details->firstWhere('lectura_id', $readingJun->id));
 
             // La lectura de septiembre queda pendiente (no se pierde).
             $this->assertEquals(0, InvoiceDetail::where('lectura_id', $readingSep->id)->count());
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
-            $this->assertContains('2026-09', array_column($estado['pendientes'], 'periodo'));
+            $this->assertContains('2026-09-01', array_column($estado['pendientes'], 'periodo'));
         } finally {
             Carbon::setTestNow();
         }
@@ -644,12 +648,12 @@ class InvoiceContractBillingTest extends TestCase
             $resultados = app(InvoiceService::class)->createDraftBatch([
                 'cliente_id' => $client->id,
                 'contrato_id' => $contrato->id,
-                'periodos' => ['2026-06', '2026-07', '2026-08'],
+                'periodos' => ['2026-06-01', '2026-07-01', '2026-08-01'],
             ], $user);
 
             $this->assertCount(3, $resultados);
             foreach ($resultados as $r) {
-                // D18: cada mes conserva su tarifa base (una línea por mes).
+                // D18: cada ciclo conserva su tarifa base (una línea por ciclo).
                 $this->assertEquals(1500.0, (float) $r['invoice']->monto_total);
                 $this->assertEquals(1, $r['invoice']->details->count());
                 $this->assertNull($r['invoice']->details->first()->lectura_id);
@@ -680,12 +684,12 @@ class InvoiceContractBillingTest extends TestCase
                 app(InvoiceService::class)->createDraftBatch([
                     'cliente_id' => $client->id,
                     'contrato_id' => $contratoA->id,
-                    'periodos' => ['2026-06', '2026-07'],
+                    'periodos' => ['2026-06-01', '2026-07-01'],
                 ], $user);
                 $this->fail('El batch con julio duplicado debio lanzar BusinessRuleException.');
             } catch (BusinessRuleException $e) {
                 // Mensaje que identifica el periodo fallido.
-                $this->assertStringContainsString('El periodo 2026-07', $e->getMessage());
+                $this->assertStringContainsString('El periodo 2026-07-01', $e->getMessage());
                 $this->assertStringContainsString($existente->numero_factura, $e->getMessage());
             }
 
@@ -714,11 +718,11 @@ class InvoiceContractBillingTest extends TestCase
                 app(InvoiceService::class)->createDraftBatch([
                     'cliente_id' => $client->id,
                     'contrato_id' => $contrato->id,
-                    'periodos' => ['2026-06', '2026-07'],
+                    'periodos' => ['2026-06-01', '2026-07-01'],
                 ], $user);
                 $this->fail('El batch con julio sin monto debio lanzar BusinessRuleException.');
             } catch (BusinessRuleException $e) {
-                $this->assertStringContainsString('El periodo 2026-07', $e->getMessage());
+                $this->assertStringContainsString('El periodo 2026-07-01', $e->getMessage());
                 $this->assertStringContainsString('no genera monto', $e->getMessage());
             }
 
@@ -843,14 +847,14 @@ class InvoiceContractBillingTest extends TestCase
             $response = $this->postJson('/api/v1/invoices/draft-batch', [
                 'cliente_id' => $client->id,
                 'contrato_id' => $contrato->id,
-                'periodos' => ['2026-06', '2026-07'],
+                'periodos' => ['2026-06-01', '2026-07-01'],
             ]);
 
             $response->assertCreated();
             $this->assertCount(2, $response->json('data'));
             $this->assertEquals(1500.0, (float) $response->json('data.0.monto_total'));
             $this->assertArrayHasKey('advertencias', $response->json());
-            $this->assertArrayHasKey('2026-06', $response->json('advertencias'));
+            $this->assertArrayHasKey('2026-06-01', $response->json('advertencias'));
         } finally {
             Carbon::setTestNow();
         }
@@ -867,8 +871,57 @@ class InvoiceContractBillingTest extends TestCase
             $this->postJson('/api/v1/invoices/draft-batch', [
                 'cliente_id' => $client->id,
                 'contrato_id' => $contrato->id,
-                'periodos' => ['2026-12'],
+                'periodos' => ['2026-12-01'],
             ])->assertStatus(422);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_escenario_ciclo_veinte_con_lectura_dentro_del_ciclo_en_curso(): void
+    {
+        // Caso real del usuario: contrato iniciado 20-ago, hoy 2-sep con
+        // lectura del 2-sep -> un solo pendiente (el ciclo 20-ago..19-sep).
+        Carbon::setTestNow(Carbon::parse('2026-09-02'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupClientWithContractAndPrinter([
+                'fecha_inicio' => '2026-08-20',
+            ]);
+            $reading = $this->createReading($contrato, $printer, $user, '2026-09-02', 700);
+
+            $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
+
+            $this->assertCount(1, $estado['pendientes']);
+            $pendiente = $estado['pendientes'][0];
+            $this->assertEquals('2026-08-20', $pendiente['periodo']);
+            $this->assertEquals('2026-08-20', $pendiente['periodo_inicio']);
+            $this->assertEquals('2026-09-19', $pendiente['periodo_fin']);
+            $this->assertTrue($pendiente['actual']);
+            $this->assertEquals(1, $pendiente['lecturas']);
+
+            $resultados = app(InvoiceService::class)->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user);
+            $borrador = $resultados['2026-08-20']['invoice'];
+            $this->assertEquals('2026-08-20', $borrador->periodo_inicio->toDateString());
+            $this->assertEquals('2026-09-19', $borrador->periodo_fin->toDateString());
+            $this->assertNotNull($borrador->details->firstWhere('lectura_id', $reading->id));
+
+            $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
+            $this->assertEmpty($estado['pendientes']);
+            $this->assertEquals('2026-08-20', $estado['ultimo_periodo_cubierto']);
+
+            // D20 sin cambios: repetir el mismo ciclo se bloquea duro.
+            $this->expectException(BusinessRuleException::class);
+            $this->expectExceptionMessage('No se puede facturar dos veces');
+            app(InvoiceService::class)->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user);
         } finally {
             Carbon::setTestNow();
         }

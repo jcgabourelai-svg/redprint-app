@@ -8,6 +8,7 @@ use App\Models\Client;
 use App\Models\Contract;
 use App\Models\Invoice;
 use App\Models\User;
+use App\Support\CicloFacturacion;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -159,12 +160,13 @@ class InvoiceService
     }
 
     /**
-     * Batch de borradores por contrato con periodos fijos mensuales (D17/D18):
-     * UNA transaccion all-or-nothing; un borrador por periodo, nunca
-     * fusionados (cada mes conserva su tarifa base y sus paginas incluidas).
+     * Batch de borradores por contrato con ciclos de aniversario (D17/D18):
+     * UNA transaccion all-or-nothing; un borrador por ciclo, nunca
+     * fusionados (cada ciclo conserva su tarifa base y sus paginas
+     * incluidas).
      *
      * @param  array{cliente_id: int, contrato_id: int, periodos: string[], notas?: string|null}
-     * @return array<string, array{invoice: Invoice, advertencias: array}>por periodo Y-m
+     * @return array<string, array{invoice: Invoice, advertencias: array}> por inicio de ciclo Y-m-d
      */
     public function createDraftBatch(array $data, User $creator): array
     {
@@ -172,45 +174,41 @@ class InvoiceService
         $contrato = Contract::findOrFail((int) $data['contrato_id']);
         $notas = $data['notas'] ?? null;
 
-        // Meses en orden cronologico (D18: un borrador por mes).
-        $meses = collect($data['periodos'])
+        // Inicios de ciclo en orden cronologico (D18: un borrador por ciclo).
+        $inicios = collect($data['periodos'])
             ->unique()
-            ->map(fn (string $periodo) => Carbon::createFromFormat('Y-m', $periodo)->startOfMonth())
-            ->sortBy(fn (Carbon $mes) => $mes->format('Y-m'))
+            ->map(fn (string $periodo) => Carbon::createFromFormat('Y-m-d', $periodo)->startOfDay())
+            ->sortBy(fn (Carbon $inicio) => $inicio->format('Y-m-d'))
             ->values();
 
-        return DB::transaction(function () use ($cliente, $contrato, $notas, $creator, $meses) {
+        return DB::transaction(function () use ($cliente, $contrato, $notas, $creator, $inicios) {
             $resultados = [];
 
-            foreach ($meses as $mes) {
-                // Regla 3: bounds del mes calendario recortados a la vigencia
-                // del contrato (primer/ultimo periodo parcial).
-                $inicio = $mes->copy()->startOfMonth();
-                $inicioContrato = $contrato->fecha_inicio->copy()->startOfDay();
-                if ($inicioContrato->gt($inicio)) {
-                    $inicio = $inicioContrato;
+            foreach ($inicios as $inicio) {
+                if (!CicloFacturacion::esInicioDeCiclo($contrato, $inicio)) {
+                    throw new BusinessRuleException(sprintf(
+                        'El periodo %s no es un inicio de ciclo del contrato.',
+                        $inicio->toDateString(),
+                    ));
                 }
 
-                $fin = $mes->copy()->endOfMonth();
-                if ($contrato->fecha_fin !== null) {
-                    $finContrato = $contrato->fecha_fin->copy()->endOfDay();
-                    if ($finContrato->lt($fin)) {
-                        $fin = $finContrato;
-                    }
-                }
+                // Regla 3: bounds del ciclo recortados a la vigencia del
+                // contrato (primer/ultimo ciclo parcial).
+                $ciclo = CicloFacturacion::cicloQueContiene($contrato, $inicio);
+                ['inicio' => $inicioCiclo, 'fin' => $finCiclo] = CicloFacturacion::bounds($contrato, $ciclo);
 
-                if ($inicio->gt($fin)) {
+                if ($inicioCiclo->gt($finCiclo)) {
                     throw new BusinessRuleException(sprintf(
                         'El periodo %s esta fuera de la vigencia del contrato.',
-                        $mes->format('Y-m'),
+                        $inicio->toDateString(),
                     ));
                 }
 
                 try {
                     [$invoice, $advertencias] = $this->crearBorradorInterno(
                         $cliente,
-                        $inicio->toDateString(),
-                        $fin->toDateString(),
+                        $inicioCiclo->toDateString(),
+                        $finCiclo->toDateString(),
                         (int) $contrato->id,
                         $notas,
                         $creator,
@@ -220,12 +218,12 @@ class InvoiceService
                     // la excepcion aborta y revierte toda la transaccion.
                     throw new BusinessRuleException(sprintf(
                         'El periodo %s no se pudo facturar: %s',
-                        $mes->format('Y-m'),
+                        $inicio->toDateString(),
                         $e->getMessage(),
                     ));
                 }
 
-                $resultados[$mes->format('Y-m')] = [
+                $resultados[$inicio->toDateString()] = [
                     'invoice' => $invoice->fresh(['client', 'details']),
                     'advertencias' => $advertencias,
                 ];
