@@ -5,7 +5,9 @@ namespace App\Services;
 use App\Enums\ContractStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
+use App\Models\ContractPrinter;
 use App\Models\Invoice;
+use App\Models\Printer;
 use App\Models\Reading;
 use App\Support\CicloFacturacion;
 use Illuminate\Support\Carbon;
@@ -156,15 +158,42 @@ class InvoiceCalculationService
         }
 
         // Ruta compartida (wizard / rangos libres): lecturas del periodo por
-        // impresoras activas. En la ruta ciclo-alineado se salta: las lecturas
-        // del contrato se derivan por hueco en infoCicloAlineado.
+        // ventanas de asignacion. En la ruta ciclo-alineado se salta: las
+        // lecturas del contrato se derivan por hueco en infoCicloAlineado.
         $lecturasConContrato = collect();
         if ($cicloAlineado === null) {
-            // IDs de impresoras activas de todos los contratos del cliente.
-            $idsImpresoras = $contratos->flatMap->activePrinters->pluck('id')->unique()->values()->all();
+            // Motor por ventanas: impresoras de todas las asignaciones del
+            // contrato cuya ventana [fecha_asignacion, fecha_liberacion ?? ∞]
+            // intersecta el periodo. Una lectura de cierre creada al retirar la
+            // impresora a mitad de periodo ya no se excluye del cálculo (P2).
+            $ventanas = ContractPrinter::whereIn('contrato_id', $contratos->modelKeys())
+                ->where('fecha_asignacion', '<=', $periodoFin)
+                ->where(function ($query) use ($periodoInicio) {
+                    $query->whereNull('fecha_liberacion')
+                        ->orWhere('fecha_liberacion', '>=', $periodoInicio);
+                })
+                ->get();
+
+            $idsImpresoras = $ventanas->pluck('impresora_id')->unique()->values()->all();
 
             if (empty($idsImpresoras)) {
                 $advertencias[] = 'Los contratos activos del cliente no tienen impresoras asignadas.';
+            }
+
+            // Brechas: ventanas liberadas sin lectura de cierre que tocan el
+            // periodo -> el tramo "última lectura -> retiro" no se factura.
+            $seriesPorImpresora = $ventanas->isEmpty()
+                ? collect()
+                : Printer::whereIn('id', $ventanas->pluck('impresora_id')->unique())
+                    ->pluck('num_serie', 'id');
+            $codigosPorContrato = $contratos->pluck('codigo_negocio', 'id');
+
+            foreach ($ventanas->where('activa', false)->whereNull('lectura_final') as $ventana) {
+                $advertencias[] = sprintf(
+                    'La impresora %s fue liberada del contrato %s sin lectura de cierre; las páginas desde su última lectura no se facturan.',
+                    $seriesPorImpresora[$ventana->impresora_id] ?? ('#' . $ventana->impresora_id),
+                    $codigosPorContrato[$ventana->contrato_id] ?? ('#' . $ventana->contrato_id),
+                );
             }
 
             // Lecturas candidatas del periodo para esas impresoras.

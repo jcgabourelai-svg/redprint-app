@@ -57,6 +57,12 @@ export default function MaintenanceDetail() {
   const [editTrabajo, setEditTrabajo] = useState('')
   const [editCosto, setEditCosto] = useState('')
 
+  const [showCompleteModal, setShowCompleteModal] = useState(false)
+  const [completeError, setCompleteError] = useState('')
+  const [completeTrabajo, setCompleteTrabajo] = useState('')
+  const [completeCosto, setCompleteCosto] = useState('')
+  const [completeContador, setCompleteContador] = useState('')
+
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
@@ -88,6 +94,34 @@ export default function MaintenanceDetail() {
   const openDeleteModal = () => {
     setDeleteError('')
     setShowDeleteModal(true)
+  }
+
+  const openCompleteModal = () => {
+    setCompleteError('')
+    setCompleteTrabajo(orderData.trabajo_realizado || '')
+    setCompleteCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
+    setCompleteContador('')
+    setShowCompleteModal(true)
+  }
+
+  const handleCompleteSubmit = async () => {
+    setCompleteError('')
+    const contador = completeContador.trim() === '' ? null : parseInt(completeContador)
+    if (contador !== null && (!Number.isFinite(contador) || contador < 0)) {
+      setCompleteError('El contador al terminar debe ser un número entero no negativo')
+      return
+    }
+    try {
+      await completeMutation.mutateAsync({
+        id: orderId,
+        trabajo_realizado: completeTrabajo || undefined,
+        costo_mano_obra: completeCosto === '' ? undefined : parseFloat(completeCosto),
+        contador_impresora: contador,
+      })
+      setShowCompleteModal(false)
+    } catch (err) {
+      setCompleteError(parseApiError(err))
+    }
   }
 
   const handleDeleteSubmit = async () => {
@@ -146,7 +180,7 @@ export default function MaintenanceDetail() {
                 Editar
               </Button>
               {orderData.estado === 'PROGRAMADA' && (
-                <Button size="sm" onClick={() => completeMutation.mutate({ id: orderId })}>
+                <Button size="sm" onClick={openCompleteModal}>
                   Completar
                 </Button>
               )}
@@ -467,6 +501,76 @@ export default function MaintenanceDetail() {
               loading={updateMutation.isPending}
             >
               Guardar Cambios
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        title="Completar Orden de Mantenimiento"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Trabajo Realizado
+            </label>
+            <textarea
+              value={completeTrabajo}
+              onChange={(e) => setCompleteTrabajo(e.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+              placeholder="Describe el trabajo realizado..."
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Costo de Mano de Obra ($)
+            </label>
+            <Input
+              type="number"
+              step="0.01"
+              value={completeCosto}
+              onChange={(e) => setCompleteCosto(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Contador al terminar (opcional)
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={completeContador}
+              onChange={(e) => setCompleteContador(e.target.value)}
+              placeholder={`Contador registrado: ${orderData.printer?.contador_actual ?? '-'}`}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Actualiza el contador de la serie con las páginas de pruebas del taller: así no se
+              facturan al cliente en el re-ingreso. No puede ser menor al registrado.
+            </p>
+          </div>
+          {completeError && (
+            <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+              {completeError}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button
+              variant="secondary"
+              onClick={() => setShowCompleteModal(false)}
+              disabled={completeMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleCompleteSubmit}
+              loading={completeMutation.isPending}
+            >
+              Completar Orden
             </Button>
           </div>
         </div>

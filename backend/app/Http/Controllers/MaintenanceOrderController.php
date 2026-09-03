@@ -87,6 +87,7 @@ class MaintenanceOrderController extends Controller
             $request->validate([
                 'trabajo_realizado' => 'nullable|string',
                 'costo_mano_obra' => 'nullable|numeric|min:0',
+                'contador_impresora' => 'nullable|integer|min:0',
             ]),
             $request->user()
         );

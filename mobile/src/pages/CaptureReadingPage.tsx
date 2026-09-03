@@ -114,8 +114,16 @@ export default function CaptureReadingPage() {
     () => (valorNum !== null && printer ? valorNum < printer.lectura_anterior : false),
     [valorNum, printer]
   )
-  const showJustification = anomaly || forceJustification
-  const pagesPreview = anomaly || valorNum === null || !printer ? null : valorNum - printer.lectura_anterior
+  // Salto positivo atípico (umbral del contrato, cuando hay historial
+  // suficiente): el backend exigirá justificación al guardar.
+  const umbralExcedido = useMemo(() => {
+    if (valorNum === null || !printer || anomaly) return false
+    if (printer.umbral_anomalia == null) return false
+    return valorNum - printer.lectura_anterior > printer.umbral_anomalia
+  }, [valorNum, printer, anomaly])
+  const showJustification = anomaly || umbralExcedido || forceJustification
+  const pagesPreview =
+    anomaly || valorNum === null || !printer ? null : valorNum - printer.lectura_anterior
   const canSubmit =
     canLecturas &&
     valorNum !== null &&
@@ -410,6 +418,16 @@ export default function CaptureReadingPage() {
           </div>
         )}
 
+        {umbralExcedido && (
+          <div className="mb-4">
+            <Banner tone="warn">
+              ⚠️ El salto de {formatNumber(pagesPreview ?? 0)} páginas supera el umbral esperado
+              para este contrato ({formatNumber(printer.umbral_anomalia!)}). Verifica el contador;
+              se pedirá una justificación para registrar la lectura.
+            </Banner>
+          </div>
+        )}
+
         {pagesPreview !== null && pagesPreview > 0 && (
           <Card className="mb-4 bg-blue-50">
             <p className="text-sm font-semibold text-blue-800">
@@ -422,9 +440,13 @@ export default function CaptureReadingPage() {
         {showJustification && (
           <Field
             label="Justificación de anomalía *"
-            help="Explica la causa (cambio de tambor/toner, reinicio de contador, error de lectura...)"
+            help={
+              anomaly
+                ? 'Explica la causa (cambio de tambor/toner, reinicio de contador, error de lectura...)'
+                : 'El salto de páginas es atípico para este contrato: explica la causa (impresión masiva puntual, dígito extra en la captura...)'
+            }
             error={
-              anomaly && justificacion.trim().length > 0 && justificacion.trim().length < 5
+              (anomaly || umbralExcedido) && justificacion.trim().length > 0 && justificacion.trim().length < 5
                 ? 'La justificación debe tener al menos 5 caracteres'
                 : null
             }

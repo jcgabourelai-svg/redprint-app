@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Services\ReadingService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -36,6 +37,10 @@ class VisitResource extends JsonResource
                     'fecha' => $h->fecha?->toIso8601String(),
                     'alias' => $h->datos_adicionales['alias'] ?? null,
                     'color' => $h->datos_adicionales['color'] ?? null,
+                    'assignment_id' => $h->datos_adicionales['assignment_id'] ?? null,
+                    'motivo_liberacion' => $h->datos_adicionales['motivo_liberacion'] ?? null,
+                    'lectura_final' => $h->datos_adicionales['lectura_final'] ?? null,
+                    'reemplaza_a' => $h->datos_adicionales['reemplaza_a'] ?? null,
                     'impresora' => $h->printer ? [
                         'id' => $h->printer->id,
                         'marca' => $h->printer->marca,
@@ -55,8 +60,12 @@ class VisitResource extends JsonResource
             return [];
         }
 
+        // Umbral de anomalía positiva del contrato (compartido por todas sus
+        // impresoras): permite el preview client-side del salto atípico.
+        $umbralAnomalia = app(ReadingService::class)->umbralAnomalia($contract->id !== null ? (int) $contract->id : null);
+
         return $contract->activePrinters
-            ->map(function ($printer) use ($contract) {
+            ->map(function ($printer) use ($contract, $umbralAnomalia) {
                 $latest = $printer->relationLoaded('latestReading') ? $printer->latestReading : null;
                 $lecturaAnterior = $latest
                     ? (int) $latest->valor_contador - (int) ($latest->paginas_periodo ?? 0)
@@ -73,6 +82,7 @@ class VisitResource extends JsonResource
                     'contrato_id' => (string) $contract->id,
                     'lectura_anterior' => (int) $lecturaAnterior,
                     'fecha_lectura_anterior' => $latest?->fecha?->toDateString(),
+                    'umbral_anomalia' => $umbralAnomalia,
                 ];
             })
             ->values()

@@ -12,6 +12,7 @@ use App\Models\ContractPrinter;
 use App\Models\ContractPrinterPlan;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
+use App\Models\Reading;
 use App\Models\User;
 use App\Models\Visit;
 use App\Support\PrinterColorPalette;
@@ -23,7 +24,8 @@ class ContractService
 {
     public function __construct(
         private CodeGeneratorService $codeGenerator,
-        private VisitSchedulerService $visitScheduler
+        private VisitSchedulerService $visitScheduler,
+        private ReadingService $readingService
     ) {}
 
     public function create(array $data, User $creator): Contract
@@ -121,7 +123,16 @@ class ContractService
             $this->visitScheduler->cancelFutureVisits($contract);
 
             foreach ($contract->activePrinters as $printer) {
-                $this->releasePrinter($contract, $printer, $warehouseId, $user);
+                $this->releasePrinter(
+                    $contract,
+                    $printer,
+                    $warehouseId,
+                    $user,
+                    null,
+                    null,
+                    'FIN_CONTRATO',
+                    'Liberación por finalización de contrato'
+                );
             }
 
             return $contract->fresh(['client', 'printers']);
@@ -136,7 +147,16 @@ class ContractService
             $this->visitScheduler->cancelFutureVisits($contract);
 
             foreach ($contract->activePrinters as $printer) {
-                $this->releasePrinter($contract, $printer, $warehouseId, $user);
+                $this->releasePrinter(
+                    $contract,
+                    $printer,
+                    $warehouseId,
+                    $user,
+                    null,
+                    null,
+                    'CANCELACION_CONTRATO',
+                    'Liberación por cancelación de contrato'
+                );
             }
 
             return $contract->fresh(['client', 'printers']);
@@ -182,8 +202,16 @@ class ContractService
         }
     }
 
-    public function assignPrinter(Contract $contract, int $printerId, ?int $initialReading, User $user, ?int $visitaId = null, ?string $alias = null, ?string $color = null): void
-    {
+    public function assignPrinter(
+        Contract $contract,
+        int $printerId,
+        ?int $initialReading,
+        User $user,
+        ?int $visitaId = null,
+        ?string $alias = null,
+        ?string $color = null,
+        ?int $reemplazaA = null
+    ): void {
         $printer = Printer::findOrFail($printerId);
 
         // D-D: sin lectura explícita, la línea base es el contador físico de
@@ -202,8 +230,26 @@ class ContractService
             throw new BusinessRuleException('La impresora ya esta asignada a un contrato activo');
         }
 
-        $alias = $this->normalizarAlias($alias);
-        $color = $this->resolverColor($contract, $color);
+        // Enlace de sustitución: la fila a reemplazar debe ser una ventana
+        // LIBERADA de este mismo contrato. Al usarlo, alias y color se heredan
+        // de la fila reemplazada salvo valores explícitos.
+        $reemplazada = null;
+        if ($reemplazaA !== null) {
+            $reemplazada = ContractPrinter::where('id', $reemplazaA)
+                ->where('contrato_id', $contract->id)
+                ->first();
+
+            if ($reemplazada === null) {
+                throw new BusinessRuleException('La asignación a reemplazar no pertenece a este contrato');
+            }
+
+            if ($reemplazada->activa === true) {
+                throw new BusinessRuleException('La asignación a reemplazar debe estar liberada');
+            }
+        }
+
+        $alias = $this->normalizarAlias($alias ?? $reemplazada?->alias);
+        $color = $this->resolverColor($contract, $color ?? $reemplazada?->color);
 
         if ($alias !== null) {
             $aliasDuplicado = ContractPrinter::where('contrato_id', $contract->id)
@@ -223,6 +269,7 @@ class ContractService
                 'activa' => true,
                 'alias' => $alias,
                 'color' => $color,
+                'reemplaza_a' => $reemplazada?->id,
             ]);
         } catch (UniqueConstraintViolationException) {
             // Backstop: el indice parcial (contrato_id, alias) WHERE activa
@@ -249,6 +296,9 @@ class ContractService
         if ($color !== null) {
             $datosAdicionales['color'] = $color;
         }
+        if ($reemplazada !== null) {
+            $datosAdicionales['reemplaza_a'] = $reemplazada->id;
+        }
 
         PrinterHistory::create([
             'impresora_id' => $printer->id,
@@ -260,45 +310,121 @@ class ContractService
         ]);
     }
 
-    public function releasePrinter(Contract $contract, Printer $printer, int $warehouseId, User $user, ?int $visitaId = null): void
-    {
-        $filaActiva = ContractPrinter::where('contrato_id', $contract->id)
-            ->where('impresora_id', $printer->id)
-            ->where('activa', true)
-            ->first(['alias', 'color']);
+    /**
+     * Libera la ventana ACTIVA de la impresora en el contrato. Con
+     * $lecturaFinal se crea la lectura de cierre (delta contra la baseline de
+     * la ventana) para que el tramo "última lectura facturada -> retiro" no
+     * se pierda; sin ella se exige $justificacionSinLectura y la brecha
+     * queda visible como advertencia en el cálculo de facturación.
+     */
+    public function releasePrinter(
+        Contract $contract,
+        Printer $printer,
+        int $warehouseId,
+        User $user,
+        ?int $visitaId = null,
+        ?int $lecturaFinal = null,
+        ?string $motivoLiberacion = null,
+        ?string $justificacionSinLectura = null
+    ): void {
+        DB::transaction(function () use (
+            $contract, $printer, $warehouseId, $user, $visitaId,
+            $lecturaFinal, $motivoLiberacion, $justificacionSinLectura
+        ) {
+            // Fila activa por id: con el unique parcial pueden coexistir varias
+            // filas históricas del mismo par; updateExistingPivot re-estamparía
+            // fecha_liberacion en filas viejas.
+            $filaActiva = ContractPrinter::where('contrato_id', $contract->id)
+                ->where('impresora_id', $printer->id)
+                ->where('activa', true)
+                ->orderByDesc('id')
+                ->first();
 
-        $alias = $filaActiva?->alias;
-        $color = $filaActiva?->color;
+            if ($filaActiva === null) {
+                throw new BusinessRuleException('La impresora no tiene una asignación activa en este contrato');
+            }
 
-        $contract->printers()->updateExistingPivot($printer->id, [
-            'fecha_liberacion' => now(),
-            'activa' => false,
-        ]);
+            $alias = $filaActiva->alias;
+            $color = $filaActiva->color;
 
-        $printer->update([
-            'estado' => PrinterStatus::EN_ALMACEN,
-            'almacen_id' => $warehouseId,
-        ]);
+            $pivotUpdate = [
+                'fecha_liberacion' => now(),
+                'activa' => false,
+                'motivo_liberacion' => $motivoLiberacion,
+                'justificacion_sin_lectura' => $justificacionSinLectura,
+            ];
 
-        $datosAdicionales = ['contrato_id' => $contract->id, 'almacen_destino' => $warehouseId];
-        if ($visitaId) {
-            $datosAdicionales['visita_id'] = $visitaId;
-        }
-        if ($alias !== null) {
-            $datosAdicionales['alias'] = $alias;
-        }
-        if ($color !== null) {
-            $datosAdicionales['color'] = $color;
-        }
+            if ($lecturaFinal !== null) {
+                $previousReading = $this->readingService->getPreviousReading($printer->id, $contract->id);
 
-        PrinterHistory::create([
-            'impresora_id' => $printer->id,
-            'tipo_evento' => 'LIBERACION_CONTRATO',
-            'descripcion' => "Liberada del contrato {$contract->codigo_negocio}",
-            'datos_adicionales' => $datosAdicionales,
-            'socio_id' => $user->id,
-            'fecha' => now(),
-        ]);
+                if ($lecturaFinal < $previousReading) {
+                    throw new BusinessRuleException(
+                        "La lectura de cierre ({$lecturaFinal}) es menor que la última lectura registrada ({$previousReading}). Verifica el contador."
+                    );
+                }
+
+                Reading::create([
+                    'visita_id' => $visitaId,
+                    'impresora_id' => $printer->id,
+                    'contrato_id' => $contract->id,
+                    'fecha' => today(),
+                    'valor_contador' => $lecturaFinal,
+                    'paginas_periodo' => $lecturaFinal - $previousReading,
+                    'socio_id' => $user->id,
+                    'creado_por' => $user->id,
+                    'fecha_creacion' => now(),
+                ]);
+
+                $pivotUpdate['lectura_final'] = $lecturaFinal;
+                $pivotUpdate['fecha_lectura_final'] = today();
+
+                // El contador físico de la serie avanza al valor de cierre.
+                $printer->update([
+                    'contador_actual' => $lecturaFinal,
+                    'estado' => PrinterStatus::EN_ALMACEN,
+                    'almacen_id' => $warehouseId,
+                ]);
+            } else {
+                $printer->update([
+                    'estado' => PrinterStatus::EN_ALMACEN,
+                    'almacen_id' => $warehouseId,
+                ]);
+            }
+
+            $filaActiva->update($pivotUpdate);
+
+            $datosAdicionales = [
+                'contrato_id' => $contract->id,
+                'almacen_destino' => $warehouseId,
+                'assignment_id' => $filaActiva->id,
+            ];
+            if ($visitaId) {
+                $datosAdicionales['visita_id'] = $visitaId;
+            }
+            if ($alias !== null) {
+                $datosAdicionales['alias'] = $alias;
+            }
+            if ($color !== null) {
+                $datosAdicionales['color'] = $color;
+            }
+            if ($motivoLiberacion !== null) {
+                $datosAdicionales['motivo_liberacion'] = $motivoLiberacion;
+            }
+            if ($lecturaFinal !== null) {
+                $datosAdicionales['lectura_final'] = $lecturaFinal;
+            } elseif ($justificacionSinLectura !== null) {
+                $datosAdicionales['justificacion_sin_lectura'] = $justificacionSinLectura;
+            }
+
+            PrinterHistory::create([
+                'impresora_id' => $printer->id,
+                'tipo_evento' => 'LIBERACION_CONTRATO',
+                'descripcion' => "Liberada del contrato {$contract->codigo_negocio}",
+                'datos_adicionales' => $datosAdicionales,
+                'socio_id' => $user->id,
+                'fecha' => now(),
+            ]);
+        });
     }
 
     /**

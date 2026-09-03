@@ -33,6 +33,33 @@ function ordenarPorPlan(printers: Printer[], planModelIds: Set<number>): Printer
     })
 }
 
+/** Sustitución pendiente en esta visita: liberación por falla aún sin reemplazo. */
+function sustitucionPendiente(
+  cambios: Visit['cambios_impresoras']
+): { assignmentId: number; serie: string | null; alias: string | null; color: string | null } | null {
+  if (!cambios || cambios.length === 0) return null
+
+  const liberaciones = cambios.filter(
+    (c) => c.evento === 'LIBERACION_CONTRATO' && c.motivo_liberacion === 'SUSTITUCION_FALLA'
+  )
+  const asignaciones = cambios.filter((c) => c.evento === 'ASIGNACION_CONTRATO')
+
+  for (let i = liberaciones.length - 1; i >= 0; i--) {
+    const l = liberaciones[i]
+    if (l.assignment_id == null) continue
+    const yaReemplazada = asignaciones.some((a) => a.reemplaza_a === l.assignment_id)
+    if (!yaReemplazada) {
+      return {
+        assignmentId: l.assignment_id,
+        serie: l.impresora?.num_serie ?? null,
+        alias: l.alias ?? null,
+        color: l.color ?? null,
+      }
+    }
+  }
+  return null
+}
+
 export default function InstallationPage() {
   const { id } = useParams()
   const visitId = Number(id)
@@ -55,6 +82,7 @@ export default function InstallationPage() {
   const [alias, setAlias] = useState('')
   const [aliasSugerido, setAliasSugerido] = useState<string | null>(null)
   const [colorHeredado, setColorHeredado] = useState<string | null>(null)
+  const [reemplazaA, setReemplazaA] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -67,22 +95,33 @@ export default function InstallationPage() {
         if (!cancelled) {
           setVisit(res.data)
           setVisitError(null)
-          // Rotacion de flota: la impresora retirada en esta visita libera su
-          // "puesto"; se sugiere su alias para la impresora que la reemplaza
-          // y se reenvia su color (herencia best-effort, invisible al usuario).
-          const cambios = res.data.cambios_impresoras
-          const liberacion = cambios?.find(
-            (c) => c.evento === 'LIBERACION_CONTRATO' && c.alias
-          )
-          if (liberacion?.alias) {
-            setAliasSugerido(liberacion.alias)
-            setAlias((actual) => actual || liberacion.alias || '')
+          // Sustitución en esta visita: la liberación por falla aún sin
+          // reemplazo enlaza esta instalación con el puesto liberado
+          // (alias/color heredados server-side vía reemplaza_a).
+          const pendiente = sustitucionPendiente(res.data.cambios_impresoras)
+          if (pendiente) {
+            setReemplazaA(pendiente.assignmentId)
+            if (pendiente.alias) {
+              setAliasSugerido(pendiente.alias)
+              setAlias((actual) => actual || pendiente.alias || '')
+            }
+            if (pendiente.color) {
+              setColorHeredado(pendiente.color)
+            }
+          } else {
+            // Rotación de flota (fallback best-effort, sin enlace).
+            const cambios = res.data.cambios_impresoras
+            const liberacion = cambios?.find(
+              (c) => c.evento === 'LIBERACION_CONTRATO' && c.alias
+            )
+            if (liberacion?.alias) {
+              setAliasSugerido(liberacion.alias)
+              setAlias((actual) => actual || liberacion.alias || '')
+            }
+            setColorHeredado(
+              cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.color)?.color ?? null
+            )
           }
-          // El color del puesto se hereda con independencia del alias: el
-          // backend congela ambos por separado en el evento de liberacion.
-          setColorHeredado(
-            cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.color)?.color ?? null
-          )
         }
       })
       .catch((e) => {
@@ -149,6 +188,7 @@ export default function InstallationPage() {
         visita_id: visitId,
         alias: alias.trim() || null,
         color: colorHeredado,
+        reemplaza_a: reemplazaA,
       })
       toast.success('Impresora asignada al contrato')
       goBackTo(`/visita/${visitId}`)
@@ -162,6 +202,11 @@ export default function InstallationPage() {
   const title = visit ? (visit.cliente_nombre ?? 'Instalación') : 'Instalación'
 
   const planModelIds = new Set((plan ?? []).map((row) => row.modelo_id))
+  const sustitucionSerie =
+    reemplazaA !== null
+      ? (visit?.cambios_impresoras?.find((c) => c.assignment_id === reemplazaA)?.impresora
+          ?.num_serie ?? null)
+      : null
 
   const handleSelect = (p: Printer) => {
     setSelectedId(p.id)
@@ -206,6 +251,17 @@ export default function InstallationPage() {
 
         {canInstall && contratoId && (
           <>
+            {reemplazaA !== null && (
+              <div className="mb-4">
+                <Banner tone="info">
+                  <span className="font-semibold">Sustitución de equipo:</span> esta instalación
+                  reemplaza
+                  {sustitucionSerie ? ` a la serie ${sustitucionSerie}` : ' al equipo retirado'}
+                  {aliasSugerido ? ` (${aliasSugerido})` : ''}. Se heredarán su alias y color.
+                </Banner>
+              </div>
+            )}
+
             {(plan?.length ?? 0) > 0 && (
               <div className="mb-4">
                 <Banner tone="info">

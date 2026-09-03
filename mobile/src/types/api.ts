@@ -33,6 +33,8 @@ export interface VisitPrinter {
   contrato_id: string
   lectura_anterior: number
   fecha_lectura_anterior: string | null
+  /** Umbral de salto atípico del contrato (null = sin historial suficiente). */
+  umbral_anomalia?: number | null
 }
 
 export interface Reading {
@@ -77,11 +79,24 @@ export interface MaintenanceOrder {
   } | null
 }
 
+export type MotivoLiberacion =
+  | 'SUSTITUCION_FALLA'
+  | 'FIN_CONTRATO'
+  | 'CANCELACION_CONTRATO'
+  | 'ROTACION'
+  | 'OTRO'
+
 export interface PrinterChange {
   evento: string
   fecha: string | null
   alias?: string | null
   color?: string | null
+  /** Id de la fila contract_printer afectada (para enlazar la sustitución). */
+  assignment_id?: number | null
+  motivo_liberacion?: MotivoLiberacion | null
+  lectura_final?: number | null
+  /** En eventos ASIGNACION_CONTRATO: assignment_id de la ventana que reemplaza. */
+  reemplaza_a?: number | null
   impresora: {
     id: number
     marca: string

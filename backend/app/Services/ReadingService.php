@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\BusinessRuleException;
 use App\Models\Reading;
 use App\Models\Printer;
+use App\Models\ContractPrinter;
 use App\Models\User;
 use App\Models\Visit;
 use Illuminate\Support\Facades\DB;
@@ -37,6 +38,20 @@ class ReadingService
             $isAnomaly = $pagesConsumed < 0;
             if ($isAnomaly && empty($data['justificacion_anomalia'])) {
                 throw new BusinessRuleException('Lectura anomala requiere justificacion');
+            }
+
+            // Salto positivo atipico: con historial suficiente (>=3 lecturas
+            // del contrato) y delta > max(2 x mayor delta historico, 5000) se
+            // exige justificacion y se marca como anomalia (probable captura
+            // con digitos extras o unidad equivocada).
+            $umbral = $this->umbralAnomalia($data['contrato_id'] ?? null);
+            if (!$isAnomaly && $umbral !== null && $pagesConsumed > $umbral) {
+                $isAnomaly = true;
+                if (empty($data['justificacion_anomalia'])) {
+                    throw new BusinessRuleException(
+                        "El salto de {$pagesConsumed} paginas supera el umbral esperado ({$umbral}); requiere justificacion"
+                    );
+                }
             }
 
             $data['paginas_periodo'] = max(0, $pagesConsumed);
@@ -76,8 +91,58 @@ class ReadingService
         return $results;
     }
 
-    private function getPreviousReading(int $printerId, ?int $contractId): int
+    /**
+     * Umbral de anomalía positiva para el contrato: max(2 x mayor delta
+     * histórico, 5000), solo si el contrato ya tiene >= 3 lecturas (sin
+     * historial suficiente cualquier delta es plausible). Null = sin umbral.
+     */
+    public function umbralAnomalia(?int $contratoId): ?int
     {
+        if ($contratoId === null) {
+            return null;
+        }
+
+        $previas = Reading::where('contrato_id', $contratoId)->count();
+        if ($previas < 3) {
+            return null;
+        }
+
+        $maxHistorico = (int) Reading::where('contrato_id', $contratoId)->max('paginas_periodo');
+
+        return max(2 * $maxHistorico, 5000);
+    }
+
+    /**
+     * Baseline por asignación (ventana): si existe un pivot ACTIVO del par
+     * (impresora, contrato), la baseline es la última lectura del par con
+     * fecha >= fecha_asignacion de esa ventana, o su lectura_inicial si no
+     * hay ninguna. Así, al re-ingresar una impresora tras taller, las páginas
+     * de pruebas del taller no se facturan. Sin asignación activa (lecturas
+     * sin contrato, talleres) se conserva el comportamiento histórico.
+     */
+    public function getPreviousReading(int $printerId, ?int $contractId): int
+    {
+        if ($contractId !== null) {
+            $pivot = ContractPrinter::where('impresora_id', $printerId)
+                ->where('contrato_id', $contractId)
+                ->where('activa', true)
+                ->orderByDesc('id')
+                ->first(['id', 'fecha_asignacion', 'lectura_inicial']);
+
+            if ($pivot !== null) {
+                $lastReading = Reading::where('impresora_id', $printerId)
+                    ->where('contrato_id', $contractId)
+                    ->where('fecha', '>=', $pivot->fecha_asignacion->toDateString())
+                    ->orderBy('fecha', 'desc')
+                    ->orderBy('id', 'desc')
+                    ->first(['valor_contador']);
+
+                return $lastReading !== null
+                    ? (int) $lastReading->valor_contador
+                    : (int) ($pivot->lectura_inicial ?? 0);
+            }
+        }
+
         $query = Reading::where('impresora_id', $printerId);
 
         if ($contractId) {
@@ -87,7 +152,7 @@ class ReadingService
         $lastReading = $query->orderBy('fecha', 'desc')->orderBy('id', 'desc')->first();
 
         if (!$lastReading) {
-            $pivot = \DB::table('contract_printer')
+            $pivot = DB::table('contract_printer')
                 ->where('impresora_id', $printerId)
                 ->where('activa', true)
                 ->value('lectura_inicial');

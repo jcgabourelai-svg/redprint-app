@@ -102,6 +102,7 @@ class ContractController extends Controller
             // Solo la key invalida es 422; un color ocupado nunca es error
             // (fallback automatico al primer color libre dentro del servicio).
             'color' => ['nullable', 'string', Rule::in(PrinterColorPalette::KEYS)],
+            'reemplaza_a' => 'nullable|integer|exists:contract_printer,id',
         ]);
 
         $visita = isset($data['visita_id'])
@@ -115,7 +116,8 @@ class ContractController extends Controller
             $request->user(),
             $visita?->id,
             $data['alias'] ?? null,
-            $data['color'] ?? null
+            $data['color'] ?? null,
+            isset($data['reemplaza_a']) ? (int) $data['reemplaza_a'] : null
         );
 
         // Sin autocierre: la visita queda abierta para seguir registrando
@@ -166,6 +168,13 @@ class ContractController extends Controller
             'impresora_id' => 'required|exists:printers,id',
             'almacen_destino_id' => 'required|exists:warehouses,id',
             'visita_id' => 'nullable|exists:visits,id',
+            'lectura_final' => 'nullable|integer|min:0',
+            'motivo_liberacion' => [
+                'required',
+                'string',
+                Rule::in(['SUSTITUCION_FALLA', 'FIN_CONTRATO', 'CANCELACION_CONTRATO', 'ROTACION', 'OTRO']),
+            ],
+            'justificacion_sin_lectura' => 'required_without:lectura_final|nullable|string|max:2000',
         ]);
 
         $visita = isset($data['visita_id'])
@@ -178,7 +187,10 @@ class ContractController extends Controller
             $printer,
             $data['almacen_destino_id'],
             $request->user(),
-            $visita?->id
+            $visita?->id,
+            isset($data['lectura_final']) ? (int) $data['lectura_final'] : null,
+            $data['motivo_liberacion'],
+            $data['justificacion_sin_lectura'] ?? null
         );
 
         // Sin autocierre (misma regla que la instalación): cierre explícito.

@@ -240,6 +240,8 @@ class ContractPrinterAliasTest extends TestCase
         $this->postJson("/api/v1/contracts/{$contractId}/release-printer", [
             'impresora_id' => $p1->id,
             'almacen_destino_id' => $warehouse->id,
+            'motivo_liberacion' => 'ROTACION',
+            'justificacion_sin_lectura' => 'Rotación programada de flota',
         ])->assertOk();
 
         // La fila liberada conserva el alias como evidencia historica.
@@ -304,6 +306,8 @@ class ContractPrinterAliasTest extends TestCase
         $this->postJson("/api/v1/contracts/{$contractId}/release-printer", [
             'impresora_id' => $p1->id,
             'almacen_destino_id' => $warehouse->id,
+            'motivo_liberacion' => 'OTRO',
+            'justificacion_sin_lectura' => 'Liberación administrativa',
         ])->assertOk();
 
         $assignment = ContractPrinter::where('contrato_id', $contractId)

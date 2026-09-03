@@ -1,6 +1,21 @@
 export { ContractStatus, VisitFrequency } from './enums'
 import { ContractStatus, VisitFrequency } from './enums'
 
+export type MotivoLiberacion =
+  | 'SUSTITUCION_FALLA'
+  | 'FIN_CONTRATO'
+  | 'CANCELACION_CONTRATO'
+  | 'ROTACION'
+  | 'OTRO'
+
+export const MotivoLiberacionLabels: Record<MotivoLiberacion, string> = {
+  SUSTITUCION_FALLA: 'Sustitución por falla',
+  FIN_CONTRATO: 'Fin de contrato',
+  CANCELACION_CONTRATO: 'Cancelación de contrato',
+  ROTACION: 'Rotación de flota',
+  OTRO: 'Otro',
+}
+
 export interface PrinterAssignment {
   id: string
   impresora_id: string
@@ -13,6 +28,13 @@ export interface PrinterAssignment {
   fecha_liberacion?: string | null
   activa?: boolean
   lectura_inicial: number
+  lectura_final?: number | null
+  fecha_lectura_final?: string | null
+  motivo_liberacion?: MotivoLiberacion | null
+  justificacion_sin_lectura?: string | null
+  reemplaza_a?: string | null
+  reemplazada_por_id?: string | null
+  reemplazada_por_impresora_id?: string | null
   contador_actual: number
   paginas_del_periodo: number
   estimado_del_periodo: number
