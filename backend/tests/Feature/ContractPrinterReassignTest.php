@@ -306,6 +306,56 @@ class ContractPrinterReassignTest extends TestCase
         );
     }
 
+    public function test_reemplaza_a_ya_enlazada_es_rechazado(): void
+    {
+        $admin = $this->adminUser();
+        Sanctum::actingAs($admin);
+        $p1 = $this->createPrinter($admin);
+        $p2 = $this->createPrinter($admin);
+        $p3 = $this->createPrinter($admin);
+        $contract = $this->createContract($admin);
+        $this->assign($contract, $p1, 0);
+        $this->release($contract, $p1, $admin, null);
+
+        $filaLiberada = ContractPrinter::where('impresora_id', $p1->id)->where('activa', false)->first();
+
+        // Primera instalación enlazada a la fila liberada: aceptada.
+        $this->postJson("/api/v1/contracts/{$contract->id}/assign-printer", [
+            'impresora_id' => $p2->id,
+            'lectura_inicial' => 0,
+            'reemplaza_a' => $filaLiberada->id,
+        ])->assertOk();
+
+        // Segunda instalación apuntando a la misma fila: 422 accionable.
+        $this->postJson("/api/v1/contracts/{$contract->id}/assign-printer", [
+            'impresora_id' => $p3->id,
+            'lectura_inicial' => 0,
+            'reemplaza_a' => $filaLiberada->id,
+        ])->assertStatus(422)->assertJsonPath(
+            'message',
+            'La asignación indicada ya fue reemplazada por otra instalación'
+        );
+
+        $this->assertDatabaseMissing('contract_printer', [
+            'impresora_id' => $p3->id,
+            'reemplaza_a' => $filaLiberada->id,
+        ]);
+
+        // Backstop a nivel BD: el índice parcial garantiza que una fila
+        // liberada no pueda ser referida por dos reemplaza_a.
+        $this->expectException(UniqueConstraintViolationException::class);
+        DB::table('contract_printer')->insert([
+            'contrato_id' => $contract->id,
+            'impresora_id' => $p3->id,
+            'fecha_asignacion' => today(),
+            'lectura_inicial' => 0,
+            'activa' => true,
+            'reemplaza_a' => $filaLiberada->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     public function test_reemplaza_a_valido_hereda_alias_y_color_y_estampa_enlace(): void
     {
         $admin = $this->adminUser();

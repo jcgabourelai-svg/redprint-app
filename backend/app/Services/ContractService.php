@@ -248,6 +248,12 @@ class ContractService
             }
         }
 
+        if ($reemplazada !== null && ContractPrinter::where('reemplaza_a', $reemplazada->id)->exists()) {
+            throw new BusinessRuleException(
+                'La asignación indicada ya fue reemplazada por otra instalación'
+            );
+        }
+
         $alias = $this->normalizarAlias($alias ?? $reemplazada?->alias);
         $color = $this->resolverColor($contract, $color ?? $reemplazada?->color);
 

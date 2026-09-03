@@ -5,7 +5,10 @@ import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
-import type { ContractPlanRow, Printer, Visit } from '../types/api'
+import { formatDayLabel } from '../lib/format'
+import { MOTIVO_LIBERACION_LABEL } from '../lib/motivosLiberacion'
+import PrinterColorDot from '../components/PrinterColorDot'
+import type { ContractAssignment, ContractPlanInfo, ContractPlanRow, Printer, Visit } from '../types/api'
 import {
   Banner,
   Button,
@@ -60,6 +63,11 @@ function sustitucionPendiente(
   return null
 }
 
+/** Asignación liberada aún sin reemplazo: candidata a sustitución diferida. */
+function esPendiente(pa: ContractAssignment): boolean {
+  return pa.activa === false && !pa.reemplazada_por_id
+}
+
 export default function InstallationPage() {
   const { id } = useParams()
   const visitId = Number(id)
@@ -77,6 +85,8 @@ export default function InstallationPage() {
   const [printers, setPrinters] = useState<Printer[] | null>(null)
   const [printersError, setPrintersError] = useState<string | null>(null)
   const [plan, setPlan] = useState<ContractPlanRow[] | null>(null)
+  const [assignments, setAssignments] = useState<ContractAssignment[] | null>(null)
+  const [assignmentsVisitId, setAssignmentsVisitId] = useState<number | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [lecturaInicial, setLecturaInicial] = useState('0')
   const [alias, setAlias] = useState('')
@@ -109,18 +119,9 @@ export default function InstallationPage() {
               setColorHeredado(pendiente.color)
             }
           } else {
-            // Rotación de flota (fallback best-effort, sin enlace).
-            const cambios = res.data.cambios_impresoras
-            const liberacion = cambios?.find(
-              (c) => c.evento === 'LIBERACION_CONTRATO' && c.alias
-            )
-            if (liberacion?.alias) {
-              setAliasSugerido(liberacion.alias)
-              setAlias((actual) => actual || liberacion.alias || '')
-            }
-            setColorHeredado(
-              cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.color)?.color ?? null
-            )
+            setReemplazaA(null)
+            setAliasSugerido(null)
+            setColorHeredado(null)
           }
         }
       })
@@ -137,24 +138,60 @@ export default function InstallationPage() {
 
   const contratoId = visit?.contrato_id ?? null
 
-  // Plan del contrato: intención comercial (qué modelos llevar). Solo
-  // informativo: la sustitución por otro modelo sigue permitida.
+  // Contrato: plan (intención comercial, solo informativo) y asignaciones,
+  // de donde salen las sustituciones pendientes de cualquier fecha.
   useEffect(() => {
     if (!contratoId) return
     let cancelled = false
     api
-      .get<{ plan_impresoras?: ContractPlanRow[] }>(`/contracts/${contratoId}`)
+      .get<ContractPlanInfo>(`/contracts/${contratoId}`)
       .then((res) => {
-        if (!cancelled) setPlan(res.data.plan_impresoras ?? [])
+        if (!cancelled) {
+          setPlan(res.data.plan_impresoras ?? [])
+          setAssignments(res.data.impresoras ?? [])
+          setAssignmentsVisitId(visitId)
+        }
       })
       .catch(() => {
-        // El plan es enriquecimiento: nunca bloquea la instalación.
+        // El plan es enriquecimiento: nunca bloquea la instalación. Sin
+        // asignaciones el selector queda oculto y el enlace auto-detectado
+        // de misma visita (si existe) se conserva.
         if (!cancelled) setPlan([])
       })
     return () => {
       cancelled = true
     }
-  }, [contratoId])
+  }, [contratoId, visitId])
+
+  // Coherencia visit↔contrato: valida el enlace auto-detectado contra las
+  // pendientes reales del contrato y aplica el fallback de rotación solo
+  // cuando no hay pendientes (con selector visible, este lo sustituye).
+  useEffect(() => {
+    if (assignments === null || visit === null || assignmentsVisitId !== visit.id) return
+    const pendientesActuales = assignments.filter(esPendiente)
+    if (reemplazaA !== null) {
+      if (!pendientesActuales.some((pa) => pa.id === reemplazaA)) {
+        // El evento de la visita quedó obsoleto: la fila ya fue reemplazada
+        // por otra instalación. Se degrada a asignación nueva.
+        setReemplazaA(null)
+        setAliasSugerido(null)
+        setColorHeredado(null)
+      }
+      return
+    }
+    if (pendientesActuales.length === 0) {
+      // Rotación de flota (fallback best-effort, sin enlace).
+      const cambios = visit.cambios_impresoras
+      const liberacion = cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.alias)
+      if (liberacion?.alias) {
+        setAliasSugerido(liberacion.alias)
+        setAlias((actual) => actual || liberacion.alias || '')
+      }
+      setColorHeredado(
+        cambios?.find((c) => c.evento === 'LIBERACION_CONTRATO' && c.color)?.color ?? null
+      )
+    }
+  }, [assignments, assignmentsVisitId, visit, reemplazaA])
 
   useEffect(() => {
     if (!canInstall || !contratoId || plan === null) return
@@ -202,17 +239,38 @@ export default function InstallationPage() {
   const title = visit ? (visit.cliente_nombre ?? 'Instalación') : 'Instalación'
 
   const planModelIds = new Set((plan ?? []).map((row) => row.modelo_id))
-  const sustitucionSerie =
+  const pendientes = (assignments ?? [])
+    .filter(esPendiente)
+    .slice()
+    .sort((a, b) => (b.fecha_liberacion ?? '').localeCompare(a.fecha_liberacion ?? ''))
+  const sustitucionSeleccionada =
+    reemplazaA !== null ? (pendientes.find((pa) => pa.id === reemplazaA) ?? null) : null
+  const enlaceVisita =
     reemplazaA !== null
-      ? (visit?.cambios_impresoras?.find((c) => c.assignment_id === reemplazaA)?.impresora
-          ?.num_serie ?? null)
+      ? (visit?.cambios_impresoras?.find((c) => c.assignment_id === reemplazaA) ?? null)
       : null
+  const sustitucionSerie =
+    sustitucionSeleccionada?.impresora_serie ?? enlaceVisita?.impresora?.num_serie ?? null
+  const sustitucionAlias = sustitucionSeleccionada?.alias ?? enlaceVisita?.alias ?? null
 
   const handleSelect = (p: Printer) => {
     setSelectedId(p.id)
     // D-D: la línea base sugerida es el contador físico de la serie elegida;
     // el operador puede ajustarla antes de confirmar.
     setLecturaInicial(String(p.contador_actual ?? 0))
+  }
+
+  const handlePendienteSelect = (pa: ContractAssignment | null) => {
+    if (pa === null) {
+      setReemplazaA(null)
+      setAliasSugerido(null)
+      setColorHeredado(null)
+      return
+    }
+    setReemplazaA(pa.id)
+    setAliasSugerido(pa.alias ?? null)
+    setAlias((actual) => actual || pa.alias || '')
+    setColorHeredado(pa.color ?? null)
   }
 
   return (
@@ -257,7 +315,8 @@ export default function InstallationPage() {
                   <span className="font-semibold">Sustitución de equipo:</span> esta instalación
                   reemplaza
                   {sustitucionSerie ? ` a la serie ${sustitucionSerie}` : ' al equipo retirado'}
-                  {aliasSugerido ? ` (${aliasSugerido})` : ''}. Se heredarán su alias y color.
+                  {sustitucionAlias ? ` (${sustitucionAlias})` : ''}. Se heredarán el alias y el
+                  color del puesto.
                 </Banner>
               </div>
             )}
@@ -275,6 +334,55 @@ export default function InstallationPage() {
                   {' · '}
                   Instaladas: {plan!.reduce((s, row) => s + (row.instaladas ?? 0), 0)}
                 </Banner>
+              </div>
+            )}
+
+            {assignments !== null && pendientes.length > 0 && (
+              <div className="mb-4">
+                <SectionTitle hint="Deja 'Ninguna' si es un equipo adicional del contrato">
+                  Puesto que reemplaza (opcional)
+                </SectionTitle>
+                <Card
+                  className={`mb-3 ${reemplazaA === null ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                  onClick={() => handlePendienteSelect(null)}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-800">Ninguna (asignación nueva)</p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        Equipo adicional para el contrato
+                      </p>
+                    </div>
+                    {reemplazaA === null && <span className="text-blue-600">✓</span>}
+                  </div>
+                </Card>
+                {pendientes.map((pa) => (
+                  <Card
+                    key={pa.id}
+                    className={`mb-3 ${reemplazaA === pa.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                    onClick={() => handlePendienteSelect(pa)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
+                          {pa.color && <PrinterColorDot color={pa.color} />}
+                          {pa.alias ||
+                            `${pa.impresora_marca ?? ''} ${pa.impresora_modelo ?? ''}`.trim() ||
+                            'Equipo retirado'}
+                        </p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          Serie: {pa.impresora_serie ?? '-'}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          Liberada {pa.fecha_liberacion ? formatDayLabel(pa.fecha_liberacion) : '-'}
+                          {pa.motivo_liberacion &&
+                            ` · ${MOTIVO_LIBERACION_LABEL[pa.motivo_liberacion] ?? pa.motivo_liberacion}`}
+                        </p>
+                      </div>
+                      {reemplazaA === pa.id && <span className="text-blue-600">✓</span>}
+                    </div>
+                  </Card>
+                ))}
               </div>
             )}
 
@@ -345,7 +453,7 @@ export default function InstallationPage() {
                   label="Alias / ubicación (opcional)"
                   help={
                     aliasSugerido && alias === aliasSugerido
-                      ? `Heredado de la impresora retirada en esta visita (${aliasSugerido}); edítalo si cambia el puesto`
+                      ? `Heredado del puesto reemplazado (${aliasSugerido}); edítalo si cambia el puesto`
                       : 'Cómo la identifica el cliente en el sitio. Ej. Recepción'
                   }
                 >

@@ -203,10 +203,28 @@ export interface ContractPlanRow {
   instaladas: number | null
 }
 
+export interface ContractAssignment {
+  /** Id de la fila pivot contract_printer (el que viaja como reemplaza_a). */
+  id: number
+  impresora_id: number
+  impresora_marca: string | null
+  impresora_modelo: string | null
+  impresora_serie: string | null
+  alias: string | null
+  color: string | null
+  activa: boolean
+  motivo_liberacion: MotivoLiberacion | null
+  reemplaza_a: number | null
+  reemplazada_por_id: number | null
+  fecha_liberacion: string | null
+  fecha_asignacion: string | null
+}
+
 export interface ContractPlanInfo {
   plan_impresoras?: ContractPlanRow[]
   pendientes_instalacion?: number
   active_printers_count?: number
+  impresoras?: ContractAssignment[]
 }
 
 export interface Warehouse {

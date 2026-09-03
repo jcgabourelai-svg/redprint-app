@@ -6,6 +6,7 @@ import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
 import { formatNumber } from '../lib/format'
+import { MOTIVO_LIBERACION_LABEL } from '../lib/motivosLiberacion'
 import PrinterColorDot from '../components/PrinterColorDot'
 import type { MotivoLiberacion, Visit, Warehouse } from '../types/api'
 import {
@@ -22,13 +23,9 @@ import {
   TextInput,
 } from '../components/ui'
 
-const MOTIVOS: { value: MotivoLiberacion; label: string }[] = [
-  { value: 'SUSTITUCION_FALLA', label: 'Sustitución por falla' },
-  { value: 'ROTACION', label: 'Rotación de flota' },
-  { value: 'FIN_CONTRATO', label: 'Fin de contrato' },
-  { value: 'CANCELACION_CONTRATO', label: 'Cancelación de contrato' },
-  { value: 'OTRO', label: 'Otro' },
-]
+const MOTIVOS: { value: MotivoLiberacion; label: string }[] = (
+  Object.keys(MOTIVO_LIBERACION_LABEL) as MotivoLiberacion[]
+).map((value) => ({ value, label: MOTIVO_LIBERACION_LABEL[value] }))
 
 export default function RemovalPage() {
   const { id } = useParams()
