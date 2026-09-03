@@ -96,7 +96,9 @@ class InvoiceCalculationTest extends TestCase
     private function attachPrinter(Contract $contract, Printer $printer): void
     {
         $contract->printers()->attach($printer->id, [
-            'fecha_asignacion' => today(),
+            // Ventana que arranca antes que las lecturas del fixture (junio):
+            // el motor de facturación filtra por intersección de ventanas.
+            'fecha_asignacion' => '2026-06-01',
             'activa' => true,
             'lectura_inicial' => 0,
         ]);
@@ -429,6 +431,113 @@ class InvoiceCalculationTest extends TestCase
         $this->assertEquals(0.0, $result['monto_total']);
         $this->assertTrue(
             collect($result['advertencias'])->contains(fn ($a) => str_contains($a, 'no esta activo'))
+        );
+    }
+
+    /**
+     * Retiro a mitad de periodo con lectura de cierre: la factura del periodo
+     * suma los deltas de ambas ventanas (A antes del retiro + A cierre + B).
+     */
+    public function test_retiro_a_mitad_de_periodo_con_cierre_suma_deltas_de_ambas_impresoras(): void
+    {
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+        $inicioMes = today()->startOfMonth()->toDateString();
+        $finMes = today()->endOfMonth()->toDateString();
+
+        $contract = $this->createContract($client, $user, ['fecha_inicio' => $inicioMes]);
+        $printerA = $this->createPrinter($user);
+        $printerB = $this->createPrinter($user);
+
+        // Ventana A: asignada desde el inicio del mes.
+        $contract->printers()->attach($printerA->id, [
+            'fecha_asignacion' => $inicioMes,
+            'activa' => true,
+            'lectura_inicial' => 0,
+        ]);
+        $this->createReading($contract, $printerA, $user, today()->toDateString(), 700);
+
+        // Retiro con lectura de cierre (700 -> 1000 = 300 páginas).
+        $warehouse = \App\Models\Warehouse::create(['nombre' => 'Almacén', 'direccion' => 'Calle 1']);
+        app(\App\Services\ContractService::class)->releasePrinter(
+            $contract,
+            $printerA,
+            $warehouse->id,
+            $user,
+            null,
+            1000,
+            'SUSTITUCION_FALLA',
+            null
+        );
+
+        // Ventana B: sustituta desde hoy.
+        $contract->printers()->attach($printerB->id, [
+            'fecha_asignacion' => today()->toDateString(),
+            'activa' => true,
+            'lectura_inicial' => 0,
+        ]);
+        $this->createReading($contract, $printerB, $user, today()->toDateString(), 800);
+
+        $service = app(InvoiceCalculationService::class);
+        $result = $service->calcularEstimacion($client->id, $inicioMes, $finMes);
+
+        // 700 (lectura A) + 300 (cierre A) + 800 (lectura B) = 1800 páginas.
+        $this->assertSame(1800, (int) $result['contratos'][0]['total_paginas']);
+        $this->assertCount(3, $result['detalles']);
+        $this->assertFalse(
+            collect($result['advertencias'])->contains(fn ($a) => str_contains($a, 'sin lectura de cierre'))
+        );
+    }
+
+    public function test_retiro_sin_cierre_genera_advertencia_de_brecha(): void
+    {
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+        $inicioMes = today()->startOfMonth()->toDateString();
+        $finMes = today()->endOfMonth()->toDateString();
+
+        $contract = $this->createContract($client, $user, ['fecha_inicio' => $inicioMes]);
+        $printerA = $this->createPrinter($user);
+        $printerB = $this->createPrinter($user);
+
+        $contract->printers()->attach($printerA->id, [
+            'fecha_asignacion' => $inicioMes,
+            'activa' => true,
+            'lectura_inicial' => 0,
+        ]);
+        $this->createReading($contract, $printerA, $user, today()->toDateString(), 700);
+
+        // Retiro sin lectura de cierre (impresora muerta).
+        $warehouse = \App\Models\Warehouse::create(['nombre' => 'Almacén', 'direccion' => 'Calle 1']);
+        app(\App\Services\ContractService::class)->releasePrinter(
+            $contract,
+            $printerA,
+            $warehouse->id,
+            $user,
+            null,
+            null,
+            'SUSTITUCION_FALLA',
+            'Equipo muerto, sin lectura posible'
+        );
+
+        $contract->printers()->attach($printerB->id, [
+            'fecha_asignacion' => today()->toDateString(),
+            'activa' => true,
+            'lectura_inicial' => 0,
+        ]);
+        $this->createReading($contract, $printerB, $user, today()->toDateString(), 800);
+
+        $service = app(InvoiceCalculationService::class);
+        $result = $service->calcularEstimacion($client->id, $inicioMes, $finMes);
+
+        // La última lectura de A (700) sí se factura; solo la brecha entre esa
+        // lectura y el retiro se pierde. Total: 700 (A) + 800 (B) = 1500.
+        $this->assertSame(1500, (int) $result['contratos'][0]['total_paginas']);
+        $this->assertTrue(
+            collect($result['advertencias'])->contains(
+                fn ($a) => str_contains($a, 'sin lectura de cierre')
+                    && str_contains($a, $printerA->num_serie)
+            )
         );
     }
 

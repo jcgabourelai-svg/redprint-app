@@ -110,6 +110,13 @@ class MaintenanceService
                 );
             }
 
+            // Contador al terminar el taller: las páginas de pruebas quedan
+            // registradas en la serie para que la próxima lectura inicial del
+            // re-ingreso no las facture al cliente.
+            if (isset($data['contador_impresora']) && $data['contador_impresora'] !== null) {
+                $this->actualizarContadorImpresora($order, (int) $data['contador_impresora'], $user);
+            }
+
             if ($order->tipo_mantto === MaintenanceType::CORRECTIVO) {
                 $this->restorePrinterState(
                     $order,
@@ -182,6 +189,41 @@ class MaintenanceService
 
             return $order;
         });
+    }
+
+    /**
+     * Sincroniza printers.contador_actual desde el taller. Solo admite
+     * valores no decrecientes: un contador menor al registrado indica error
+     * de captura (los contadores físicos no retroceden en taller).
+     */
+    private function actualizarContadorImpresora(MaintenanceOrder $order, int $contador, User $user): void
+    {
+        $printer = $order->printer;
+
+        if ($contador < (int) $printer->contador_actual) {
+            throw new BusinessRuleException(
+                "El contador al terminar ({$contador}) es menor que el contador registrado de la impresora ({$printer->contador_actual}). Verifica la captura."
+            );
+        }
+
+        if ($contador === (int) $printer->contador_actual) {
+            return;
+        }
+
+        $printer->update(['contador_actual' => $contador]);
+
+        PrinterHistory::create([
+            'impresora_id' => $printer->id,
+            'tipo_evento' => 'ACTUALIZACION_CONTADOR',
+            'descripcion' => "Contador actualizado desde taller - Orden #{$order->id}",
+            'datos_adicionales' => [
+                'origen' => 'MANTENIMIENTO',
+                'orden_id' => $order->id,
+                'contador' => $contador,
+            ],
+            'socio_id' => $user->id,
+            'fecha' => now(),
+        ]);
     }
 
     private function restorePrinterState(

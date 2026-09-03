@@ -123,25 +123,35 @@ class ContractResource extends JsonResource
             return null;
         }
 
+        // Páginas por ventana: en filas liberadas se usa la lectura de cierre
+        // (el contador_actual puede seguir creciendo en taller tras el retiro).
         $totalPaginas = $printers->sum(
-            fn ($p) => max(0, (int) $p->contador_actual - (int) ($p->pivot->lectura_inicial ?? 0))
+            fn ($p) => max(0, $this->cierreOContador($p) - (int) ($p->pivot->lectura_inicial ?? 0))
         );
 
         $estimadoContrato = $totalPaginas > 0
             ? (float) $this->calculateEstimatedAmount($totalPaginas)
             : 0.0;
 
+        // Mapa de sustitución: pivot_id liberado -> [assignment_id, impresora_id] de la fila que lo reemplaza.
+        $reemplazos = [];
+        foreach ($printers as $p) {
+            if (!empty($p->pivot->reemplaza_a)) {
+                $reemplazos[$p->pivot->reemplaza_a] = ['assignment_id' => $p->pivot->id, 'impresora_id' => $p->id];
+            }
+        }
+
         return $printers
-            ->map(fn ($printer) => $this->printerAssignmentToArray($printer, $totalPaginas, $estimadoContrato))
+            ->map(fn ($printer) => $this->printerAssignmentToArray($printer, $totalPaginas, $estimadoContrato, $reemplazos))
             ->values()
             ->all();
     }
 
-    private function printerAssignmentToArray($printer, int $totalPaginas, float $estimadoContrato): array
+    private function printerAssignmentToArray($printer, int $totalPaginas, float $estimadoContrato, array $reemplazos = []): array
     {
         $lecturaInicial = (int) ($printer->pivot->lectura_inicial ?? 0);
-        $contadorActual = (int) ($printer->contador_actual ?? 0);
-        $paginasPeriodo = max(0, $contadorActual - $lecturaInicial);
+        $contadorCierre = $this->cierreOContador($printer);
+        $paginasPeriodo = max(0, $contadorCierre - $lecturaInicial);
 
         $estimadoPeriodo = $totalPaginas > 0
             ? round($estimadoContrato * ($paginasPeriodo / $totalPaginas), 2)
@@ -162,11 +172,31 @@ class ContractResource extends JsonResource
             'fecha_liberacion' => $printer->pivot->fecha_liberacion,
             'activa' => (bool) $printer->pivot->activa,
             'lectura_inicial' => $lecturaInicial,
-            'contador_actual' => $contadorActual,
+            'lectura_final' => $printer->pivot->lectura_final !== null ? (int) $printer->pivot->lectura_final : null,
+            'fecha_lectura_final' => $printer->pivot->fecha_lectura_final,
+            'motivo_liberacion' => $printer->pivot->motivo_liberacion,
+            'justificacion_sin_lectura' => $printer->pivot->justificacion_sin_lectura,
+            'reemplaza_a' => $printer->pivot->reemplaza_a,
+            'reemplazada_por_id' => $reemplazos[$printer->pivot->id]['assignment_id'] ?? null,
+            'reemplazada_por_impresora_id' => $reemplazos[$printer->pivot->id]['impresora_id'] ?? null,
+            'contador_actual' => (int) ($printer->contador_actual ?? 0),
             'paginas_del_periodo' => $paginasPeriodo,
             'estimado_del_periodo' => $estimadoPeriodo,
             'rentabilidad_acumulada' => $rentabilidadAcumulada,
         ];
+    }
+
+    /**
+     * Borde superior de la ventana: lectura de cierre si la fila fue
+     * liberada con ella; si no, el contador actual de la serie.
+     */
+    private function cierreOContador($printer): int
+    {
+        if ($printer->pivot->activa === false && $printer->pivot->lectura_final !== null) {
+            return (int) $printer->pivot->lectura_final;
+        }
+
+        return (int) ($printer->contador_actual ?? 0);
     }
 
     private function costosPorAsignacion($printer): float

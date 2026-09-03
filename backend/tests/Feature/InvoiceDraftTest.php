@@ -100,7 +100,9 @@ class InvoiceDraftTest extends TestCase
     private function attachPrinter(Contract $contract, Printer $printer): void
     {
         $contract->printers()->attach($printer->id, [
-            'fecha_asignacion' => today(),
+            // Ventana que arranca antes que las lecturas del fixture (junio):
+            // el motor de facturación filtra por intersección de ventanas.
+            'fecha_asignacion' => '2026-06-01',
             'activa' => true,
             'lectura_inicial' => 0,
         ]);

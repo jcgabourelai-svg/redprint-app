@@ -66,7 +66,11 @@ class Contract extends Model
     public function printers(): BelongsToMany
     {
         return $this->belongsToMany(Printer::class, 'contract_printer', 'contrato_id', 'impresora_id')
-            ->withPivot(['id', 'fecha_asignacion', 'fecha_liberacion', 'activa', 'lectura_inicial', 'alias', 'color'])
+            ->withPivot([
+                'id', 'fecha_asignacion', 'fecha_liberacion', 'activa', 'lectura_inicial',
+                'lectura_final', 'fecha_lectura_final', 'motivo_liberacion',
+                'justificacion_sin_lectura', 'reemplaza_a', 'alias', 'color',
+            ])
             ->withTimestamps();
     }
 

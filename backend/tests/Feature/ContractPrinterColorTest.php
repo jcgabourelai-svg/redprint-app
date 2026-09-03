@@ -172,6 +172,8 @@ class ContractPrinterColorTest extends TestCase
         $this->postJson("/api/v1/contracts/{$contractId}/release-printer", [
             'impresora_id' => $p1->id,
             'almacen_destino_id' => $warehouse->id,
+            'motivo_liberacion' => 'ROTACION',
+            'justificacion_sin_lectura' => 'Rotación de flota',
         ])->assertOk();
 
         // La fila liberada conserva su color como evidencia historica.
@@ -286,6 +288,8 @@ class ContractPrinterColorTest extends TestCase
         $this->postJson("/api/v1/contracts/{$contractId}/release-printer", [
             'impresora_id' => $p1->id,
             'almacen_destino_id' => $warehouse->id,
+            'motivo_liberacion' => 'ROTACION',
+            'justificacion_sin_lectura' => 'Rotación de flota',
         ])->assertOk();
 
         $liberacion = PrinterHistory::where('impresora_id', $p1->id)

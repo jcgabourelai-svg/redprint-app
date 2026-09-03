@@ -40,7 +40,8 @@ import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useVisits } from '@/hooks/useVisits'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useWarehouses } from '@/hooks/useWarehouses'
-import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency } from '@/types/contract'
+import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency, MotivoLiberacion } from '@/types/contract'
+import { MotivoLiberacionLabels } from '@/types/contract'
 import { PrinterStatus, InvoiceStatusLabels } from '@/types/enums'
 import type { VisitStatus } from '@/types/operations'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
@@ -136,9 +137,18 @@ export default function ContractDetail() {
   const [aliasError, setAliasError] = useState('')
   const [showAssign, setShowAssign] = useState(false)
   const [assignError, setAssignError] = useState('')
-  const [assignForm, setAssignForm] = useState({ impresora_id: '', lectura_inicial: '', alias: '' })
+  const [assignForm, setAssignForm] = useState({
+    impresora_id: '',
+    lectura_inicial: '',
+    alias: '',
+    reemplaza_a: '',
+  })
   const [releaseTarget, setReleaseTarget] = useState<PrinterAssignment | null>(null)
   const [releaseWarehouseId, setReleaseWarehouseId] = useState('')
+  const [releaseLecturaFinal, setReleaseLecturaFinal] = useState('')
+  const [releaseSinLectura, setReleaseSinLectura] = useState(false)
+  const [releaseJustificacion, setReleaseJustificacion] = useState('')
+  const [releaseMotivo, setReleaseMotivo] = useState<MotivoLiberacion>('SUSTITUCION_FALLA')
   const [releaseError, setReleaseError] = useState('')
   const [showPlanEdit, setShowPlanEdit] = useState(false)
   const [planRows, setPlanRows] = useState<PlanEditRow[]>([])
@@ -203,9 +213,22 @@ export default function ContractDetail() {
   const warehouses = (warehousesData?.data || []).filter((w) => w.activo)
 
   const openAssign = () => {
-    setAssignForm({ impresora_id: '', lectura_inicial: '', alias: '' })
+    setAssignForm({ impresora_id: '', lectura_inicial: '', alias: '', reemplaza_a: '' })
     setAssignError('')
     setShowAssign(true)
+  }
+
+  const asignacionesLiberadas = contract
+    ? contract.impresoras.filter((pa) => pa.activa === false && !pa.reemplazada_por_id)
+    : []
+
+  const handleReemplazaSelect = (value: string) => {
+    const original = asignacionesLiberadas.find((pa) => pa.id === value)
+    setAssignForm((form) => ({
+      ...form,
+      reemplaza_a: value,
+      alias: value && original?.alias && !form.alias ? original.alias : form.alias,
+    }))
   }
 
   const handleAssignPrinterSelect = (value: string) => {
@@ -229,6 +252,7 @@ export default function ContractDetail() {
         impresora_id: Number(assignForm.impresora_id),
         lectura_inicial: parseInt(assignForm.lectura_inicial) || 0,
         alias: assignForm.alias.trim() || null,
+        reemplaza_a: assignForm.reemplaza_a ? Number(assignForm.reemplaza_a) : null,
       },
       {
         onSuccess: () => {
@@ -243,6 +267,10 @@ export default function ContractDetail() {
   const openRelease = (pa: PrinterAssignment) => {
     setReleaseTarget(pa)
     setReleaseWarehouseId('')
+    setReleaseLecturaFinal('')
+    setReleaseSinLectura(false)
+    setReleaseJustificacion('')
+    setReleaseMotivo('SUSTITUCION_FALLA')
     setReleaseError('')
   }
 
@@ -253,16 +281,37 @@ export default function ContractDetail() {
       setReleaseError('Selecciona el almacén de destino')
       return
     }
+    if (releaseSinLectura) {
+      if (releaseJustificacion.trim().length < 5) {
+        setReleaseError('Explica por qué no se pudo leer el contador (mínimo 5 caracteres)')
+        return
+      }
+    } else {
+      const lectura = parseInt(releaseLecturaFinal)
+      if (!Number.isFinite(lectura) || lectura < 0) {
+        setReleaseError('Captura el contador al retirar o marca "No se puede leer el contador"')
+        return
+      }
+    }
     releasePrinter.mutate(
       {
         id: idNum,
         impresora_id: Number(releaseTarget.impresora_id),
         almacen_destino_id: Number(releaseWarehouseId),
+        lectura_final: releaseSinLectura ? null : parseInt(releaseLecturaFinal),
+        motivo_liberacion: releaseMotivo,
+        justificacion_sin_lectura: releaseSinLectura ? releaseJustificacion.trim() : null,
       },
       {
         onSuccess: () => {
           setReleaseTarget(null)
-          setToast({ open: true, variant: 'success', message: 'Impresora liberada' })
+          setToast({
+            open: true,
+            variant: 'success',
+            message: releaseSinLectura
+              ? 'Impresora liberada sin lectura (brecha registrada)'
+              : 'Impresora liberada con lectura de cierre',
+          })
         },
         onError: (err) => setReleaseError(parseApiError(err)),
       }
@@ -633,7 +682,14 @@ export default function ContractDetail() {
                             Asignar
                           </Button>
                         </div>
-                        {contract.impresoras.map((pa) => (
+                        {contract.impresoras.map((pa) => {
+                          const reemplazo = pa.reemplazada_por_id
+                            ? contract.impresoras.find((x) => x.id === pa.reemplazada_por_id)
+                            : null
+                          const reemplazada = pa.reemplaza_a
+                            ? contract.impresoras.find((x) => x.id === pa.reemplaza_a)
+                            : null
+                          return (
                           <div key={pa.id} className={`border rounded-lg p-4 ${pa.activa === false ? 'border-border/60 bg-muted/30' : 'border-border'}`}>
                             <div className="flex items-start justify-between mb-3">
                               <div>
@@ -645,7 +701,9 @@ export default function ContractDetail() {
                                     <AliasBadge alias={pa.alias} color={pa.color} />
                                   )}
                                   {pa.activa === false && (
-                                    <Badge variant="neutral">Liberada</Badge>
+                                    <Badge variant="neutral">
+                                      Liberada{pa.motivo_liberacion ? ` · ${MotivoLiberacionLabels[pa.motivo_liberacion] ?? pa.motivo_liberacion}` : ''}
+                                    </Badge>
                                   )}
                                 </div>
                                 <p className="text-xs text-muted-foreground">SERIE: {pa.impresora_serie}</p>
@@ -653,7 +711,23 @@ export default function ContractDetail() {
                                   Asignada: {formatDate(pa.fecha_asignacion)}
                                   {pa.activa === false && pa.fecha_liberacion && ` • Liberada: ${formatDate(pa.fecha_liberacion)}`}
                                   {' • '}Lectura inicial: {pa.lectura_inicial.toLocaleString('es-MX')}
+                                  {pa.activa === false && pa.lectura_final != null && ` • Lectura cierre: ${pa.lectura_final.toLocaleString('es-MX')}`}
                                 </p>
+                                {pa.activa === false && pa.lectura_final == null && (
+                                  <p className="text-xs text-warning">
+                                    Sin lectura de cierre{pa.justificacion_sin_lectura ? `: ${pa.justificacion_sin_lectura}` : ': el tramo desde la última lectura no se factura'}
+                                  </p>
+                                )}
+                                {reemplazo && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Reemplazada por: {reemplazo.impresora_marca} {reemplazo.impresora_modelo} (SERIE {reemplazo.impresora_serie})
+                                  </p>
+                                )}
+                                {reemplazada && (
+                                  <p className="text-xs text-muted-foreground">
+                                    Reemplaza a: {reemplazada.impresora_marca} {reemplazada.impresora_modelo} (SERIE {reemplazada.impresora_serie})
+                                  </p>
+                                )}
                               </div>
                               {pa.activa !== false && (
                                 <Button
@@ -692,12 +766,15 @@ export default function ContractDetail() {
                                 <Eye className="mr-1 h-3 w-3" />
                                 Ver detalle
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => openRelease(pa)}>
-                                Liberar
-                              </Button>
+                              {pa.activa !== false && (
+                                <Button variant="ghost" size="sm" onClick={() => openRelease(pa)}>
+                                  Liberar
+                                </Button>
+                              )}
                             </div>
                           </div>
-                        ))}
+                          )
+                        })}
                         <div className="text-right pt-2 border-t">
                           <span className="text-sm text-muted-foreground">Total estimado este periodo: </span>
                           <span className="font-bold">{formatCurrency(totalEstimado)}</span>
@@ -1056,6 +1133,28 @@ export default function ContractDetail() {
               />
             )}
           </div>
+          {asignacionesLiberadas.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Sustituye a (opcional)
+              </label>
+              <Select
+                options={[
+                  { value: '', label: 'Ninguna (asignación nueva)' },
+                  ...asignacionesLiberadas.map((pa) => ({
+                    value: String(pa.id),
+                    label: `${pa.impresora_marca} ${pa.impresora_modelo} — ${pa.impresora_serie}${pa.alias ? ` (${pa.alias})` : ''} · liberada ${formatDate(pa.fecha_liberacion ?? pa.fecha_asignacion)}`,
+                  })),
+                ]}
+                value={assignForm.reemplaza_a}
+                onChange={handleReemplazaSelect}
+                placeholder="Selecciona la asignación que reemplaza..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Al enlazar la sustitución se heredan el alias y el color del puesto liberado.
+              </p>
+            </div>
+          )}
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">
               Lectura inicial
@@ -1183,6 +1282,68 @@ export default function ContractDetail() {
               {releaseTarget.impresora_marca} {releaseTarget.impresora_modelo} • SERIE:{' '}
               {releaseTarget.impresora_serie}
             </p>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                Motivo del retiro
+              </label>
+              <Select
+                options={(Object.keys(MotivoLiberacionLabels) as MotivoLiberacion[]).map((m) => ({
+                  value: m,
+                  label: MotivoLiberacionLabels[m],
+                }))}
+                value={releaseMotivo}
+                onChange={(v) => setReleaseMotivo(v as MotivoLiberacion)}
+              />
+            </div>
+
+            {!releaseSinLectura && (
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
+                  Contador al retirar
+                </label>
+                <Input
+                  type="number"
+                  min={0}
+                  value={releaseLecturaFinal}
+                  onChange={(e) => setReleaseLecturaFinal(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  El tramo entre la última lectura y este valor se facturará como lectura de
+                  cierre del periodo.
+                </p>
+              </div>
+            )}
+
+            <label className="flex items-start gap-2.5 border border-border rounded-lg p-3">
+              <input
+                type="checkbox"
+                className="mt-1"
+                checked={releaseSinLectura}
+                onChange={(e) => setReleaseSinLectura(e.target.checked)}
+              />
+              <span className="text-sm">
+                <span className="font-medium">No se puede leer el contador</span>
+                <span className="block text-xs text-muted-foreground">
+                  Equipo muerto o inaccesible: se registrará la brecha y el tramo sin leer no se
+                  facturará.
+                </span>
+              </span>
+            </label>
+
+            {releaseSinLectura && (
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-1">
+                  Justificación *
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Ej. Equipo no enciende, panel sin respuesta"
+                  value={releaseJustificacion}
+                  onChange={(e) => setReleaseJustificacion(e.target.value)}
+                />
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Almacén de destino

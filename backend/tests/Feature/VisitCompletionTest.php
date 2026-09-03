@@ -551,6 +551,8 @@ class VisitCompletionTest extends TestCase
             'impresora_id' => $printer->id,
             'almacen_destino_id' => $warehouse->id,
             'visita_id' => $visit->id,
+            'motivo_liberacion' => 'SUSTITUCION_FALLA',
+            'justificacion_sin_lectura' => 'Equipo sin respuesta, retiro en frío',
         ])->assertOk();
 
         $this->assertTrue(

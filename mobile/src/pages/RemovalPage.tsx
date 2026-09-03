@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useGoBack } from '../hooks/useGoBack'
@@ -7,17 +7,28 @@ import { useToast } from '../components/Toast'
 import api, { apiErrorMessage, fetchAll } from '../lib/api'
 import { formatNumber } from '../lib/format'
 import PrinterColorDot from '../components/PrinterColorDot'
-import type { Visit, Warehouse } from '../types/api'
+import type { MotivoLiberacion, Visit, Warehouse } from '../types/api'
 import {
   Banner,
   Button,
   Card,
   EmptyState,
+  Field,
   Page,
   PageHeader,
   SectionTitle,
   SkeletonCard,
+  TextArea,
+  TextInput,
 } from '../components/ui'
+
+const MOTIVOS: { value: MotivoLiberacion; label: string }[] = [
+  { value: 'SUSTITUCION_FALLA', label: 'Sustitución por falla' },
+  { value: 'ROTACION', label: 'Rotación de flota' },
+  { value: 'FIN_CONTRATO', label: 'Fin de contrato' },
+  { value: 'CANCELACION_CONTRATO', label: 'Cancelación de contrato' },
+  { value: 'OTRO', label: 'Otro' },
+]
 
 export default function RemovalPage() {
   const { id } = useParams()
@@ -37,6 +48,10 @@ export default function RemovalPage() {
   const [warehousesError, setWarehousesError] = useState<string | null>(null)
   const [printerId, setPrinterId] = useState<string | null>(searchParams.get('impresora'))
   const [warehouseId, setWarehouseId] = useState<number | null>(null)
+  const [motivo, setMotivo] = useState<MotivoLiberacion>('SUSTITUCION_FALLA')
+  const [lecturaFinal, setLecturaFinal] = useState('')
+  const [sinLectura, setSinLectura] = useState(false)
+  const [justificacion, setJustificacion] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -84,6 +99,21 @@ export default function RemovalPage() {
     }
   }, [canRemove, contratoId])
 
+  const lecturaNum = lecturaFinal.trim() === '' ? null : Number.parseInt(lecturaFinal, 10)
+  const deltaPreview = useMemo(() => {
+    if (lecturaNum === null || !selectedPrinter || !Number.isFinite(lecturaNum)) return null
+    return lecturaNum - selectedPrinter.lectura_anterior
+  }, [lecturaNum, selectedPrinter])
+
+  const justificacionValida = justificacion.trim().length >= 5
+  const canSubmit =
+    !!selectedPrinter &&
+    warehouseId !== null &&
+    (sinLectura
+      ? justificacionValida
+      : lecturaNum !== null && Number.isFinite(lecturaNum) && lecturaNum >= 0) &&
+    !submitting
+
   async function handleSubmit() {
     if (!contratoId || selectedPrinter === null || warehouseId === null) return
     setSubmitting(true)
@@ -93,8 +123,15 @@ export default function RemovalPage() {
         impresora_id: Number(selectedPrinter.impresora_id),
         almacen_destino_id: warehouseId,
         visita_id: visitId,
+        lectura_final: sinLectura ? null : lecturaNum,
+        motivo_liberacion: motivo,
+        justificacion_sin_lectura: sinLectura ? justificacion.trim() : null,
       })
-      toast.success('Impresora liberada al almacén')
+      toast.success(
+        sinLectura
+          ? 'Impresora liberada sin lectura (brecha registrada)'
+          : 'Impresora liberada con lectura de cierre'
+      )
       goBackTo(`/visita/${visitId}`, 2)
     } catch (e) {
       setSubmitError(apiErrorMessage(e))
@@ -211,6 +248,100 @@ export default function RemovalPage() {
               </>
             )}
 
+            {printerId !== null && selectedPrinter && (
+              <div className="mt-5 space-y-4">
+                <Field label="Motivo del retiro">
+                  <div className="grid grid-cols-1 gap-2">
+                    {MOTIVOS.map((m) => (
+                      <Card
+                        key={m.value}
+                        className={`py-2.5 ${motivo === m.value ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                        onClick={() => setMotivo(m.value)}
+                      >
+                        <div className="flex items-center justify-between px-1">
+                          <span className="text-sm font-medium text-gray-800">{m.label}</span>
+                          {motivo === m.value && <span className="text-blue-600">✓</span>}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field
+                  label="Contador al retirar"
+                  help={`Última lectura registrada: ${formatNumber(selectedPrinter.lectura_anterior)}. El tramo hasta este valor se facturará.`}
+                >
+                  <TextInput
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    placeholder="Valor del contador al retirar"
+                    value={sinLectura ? '' : lecturaFinal}
+                    disabled={sinLectura}
+                    onChange={(e) => setLecturaFinal(e.target.value)}
+                  />
+                </Field>
+
+                {deltaPreview !== null && !sinLectura && (
+                  <Card
+                    className={`${
+                      deltaPreview < 0
+                        ? '!border-red-300 bg-red-50'
+                        : 'bg-blue-50'
+                    }`}
+                  >
+                    <p
+                      className={`text-sm font-semibold ${
+                        deltaPreview < 0 ? 'text-red-700' : 'text-blue-800'
+                      }`}
+                    >
+                      Páginas desde la última lectura: {formatNumber(deltaPreview)}
+                    </p>
+                    <p className={`mt-0.5 text-xs ${deltaPreview < 0 ? 'text-red-600' : 'text-blue-600'}`}>
+                      {deltaPreview < 0
+                        ? 'El contador no puede ser menor a la última lectura: revisa la captura.'
+                        : 'Este tramo quedará facturado con la lectura de cierre'}
+                    </p>
+                  </Card>
+                )}
+
+                <label className="flex items-start gap-2.5 rounded-xl border border-gray-200 p-3">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={sinLectura}
+                    onChange={(e) => setSinLectura(e.target.checked)}
+                  />
+                  <span className="text-sm text-gray-700">
+                    <span className="font-semibold">No se puede leer el contador</span>
+                    <span className="block text-xs text-gray-500">
+                      Equipo muerto o inaccesible: se registrará la brecha y el tramo sin leer no
+                      se facturará.
+                    </span>
+                  </span>
+                </label>
+
+                {sinLectura && (
+                  <Field
+                    label="Justificación *"
+                    help="Explica por qué no fue posible leer el contador"
+                    error={
+                      justificacion.trim().length > 0 && !justificacionValida
+                        ? 'La justificación debe tener al menos 5 caracteres'
+                        : null
+                    }
+                  >
+                    <TextArea
+                      rows={3}
+                      placeholder="Ej. Equipo no enciende, panel sin respuesta"
+                      value={justificacion}
+                      onChange={(e) => setJustificacion(e.target.value)}
+                    />
+                  </Field>
+                )}
+              </div>
+            )}
+
             {printerId !== null && warehouses !== null && (
               <div className="mt-5">
                 <SectionTitle>Almacén destino</SectionTitle>
@@ -247,7 +378,7 @@ export default function RemovalPage() {
             <Button
               block
               className="mt-4"
-              disabled={selectedPrinter === null || warehouseId === null || !online || submitting}
+              disabled={!canSubmit || !online}
               loading={submitting}
               onClick={() => void handleSubmit()}
             >
