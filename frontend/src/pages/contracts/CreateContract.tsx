@@ -24,6 +24,7 @@ import { usePrinters } from '@/hooks/usePrinters'
 import { usePrinterModels } from '@/hooks/usePrinterCatalog'
 import { useCreateContract } from '@/hooks/useContracts'
 import type { VisitFrequency } from '@/types/contract'
+import { DIAS_GRACIA_LABEL, DIAS_GRACIA_HELP } from './contractLabels'
 import { formatCurrency } from '@/lib/formatters'
 import { parseApiError } from '@/lib/api-errors'
 
@@ -77,7 +78,7 @@ export default function CreateContract() {
   const [cliente_id, setClienteId] = useState(clienteIdParam)
   const [fecha_inicio, setFechaInicio] = useState(todayStr)
   const [fecha_fin, setFechaFin] = useState('')
-  const [dias_gracia, setDiasGracia] = useState('15')
+  const [dias_gracia, setDiasGracia] = useState('7')
   const [frecuencia, setFrecuencia] = useState<VisitFrequency>('MENSUAL')
   const [dia_visita, setDiaVisita] = useState('')
 
@@ -307,12 +308,15 @@ export default function CreateContract() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">Días de gracia para pago *</label>
+                  <label className="block text-sm font-medium text-muted-foreground mb-1">
+                    {DIAS_GRACIA_LABEL} *
+                  </label>
                   <Input
                     type="number"
                     value={dias_gracia}
                     onChange={(e) => setDiasGracia(e.target.value)}
                   />
+                  <p className="text-xs text-muted-foreground mt-1">{DIAS_GRACIA_HELP}</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-muted-foreground mb-1">Frecuencia de visitas *</label>
@@ -663,7 +667,7 @@ export default function CreateContract() {
                       <span className="font-medium">{fecha_fin || 'Indefinido (renovación tácita)'}</span>
                     </div>
                     <div>
-                      <span className="text-success">Días de gracia:</span>{' '}
+                      <span className="text-success">Días de gracia de lectura:</span>{' '}
                       <span className="font-medium">{dias_gracia} días</span>
                     </div>
                     <div>

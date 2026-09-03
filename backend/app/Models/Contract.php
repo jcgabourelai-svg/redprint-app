@@ -100,9 +100,16 @@ class Contract extends Model
         return $this->hasMany(Invoice::class, 'contrato_id');
     }
 
-    public function calculateEstimatedAmount(int $pagesConsumed): float
+    /**
+     * Monto estimado del contrato para un consumo. `$paginasIncluidasEfectivas`
+     * permite pasar un paquete acumulado (D22: N ciclos × paginas_incluidas);
+     * null (default) conserva el comportamiento 1x de los demas callers.
+     */
+    public function calculateEstimatedAmount(int $pagesConsumed, ?int $paginasIncluidasEfectivas = null): float
     {
-        $excess = max(0, $pagesConsumed - $this->paginas_incluidas);
+        $incluidas = $paginasIncluidasEfectivas ?? (int) $this->paginas_incluidas;
+        $excess = max(0, $pagesConsumed - $incluidas);
+
         return (float) ($this->tarifa_base + ($excess * $this->costo_pag_excedente));
     }
 

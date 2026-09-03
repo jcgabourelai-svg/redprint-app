@@ -41,6 +41,7 @@ import { useVisits } from '@/hooks/useVisits'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useWarehouses } from '@/hooks/useWarehouses'
 import type { Contract, ContractStatus, PrinterAssignment, VisitFrequency } from '@/types/contract'
+import { DIAS_GRACIA_LABEL, DIAS_GRACIA_HELP } from './contractLabels'
 import { PrinterStatus, InvoiceStatusLabels } from '@/types/enums'
 import type { VisitStatus } from '@/types/operations'
 import { formatCurrency, formatDate, getInvoiceStatusColor } from '@/lib/formatters'
@@ -558,7 +559,7 @@ export default function ContractDetail() {
                 <p className="text-sm font-bold">{formatCurrency(contract.costo_por_pagina_excedente)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Días de gracia</p>
+                <p className="text-xs text-muted-foreground">{DIAS_GRACIA_LABEL}</p>
                 <p className="text-sm font-bold">{contract.dias_gracia} días</p>
               </div>
             </div>
@@ -927,12 +928,15 @@ export default function ContractDetail() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-muted-foreground mb-1">Días de gracia</label>
+              <label className="block text-sm font-medium text-muted-foreground mb-1">
+                {DIAS_GRACIA_LABEL}
+              </label>
               <Input
                 type="number"
                 value={form.dias_gracia}
                 onChange={(e) => setForm({ ...form, dias_gracia: e.target.value })}
               />
+              <p className="text-xs text-muted-foreground mt-1">{DIAS_GRACIA_HELP}</p>
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">Días de adelanto (visitas)</label>
@@ -1246,6 +1250,18 @@ export default function ContractDetail() {
             {pendientes.map((p) => {
               const sinMonto = p.monto_estimado <= 0
               const marcado = periodosSeleccionados.includes(p.periodo)
+              // D22: el estado "ciclo sin corte" se deriva del campo
+              // estructurado (no del texto de la advertencia). El aviso del
+              // backend, si esta, se muestra en el bloque propio; si su
+              // redaccion cambia, degrada a aparecer en el listado normal
+              // (nunca se pierde ni se contradice).
+              const sinCorte = p.lectura_cierre_fecha === null && !sinMonto
+              const avisoSinCorte = sinCorte
+                ? p.advertencias.find((a) => a.includes('se cobra solo la renta base'))
+                : undefined
+              const otrasAdvertencias = sinCorte
+                ? p.advertencias.filter((a) => a !== avisoSinCorte)
+                : p.advertencias
               return (
                 <label
                   key={p.periodo}
@@ -1264,27 +1280,38 @@ export default function ContractDetail() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="text-sm font-medium">{cicloLabel(p.periodo_inicio, p.periodo_fin)}</p>
                       {p.actual && <Badge variant="info">en curso</Badge>}
-                      {p.advertencias.length > 0 && (
+                      {(p.ciclos_acumulados ?? 1) > 1 && (
+                        <Badge variant="warning">×{p.ciclos_acumulados} acumulado</Badge>
+                      )}
+                      {otrasAdvertencias.length > 0 && (
                         <span
                           className="text-warning inline-flex items-center"
-                          title={p.advertencias.join('\n')}
+                          title={otrasAdvertencias.join('\n')}
                         >
                           <AlertTriangle className="h-4 w-4" />
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {p.lecturas} lectura(s) · {p.paginas.toLocaleString('es-MX')} páginas ·
-                      Monto estimado {formatCurrency(p.monto_estimado)}
+                      {p.lecturas} lectura(s) · {p.paginas.toLocaleString('es-MX')} páginas
+                      {(p.ciclos_acumulados ?? 1) > 1 &&
+                        ` · paquete ${(p.paginas_incluidas_efectivas ?? 0).toLocaleString('es-MX')}`}{' '}
+                      · Monto estimado {formatCurrency(p.monto_estimado)}
                     </p>
+                    {sinCorte && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {avisoSinCorte ??
+                          'Ciclo sin lectura de corte: se cobra solo la renta base; el consumo se acumula al siguiente ciclo con lectura de corte.'}
+                      </p>
+                    )}
                     {sinMonto && (
                       <p className="text-xs text-destructive mt-1">
                         Sin monto a facturar (sin lecturas y tarifa base 0). Si se incluyera,
                         el lote completo se cancelaría.
                       </p>
                     )}
-                    {!sinMonto && p.advertencias.length > 0 && (
-                      <p className="text-xs text-warning mt-1">{p.advertencias.join(' · ')}</p>
+                    {!sinMonto && otrasAdvertencias.length > 0 && (
+                      <p className="text-xs text-warning mt-1">{otrasAdvertencias.join(' · ')}</p>
                     )}
                   </div>
                 </label>

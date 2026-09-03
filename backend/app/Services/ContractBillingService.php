@@ -80,7 +80,7 @@ class ContractBillingService
      * Tope de 24 pendientes empaquetados (mismo límite que el batch).
      *
      * @param  iterable<Invoice>  $facturas
-     * @return array<int, array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, advertencias: string[], actual: bool}>
+     * @return array<int, array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, ciclos_acumulados: int, paginas_incluidas_efectivas: int, lectura_cierre_fecha: string|null, advertencias: string[], actual: bool}>
      */
     private function periodosPendientes(Contract $contrato, $facturas): array
     {
@@ -101,15 +101,33 @@ class ContractBillingService
 
         $ultimoCiclo = CicloFacturacion::cicloQueContiene($contrato, $referencia);
 
-        $pendientes = [];
-        for ($n = 0; $n <= $ultimoCiclo && count($pendientes) < 24; $n++) {
-            if ($this->cicloCubierto($contrato, $n, $facturas)) {
-                continue;
-            }
-            $pendientes[] = $this->estimadoDelCiclo($contrato, $n, $hoy);
-        }
+        // Cache contextual de solo lectura: entre ciclos consecutivos el
+        // contrato, la ultima lectura facturada y las huerfanas no cambian
+        // (aqui no se crea ningun detalle). El batch NO la usa.
+        return $this->calculationService->conCacheContextual(function () use ($contrato, $facturas, $hoy, $ultimoCiclo): array {
+            $pendientes = [];
+            $fechaBaseVirtual = null;
+            for ($n = 0; $n <= $ultimoCiclo && count($pendientes) < 24; $n++) {
+                if ($this->cicloCubierto($contrato, $n, $facturas)) {
+                    continue;
+                }
+                $pendiente = $this->estimadoDelCiclo($contrato, $n, $hoy, $fechaBaseVirtual);
 
-        return $pendientes;
+                // Hilado de simulacion (D22): dos ciclos pendientes consecutivos
+                // no deben contar las mismas lecturas. Cuando un pendiente
+                // estimado es "medido", su lectura de cierre pasa a ser la base
+                // del siguiente; los ciclos a renta base no facturan lecturas ni
+                // consumen allowance, asi que la base no avanza (el multiplicador
+                // del siguiente ya cubre el hueco por la M-derivation).
+                if ($pendiente['lectura_cierre_fecha'] !== null) {
+                    $fechaBaseVirtual = $pendiente['lectura_cierre_fecha'];
+                }
+
+                $pendientes[] = $pendiente;
+            }
+
+            return $pendientes;
+        });
     }
 
     /**
@@ -140,11 +158,14 @@ class ContractBillingService
     /**
      * Estimacion de un ciclo pendiente reutilizando el motor de calculo
      * limitado al contrato. Bounds del ciclo ya recortados a la vigencia
-     * (regla 3).
+     * (regla 3). Con D22 la estimacion es identica a lo que cobraria el
+     * batch: rango alineado + hilado de la base virtual entre pendientes.
      *
-     * @return array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, advertencias: string[], actual: bool}
+     * @param  string|null  $fechaBaseLectura  Fecha de la ultima lectura facturada
+     *        virtual (avanza cuando un pendiente previo resulto "medido").
+     * @return array{periodo: string, periodo_inicio: string, periodo_fin: string, lecturas: int, paginas: int, monto_estimado: float, ciclos_acumulados: int, paginas_incluidas_efectivas: int, lectura_cierre_fecha: string|null, advertencias: string[], actual: bool}
      */
-    private function estimadoDelCiclo(Contract $contrato, int $ciclo, Carbon $hoy): array
+    private function estimadoDelCiclo(Contract $contrato, int $ciclo, Carbon $hoy, ?string $fechaBaseLectura = null): array
     {
         $bounds = CicloFacturacion::bounds($contrato, $ciclo);
 
@@ -157,6 +178,7 @@ class ContractBillingService
             // Los pendientes de contratos no ACTIVO (FINALIZADO) son
             // informativos: la guarda de facturabilidad no aplica aqui.
             false,
+            $fechaBaseLectura,
         );
 
         // El detector de solapamiento del motor es a nivel cliente: para los
@@ -172,13 +194,18 @@ class ContractBillingService
             $advertencias[] = 'Periodo en curso: las lecturas del ciclo aún están incompletas.';
         }
 
+        $resumen = $calc['contratos'][0] ?? [];
+
         return [
             'periodo' => $bounds['inicio']->toDateString(),
             'periodo_inicio' => $bounds['inicio']->toDateString(),
             'periodo_fin' => $bounds['fin']->toDateString(),
             'lecturas' => collect($calc['detalles'])->filter(fn ($d) => !empty($d['lectura_id']))->count(),
-            'paginas' => (int) ($calc['contratos'][0]['total_paginas'] ?? 0),
+            'paginas' => (int) ($resumen['total_paginas'] ?? 0),
             'monto_estimado' => (float) $calc['monto_total'],
+            'ciclos_acumulados' => (int) ($resumen['ciclos_acumulados'] ?? 1),
+            'paginas_incluidas_efectivas' => (int) ($resumen['paginas_incluidas_efectivas'] ?? $contrato->paginas_incluidas),
+            'lectura_cierre_fecha' => $resumen['lectura_cierre_fecha'] ?? null,
             'advertencias' => $advertencias,
             'actual' => $actual,
         ];

@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Models\Contract;
+use App\Services\VisitService;
 use Illuminate\Support\Carbon;
 
 /**
@@ -89,5 +90,55 @@ final class CicloFacturacion
         $n = self::cicloQueContiene($contrato, $dia);
 
         return self::inicioDeCiclo($contrato, $n)->equalTo($dia);
+    }
+
+    /**
+     * Ventana de cierre del ciclo (D22): [fin − MAX_DIAS_ADELANTO, fin +
+     * dias_gracia], a dia. La lectura no facturada mas tardia del contrato
+     * dentro de esta ventana es la "lectura de corte" del ciclo. El mismo
+     * VisitService::MAX_DIAS_ADELANTO (D21) define cuantos dias antes del
+     * corte puede capturarse una visita: una lectura capturada a maximo
+     * adelanto todavia cierra su ciclo; dias_gracia >= 1 defensivo (la
+     * migracion de D22 deja el default en 7).
+     *
+     * @param  Carbon  $finCiclo  Fin del ciclo (recortado a la vigencia).
+     * @return array{desde: Carbon, hasta: Carbon}
+     */
+    public static function ventanaCierre(Contract $contrato, Carbon $finCiclo): array
+    {
+        $fin = $finCiclo->copy()->startOfDay();
+        $gracia = max(1, (int) ($contrato->dias_gracia ?? 0));
+
+        return [
+            'desde' => $fin->copy()->subDays(VisitService::MAX_DIAS_ADELANTO)->startOfDay(),
+            'hasta' => $fin->copy()->addDays($gracia)->startOfDay(),
+        ];
+    }
+
+    /**
+     * True si [inicio, fin] coincide exactamente (a dia) con los bounds del
+     * ciclo que contiene $fin y $inicio es inicio de ciclo. Solo esos rangos
+     * activan el arrastre de consumo (D22): batch de ciclos, recalculo de
+     * esos borradores y estimacion de pendientes. El rango libre del wizard
+     * mantiene whereBetween + 1x paquete.
+     */
+    public static function esRangoAlineadaACiclo(Contract $contrato, Carbon $inicio, Carbon $fin): bool
+    {
+        $inicioDia = $inicio->copy()->startOfDay();
+        $finDia = $fin->copy()->startOfDay();
+
+        if (!self::esInicioDeCiclo($contrato, $inicioDia)) {
+            return false;
+        }
+
+        $n = self::cicloQueContiene($contrato, $finDia);
+        if ($n < 0) {
+            return false;
+        }
+
+        $bounds = self::bounds($contrato, $n);
+
+        return $bounds['inicio']->copy()->startOfDay()->equalTo($inicioDia)
+            && $bounds['fin']->copy()->startOfDay()->equalTo($finDia);
     }
 }

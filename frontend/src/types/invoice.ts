@@ -98,6 +98,12 @@ export interface PendingPeriod {
   monto_estimado: number
   advertencias: string[]
   actual: boolean
+  /** D22: ciclos que acumula el paquete (arrastre por ciclos sin corte). */
+  ciclos_acumulados?: number
+  /** Paquete efectivo: ciclos_acumulados × paginas_incluidas. */
+  paginas_incluidas_efectivas?: number
+  /** Fecha de la lectura de cierre del ciclo (null = renta base). */
+  lectura_cierre_fecha?: string | null
 }
 
 /** Respuesta de GET /contracts/{id}/facturacion. */

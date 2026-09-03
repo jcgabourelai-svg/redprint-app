@@ -591,12 +591,13 @@ class InvoiceContractBillingTest extends TestCase
                 'fecha_inicio' => '2026-05-01',
             ]);
 
-            // Una lectura por ciclo saltado (jun, jul, ago) + una del ciclo en
+            // Una lectura de corte por ciclo saltado (jun, jul, ago; dentro
+            // de la ventana de cierre con gracia 15) + una del ciclo en
             // curso que NO se selecciona (queda pendiente, caso 4).
-            $readingJun = $this->createReading($contrato, $printer, $user, '2026-06-05', 700);
-            $this->createReading($contrato, $printer, $user, '2026-07-05', 800);
-            $this->createReading($contrato, $printer, $user, '2026-08-05', 900);
-            $readingSep = $this->createReading($contrato, $printer, $user, '2026-09-03', 1000);
+            $readingJun = $this->createReading($contrato, $printer, $user, '2026-06-28', 700);
+            $this->createReading($contrato, $printer, $user, '2026-07-28', 800);
+            $this->createReading($contrato, $printer, $user, '2026-08-28', 900);
+            $readingSep = $this->createReading($contrato, $printer, $user, '2026-09-20', 1000);
 
             $resultados = app(InvoiceService::class)->createDraftBatch([
                 'cliente_id' => $client->id,
@@ -620,8 +621,10 @@ class InvoiceContractBillingTest extends TestCase
                 );
             }
 
-            // 1500 + 200*0.01 = 1502 (jun); 1500+300*0.01=1503 (jul); 1504 (ago).
-            $this->assertEquals(1502.0, (float) $resultados['2026-06-01']['invoice']->monto_total);
+            // Mayo (ciclo 0) nunca se facturó: M = −1 y el hueco de junio se
+            // mide desde el inicio del contrato con 2× paquete (700 ≤ 1000 →
+            // 1500). Julio y agosto ya tienen base facturada → 1× cada uno.
+            $this->assertEquals(1500.0, (float) $resultados['2026-06-01']['invoice']->monto_total);
             $this->assertEquals(1503.0, (float) $resultados['2026-07-01']['invoice']->monto_total);
             $this->assertEquals(1504.0, (float) $resultados['2026-08-01']['invoice']->monto_total);
             $this->assertNotNull($resultados['2026-06-01']['invoice']->details->firstWhere('lectura_id', $readingJun->id));
@@ -705,14 +708,15 @@ class InvoiceContractBillingTest extends TestCase
         Carbon::setTestNow(Carbon::parse('2026-09-05'));
 
         try {
-            // Contrato puro consumo (tarifa 0): junio tiene lectura, julio no.
+            // Contrato puro consumo (tarifa 0): junio tiene lectura de corte,
+            // julio no genera monto (renta base 0).
             [$user, $client, $contrato, $printer] = $this->setupClientWithContractAndPrinter([
                 'fecha_inicio' => '2026-05-01',
                 'tarifa_base' => 0,
                 'paginas_incluidas' => 0,
                 'costo_pag_excedente' => 0.01,
             ]);
-            $this->createReading($contrato, $printer, $user, '2026-06-05', 500);
+            $this->createReading($contrato, $printer, $user, '2026-06-28', 500);
 
             try {
                 app(InvoiceService::class)->createDraftBatch([
@@ -878,10 +882,12 @@ class InvoiceContractBillingTest extends TestCase
         }
     }
 
-    public function test_escenario_ciclo_veinte_con_lectura_dentro_del_ciclo_en_curso(): void
+    public function test_escenario_ciclo_veinte_con_lectura_temprana_rueda_al_siguiente_ciclo(): void
     {
-        // Caso real del usuario: contrato iniciado 20-ago, hoy 2-sep con
-        // lectura del 2-sep -> un solo pendiente (el ciclo 20-ago..19-sep).
+        // Caso real del usuario (semantica D22): contrato iniciado 20-ago,
+        // hoy 2-sep con lectura del 2-sep. La lectura es temprana (fuera de
+        // la ventana de cierre [14-sep, 4-oct] con gracia 15): el ciclo 0 se
+        // cobra a renta base y la lectura rueda al siguiente ciclo con corte.
         Carbon::setTestNow(Carbon::parse('2026-09-02'));
 
         try {
@@ -898,7 +904,13 @@ class InvoiceContractBillingTest extends TestCase
             $this->assertEquals('2026-08-20', $pendiente['periodo_inicio']);
             $this->assertEquals('2026-09-19', $pendiente['periodo_fin']);
             $this->assertTrue($pendiente['actual']);
-            $this->assertEquals(1, $pendiente['lecturas']);
+            $this->assertEquals(0, $pendiente['lecturas']);
+            $this->assertNull($pendiente['lectura_cierre_fecha']);
+            $this->assertEquals(1500.0, $pendiente['monto_estimado']);
+            $this->assertStringContainsString(
+                'Ciclo sin lectura de corte',
+                implode(' | ', $pendiente['advertencias']),
+            );
 
             $resultados = app(InvoiceService::class)->createDraftBatch([
                 'cliente_id' => $client->id,
@@ -908,7 +920,12 @@ class InvoiceContractBillingTest extends TestCase
             $borrador = $resultados['2026-08-20']['invoice'];
             $this->assertEquals('2026-08-20', $borrador->periodo_inicio->toDateString());
             $this->assertEquals('2026-09-19', $borrador->periodo_fin->toDateString());
-            $this->assertNotNull($borrador->details->firstWhere('lectura_id', $reading->id));
+            $this->assertEquals(1500.0, (float) $borrador->monto_total);
+            $this->assertEquals(1, $borrador->details->count());
+            $this->assertNull($borrador->details->first()->lectura_id);
+
+            // La lectura temprana queda pendiente (rueda al ciclo siguiente).
+            $this->assertEquals(0, InvoiceDetail::where('lectura_id', $reading->id)->count());
 
             $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
             $this->assertEmpty($estado['pendientes']);
@@ -928,8 +945,492 @@ class InvoiceContractBillingTest extends TestCase
     }
 
     // =====================================================
+    // Fase 4 — Arrastre de consumo en ciclos sin corte (D22)
+    // =====================================================
+
+    public function test_s1_salto_de_ciclo_con_corte_acumula_paquete(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $lectura = $this->createReading($contrato, $printer, $user, '2026-10-20', 7000);
+
+            $service = app(InvoiceService::class);
+
+            // Ciclo 0 sin lectura de corte: renta base sola.
+            $r0 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20'];
+
+            $this->assertEquals(1000.0, (float) $r0['invoice']->monto_total);
+            $this->assertEquals(1, $r0['invoice']->details->count());
+            $this->assertNull($r0['invoice']->details->first()->lectura_id);
+            $this->assertStringContainsString('Ciclo sin lectura de corte', implode(' | ', $r0['advertencias']));
+
+            // Ciclo 1 con corte tras el salto: 1000 + max(0, 7000 − 2×3000)×0.10.
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1100.0, (float) $r1['invoice']->monto_total);
+            $this->assertNotNull($r1['invoice']->details->firstWhere('lectura_id', $lectura->id));
+            $this->assertStringContainsString('Periodo acumulado: 2 ciclo(s) × 3000 páginas incluidas = 6000.',
+                implode(' | ', $r1['advertencias']),
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s2_salto_sin_excedente_cobra_renta_pero_es_ciclo_medido(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $lectura = $this->createReading($contrato, $printer, $user, '2026-10-20', 5000);
+
+            $service = app(InvoiceService::class);
+            $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user);
+
+            // 5000 <= 2×3000: sin excedente, pero el ciclo es medido
+            // (reserva la lectura; no es renta base).
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1000.0, (float) $r1['invoice']->monto_total);
+            $this->assertEquals(1, $r1['invoice']->details->count());
+            $this->assertNotNull($r1['invoice']->details->firstWhere('lectura_id', $lectura->id));
+            $this->assertStringNotContainsString('Ciclo sin lectura de corte', implode(' | ', $r1['advertencias']));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s3_lectura_tardia_dentro_de_gracia_cierra_el_ciclo_anterior(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $tardia = $this->createReading($contrato, $printer, $user, '2026-09-22', 2000);
+            $this->createReading($contrato, $printer, $user, '2026-10-17', 2000);
+
+            $service = app(InvoiceService::class);
+
+            // Corte 19-sep + gracia 7: la lectura del 22-sep cierra el ciclo 0
+            // (medido, 1× paquete), no el ciclo 1.
+            $r0 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20'];
+
+            $this->assertNotNull($r0['invoice']->details->firstWhere('lectura_id', $tardia->id));
+            $this->assertEquals(1000.0, (float) $r0['invoice']->monto_total);
+            $this->assertStringNotContainsString('Periodo acumulado', implode(' | ', $r0['advertencias']));
+
+            // Ciclo 1: base 22-sep -> M = 1 -> 1× (la tardía consumió el
+            // paquete del ciclo 0, no el suyo).
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1000.0, (float) $r1['invoice']->monto_total);
+            $this->assertStringNotContainsString('Periodo acumulado', implode(' | ', $r1['advertencias']));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s4_lectura_tardia_fuera_de_gracia_rueda_con_el_hueco_completo(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $tardia = $this->createReading($contrato, $printer, $user, '2026-09-29', 4000);
+            $corte = $this->createReading($contrato, $printer, $user, '2026-10-19', 4000);
+
+            $service = app(InvoiceService::class);
+
+            // Fuera de la ventana [14-sep, 26-sep]: ciclo 0 a renta base.
+            $r0 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20'];
+
+            $this->assertEquals(1000.0, (float) $r0['invoice']->monto_total);
+            $this->assertNull($r0['invoice']->details->first()->lectura_id);
+            $this->assertEquals(0, InvoiceDetail::where('lectura_id', $tardia->id)->count());
+
+            // Ciclo 1 factura 29-sep + 19-oct con 2× paquete (conservación:
+            // Σ paginas_periodo = hueco completo).
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1200.0, (float) $r1['invoice']->monto_total);
+            $this->assertEquals(2, $r1['invoice']->details->count());
+            $this->assertNotNull($r1['invoice']->details->firstWhere('lectura_id', $tardia->id));
+            $this->assertNotNull($r1['invoice']->details->firstWhere('lectura_id', $corte->id));
+            $this->assertEquals(8000, (int) $r1['invoice']->details->sum('paginas_consumidas'));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s5_lectura_temprana_no_cierra_y_rueda_al_siguiente_ciclo(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $temprana = $this->createReading($contrato, $printer, $user, '2026-09-01', 3500);
+            $this->createReading($contrato, $printer, $user, '2026-10-17', 3500);
+
+            $service = app(InvoiceService::class);
+
+            // 1-sep fuera de [14-sep, 26-sep]: ciclo 0 a renta base y la
+            // lectura temprana NO se factura.
+            $r0 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20'];
+
+            $this->assertEquals(1000.0, (float) $r0['invoice']->monto_total);
+            $this->assertEquals(0, InvoiceDetail::where('lectura_id', $temprana->id)->count());
+
+            // Ciclo 1 la factura junto a la de corte con 2× paquete.
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1100.0, (float) $r1['invoice']->monto_total);
+            $this->assertEquals(2, $r1['invoice']->details->count());
+            $this->assertNotNull($r1['invoice']->details->firstWhere('lectura_id', $temprana->id));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s6_cierre_normal_un_paquete_regresion(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $this->createReading($contrato, $printer, $user, '2026-09-17', 3500);
+
+            $calc = app(InvoiceCalculationService::class)
+                ->calcularEstimacion($client->id, '2026-08-20', '2026-09-19', null, (int) $contrato->id);
+
+            $this->assertEquals(1, $calc['contratos'][0]['ciclos_acumulados']);
+            $this->assertEquals(3000, $calc['contratos'][0]['paginas_incluidas_efectivas']);
+            $this->assertEquals('2026-09-17', $calc['contratos'][0]['lectura_cierre_fecha']);
+            $this->assertEquals(1050.0, $calc['monto_total']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s7_recalcular_upgradea_borrador_renta_base_a_medido(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+
+            $service = app(InvoiceService::class);
+            $borrador = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20']['invoice'];
+
+            $this->assertEquals(1000.0, (float) $borrador->monto_total);
+            $this->assertNull($borrador->details->first()->lectura_id);
+
+            // Llega la lectura de cierre del ciclo 0.
+            $lectura = $this->createReading($contrato, $printer, $user, '2026-09-18', 3500);
+
+            $recalc = $service->recalcular($borrador);
+
+            $this->assertEquals(1050.0, (float) $recalc['invoice']->monto_total);
+            $this->assertNotNull($recalc['invoice']->details->firstWhere('lectura_id', $lectura->id));
+            $this->assertEqualsWithDelta(
+                1050.0,
+                (float) $recalc['invoice']->details->sum('monto_calculado'),
+                0.001,
+            );
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s8_estimacion_de_pendientes_coincide_con_lo_cobrado(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-19'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $this->createReading($contrato, $printer, $user, '2026-10-20', 7000);
+
+            $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
+
+            $this->assertEquals(['2026-08-20', '2026-09-20'], array_column($estado['pendientes'], 'periodo'));
+            $p0 = $estado['pendientes'][0];
+            $this->assertEquals(1000.0, $p0['monto_estimado']);
+            $this->assertNull($p0['lectura_cierre_fecha']);
+            $this->assertEquals(1, $p0['ciclos_acumulados']);
+            $p1 = $estado['pendientes'][1];
+            $this->assertEquals(1100.0, $p1['monto_estimado']);
+            $this->assertEquals(2, $p1['ciclos_acumulados']);
+            $this->assertEquals(6000, $p1['paginas_incluidas_efectivas']);
+            $this->assertEquals('2026-10-20', $p1['lectura_cierre_fecha']);
+
+            // El batch produce exactamente lo estimado (hilado de simulación).
+            $resultados = app(InvoiceService::class)->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20', '2026-09-20'],
+            ], $user);
+            $this->assertEquals(1000.0, (float) $resultados['2026-08-20']['invoice']->monto_total);
+            $this->assertEquals($p1['monto_estimado'], (float) $resultados['2026-09-20']['invoice']->monto_total);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s9_arrastre_dentro_del_mismo_batch(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $lectura = $this->createReading($contrato, $printer, $user, '2026-10-20', 7000);
+
+            $resultados = app(InvoiceService::class)->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20', '2026-09-20'],
+            ], $user);
+
+            $b0 = $resultados['2026-08-20']['invoice'];
+            $b1 = $resultados['2026-09-20']['invoice'];
+            $this->assertEquals(1000.0, (float) $b0->monto_total);
+            $this->assertNull($b0->details->first()->lectura_id);
+            $this->assertEquals(1100.0, (float) $b1->monto_total);
+            $this->assertNotNull($b1->details->firstWhere('lectura_id', $lectura->id));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s10_wizard_libre_mantiene_un_paquete_y_su_advertencia(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $this->createReading($contrato, $printer, $user, '2026-10-15', 7000);
+
+            // Sin contrato_id (wizard cliente): rango de 2 meses, 1× paquete.
+            $calc = app(InvoiceCalculationService::class)
+                ->calcularEstimacion($client->id, '2026-08-20', '2026-10-19');
+
+            $this->assertEquals(1, $calc['contratos'][0]['ciclos_acumulados']);
+            // 1000 + (7000 − 3000)×0.10 = 1400.
+            $this->assertEquals(1400.0, $calc['monto_total']);
+            $this->assertStringContainsString('mes a mes', implode(' | ', $calc['advertencias']));
+            $this->assertStringNotContainsString('Periodo acumulado', implode(' | ', $calc['advertencias']));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s11_multi_impresora_suma_el_hueco_con_allowance_unico(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printerA] = $this->setupArrastreContrato();
+            $printerB = $this->createPrinter($user);
+            $this->attachPrinter($contrato, $printerB);
+
+            $this->createReading($contrato, $printerA, $user, '2026-10-15', 3000);
+            $this->createReading($contrato, $printerB, $user, '2026-10-20', 4000);
+
+            $service = app(InvoiceService::class);
+
+            $r0 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-08-20'],
+            ], $user)['2026-08-20'];
+            $this->assertEquals(1000.0, (float) $r0['invoice']->monto_total);
+
+            // Σ 7000 de dos impresoras contra allowance único 2×3000.
+            $r1 = $service->createDraftBatch([
+                'cliente_id' => $client->id,
+                'contrato_id' => $contrato->id,
+                'periodos' => ['2026-09-20'],
+            ], $user)['2026-09-20'];
+
+            $this->assertEquals(1100.0, (float) $r1['invoice']->monto_total);
+            $this->assertEquals(2, $r1['invoice']->details->count());
+            $this->assertEquals(7000, (int) $r1['invoice']->details->sum('paginas_consumidas'));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s12_primer_ciclo_desde_lectura_inicial_multiplicador_uno(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato();
+            $this->createReading($contrato, $printer, $user, '2026-09-18', 3500);
+
+            // Sin lecturas facturadas previas: M = −1, ciclo 0 -> 1×.
+            $calc = app(InvoiceCalculationService::class)
+                ->calcularEstimacion($client->id, '2026-08-20', '2026-09-19', null, (int) $contrato->id);
+
+            $this->assertEquals(1, $calc['contratos'][0]['ciclos_acumulados']);
+            $this->assertEquals(1050.0, $calc['monto_total']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s13_finalizado_parcial_conserva_allowance_completo(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-10-25'));
+
+        try {
+            [$user, $client, $contrato, $printer] = $this->setupArrastreContrato([
+                'fecha_fin' => '2026-10-05',
+                'estado' => ContractStatus::FINALIZADO,
+            ]);
+
+            // Ciclo 0 ya facturado a RENTA BASE (sin corte): el arrastre
+            // queda abierto para el ciclo final truncado.
+            $factura = $this->createInvoice($user, $client, [
+                'contrato_id' => $contrato->id,
+                'periodo_inicio' => '2026-08-20',
+                'periodo_fin' => '2026-09-19',
+                'monto_total' => 1000,
+                'saldo_pendiente' => 1000,
+            ]);
+            $this->createDetail($factura, $contrato, ['monto_calculado' => 1000]);
+
+            // Corte dentro del ciclo final truncado (5-oct).
+            $this->createReading($contrato, $printer, $user, '2026-10-04', 7000);
+
+            $estado = app(ContractBillingService::class)->estadoFacturacion($contrato);
+
+            $this->assertEquals(['2026-09-20'], array_column($estado['pendientes'], 'periodo'));
+            $p = $estado['pendientes'][0];
+            $this->assertEquals('2026-09-20', $p['periodo_inicio']);
+            $this->assertEquals('2026-10-05', $p['periodo_fin']);
+            $this->assertEquals(2, $p['ciclos_acumulados']);
+            $this->assertEquals(6000, $p['paginas_incluidas_efectivas']);
+            $this->assertEquals('2026-10-04', $p['lectura_cierre_fecha']);
+            // 1000 + (7000 − 2×3000)×0.10: allowance completo, sin prorrateo.
+            $this->assertEquals(1100.0, $p['monto_estimado']);
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    public function test_s14_migracion_dias_gracia_default_7_y_regulariza_existentes(): void
+    {
+        $user = $this->createUser();
+        $client = $this->createClient($user);
+
+        // Default de columna tras la migración D22.
+        $nuevo = Contract::create([
+            'cliente_id' => $client->id,
+            'codigo_negocio' => 'CTR-DEF-' . uniqid(),
+            'fecha_inicio' => '2026-08-20',
+            'tarifa_base' => 1000,
+            'paginas_incluidas' => 3000,
+            'costo_pag_excedente' => 0.10,
+            'frecuencia_visitas' => VisitFrequency::MENSUAL,
+            'estado' => ContractStatus::ACTIVO,
+            'creado_por' => $user->id,
+            'fecha_creacion' => now(),
+        ]);
+        $this->assertEquals(7, (int) $nuevo->fresh()->dias_gracia);
+
+        // Regularización: re-ejecutar up() lleva un 0 preexistente a 7.
+        $legacy = $this->createContract($client, $user, ['dias_gracia' => 0]);
+        $this->assertEquals(0, (int) $legacy->fresh()->dias_gracia);
+
+        $migracion = require dirname(__DIR__, 2)
+            . '/database/migrations/2026_09_02_000000_redefinir_dias_gracia_cierre_de_ciclo.php';
+        $migracion->up();
+
+        $this->assertEquals(7, (int) $legacy->fresh()->dias_gracia);
+        $this->assertEquals(7, (int) $nuevo->fresh()->dias_gracia);
+
+        // Normalizacion total (complemento): valores heterogeneos pre-D22
+        // (seeder antiguo rand 3-15) tambien terminan en 7.
+        $heterogeneo = $this->createContract($client, $user, ['dias_gracia' => 15]);
+        $this->assertEquals(15, (int) $heterogeneo->fresh()->dias_gracia);
+
+        $normalizacion = require dirname(__DIR__, 2)
+            . '/database/migrations/2026_09_02_000100_normaliza_dias_gracia_y_indices_d22.php';
+        $normalizacion->up();
+
+        $this->assertEquals(7, (int) $heterogeneo->fresh()->dias_gracia);
+        $this->assertEquals(7, (int) $legacy->fresh()->dias_gracia);
+        $this->assertEquals(7, (int) $nuevo->fresh()->dias_gracia);
+    }
+
+    // =====================================================
     // Setups compartidos
     // =====================================================
+
+    /**
+     * Contrato canónico del arrastre (D22): inicio 20-ago-2026, renta 1000,
+     * 3000 incluidas, 0.10 excedente, 7 días de gracia. Ciclo 0 =
+     * [20-ago, 19-sep] con ventana de cierre [14-sep, 26-sep]; ciclo 1 =
+     * [20-sep, 19-oct] con ventana [14-oct, 26-oct].
+     *
+     * @return array{0: User, 1: Client, 2: Contract, 3: Printer}
+     */
+    private function setupArrastreContrato(array $overrides = []): array
+    {
+        return $this->setupClientWithContractAndPrinter(array_merge([
+            'fecha_inicio' => '2026-08-20',
+            'tarifa_base' => 1000,
+            'paginas_incluidas' => 3000,
+            'costo_pag_excedente' => 0.10,
+            'dias_gracia' => 7,
+        ], $overrides));
+    }
 
     /**
      * @return array{0: User, 1: Client, 2: Contract}
