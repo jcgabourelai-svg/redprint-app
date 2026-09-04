@@ -93,6 +93,7 @@ export default function InstallationPage() {
   const [aliasSugerido, setAliasSugerido] = useState<string | null>(null)
   const [colorHeredado, setColorHeredado] = useState<string | null>(null)
   const [reemplazaA, setReemplazaA] = useState<number | null>(null)
+  const [modoInstalacion, setModoInstalacion] = useState<'sustitucion' | 'nueva' | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -110,6 +111,7 @@ export default function InstallationPage() {
           // (alias/color heredados server-side vía reemplaza_a).
           const pendiente = sustitucionPendiente(res.data.cambios_impresoras)
           if (pendiente) {
+            setModoInstalacion('sustitucion')
             setReemplazaA(pendiente.assignmentId)
             if (pendiente.alias) {
               setAliasSugerido(pendiente.alias)
@@ -119,6 +121,7 @@ export default function InstallationPage() {
               setColorHeredado(pendiente.color)
             }
           } else {
+            setModoInstalacion(null)
             setReemplazaA(null)
             setAliasSugerido(null)
             setColorHeredado(null)
@@ -172,7 +175,8 @@ export default function InstallationPage() {
     if (reemplazaA !== null) {
       if (!pendientesActuales.some((pa) => pa.id === reemplazaA)) {
         // El evento de la visita quedó obsoleto: la fila ya fue reemplazada
-        // por otra instalación. Se degrada a asignación nueva.
+        // por otra instalación. Se vuelve a pedir la elección al operador.
+        setModoInstalacion(null)
         setReemplazaA(null)
         setAliasSugerido(null)
         setColorHeredado(null)
@@ -225,7 +229,7 @@ export default function InstallationPage() {
         visita_id: visitId,
         alias: alias.trim() || null,
         color: colorHeredado,
-        reemplaza_a: reemplazaA,
+        reemplaza_a: modoInstalacion === 'sustitucion' ? reemplazaA : null,
       })
       toast.success('Impresora asignada al contrato')
       goBackTo(`/visita/${visitId}`)
@@ -253,6 +257,11 @@ export default function InstallationPage() {
     sustitucionSeleccionada?.impresora_serie ?? enlaceVisita?.impresora?.num_serie ?? null
   const sustitucionAlias = sustitucionSeleccionada?.alias ?? enlaceVisita?.alias ?? null
 
+  const eleccionPendiente =
+    assignments !== null &&
+    pendientes.length > 0 &&
+    (modoInstalacion === null || (modoInstalacion === 'sustitucion' && reemplazaA === null))
+
   const handleSelect = (p: Printer) => {
     setSelectedId(p.id)
     // D-D: la línea base sugerida es el contador físico de la serie elegida;
@@ -260,17 +269,27 @@ export default function InstallationPage() {
     setLecturaInicial(String(p.contador_actual ?? 0))
   }
 
-  const handlePendienteSelect = (pa: ContractAssignment | null) => {
-    if (pa === null) {
-      setReemplazaA(null)
-      setAliasSugerido(null)
-      setColorHeredado(null)
-      return
-    }
+  const handlePendienteSelect = (pa: ContractAssignment) => {
     setReemplazaA(pa.id)
     setAliasSugerido(pa.alias ?? null)
     setAlias((actual) => actual || pa.alias || '')
     setColorHeredado(pa.color ?? null)
+  }
+
+  const handleModoSelect = (modo: 'sustitucion' | 'nueva') => {
+    setModoInstalacion(modo)
+    if (modo === 'nueva') {
+      setReemplazaA(null)
+      // El alias auto-heredado no aplica a un equipo adicional: solo se
+      // conserva lo que el operador tecleó por su cuenta.
+      setAlias((actual) => (aliasSugerido !== null && actual === aliasSugerido ? '' : actual))
+      setAliasSugerido(null)
+      setColorHeredado(null)
+      return
+    }
+    if (reemplazaA === null && pendientes.length === 1) {
+      handlePendienteSelect(pendientes[0])
+    }
   }
 
   return (
@@ -339,50 +358,82 @@ export default function InstallationPage() {
 
             {assignments !== null && pendientes.length > 0 && (
               <div className="mb-4">
-                <SectionTitle hint="Deja 'Ninguna' si es un equipo adicional del contrato">
-                  Puesto que reemplaza (opcional)
+                <SectionTitle hint="El enlace hereda el alias y el color del puesto">
+                  ¿Esta instalación reemplaza un equipo retirado?
                 </SectionTitle>
                 <Card
-                  className={`mb-3 ${reemplazaA === null ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                  onClick={() => handlePendienteSelect(null)}
+                  className={`mb-3 ${modoInstalacion === 'sustitucion' ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                  onClick={() => handleModoSelect('sustitucion')}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="font-semibold text-gray-800">Ninguna (asignación nueva)</p>
+                      <p className="font-semibold text-gray-800">🔁 Sustituye a un equipo retirado</p>
                       <p className="mt-0.5 text-xs text-gray-500">
-                        Equipo adicional para el contrato
+                        Hereda el alias y el color del puesto que reemplaza
                       </p>
                     </div>
-                    {reemplazaA === null && <span className="text-blue-600">✓</span>}
+                    {modoInstalacion === 'sustitucion' && <span className="text-blue-600">✓</span>}
                   </div>
                 </Card>
-                {pendientes.map((pa) => (
-                  <Card
-                    key={pa.id}
-                    className={`mb-3 ${reemplazaA === pa.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                    onClick={() => handlePendienteSelect(pa)}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
-                          {pa.color && <PrinterColorDot color={pa.color} />}
-                          {pa.alias ||
-                            `${pa.impresora_marca ?? ''} ${pa.impresora_modelo ?? ''}`.trim() ||
-                            'Equipo retirado'}
-                        </p>
-                        <p className="mt-0.5 text-xs text-gray-500">
-                          Serie: {pa.impresora_serie ?? '-'}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          Liberada {pa.fecha_liberacion ? formatDayLabel(pa.fecha_liberacion) : '-'}
-                          {pa.motivo_liberacion &&
-                            ` · ${MOTIVO_LIBERACION_LABEL[pa.motivo_liberacion] ?? pa.motivo_liberacion}`}
-                        </p>
-                      </div>
-                      {reemplazaA === pa.id && <span className="text-blue-600">✓</span>}
+                <Card
+                  className={`mb-3 ${modoInstalacion === 'nueva' ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                  onClick={() => handleModoSelect('nueva')}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-gray-800">
+                        ➕ Equipo adicional (asignación nueva)
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">Amplía la flota del contrato</p>
                     </div>
+                    {modoInstalacion === 'nueva' && <span className="text-blue-600">✓</span>}
+                  </div>
+                </Card>
+                {modoInstalacion === 'sustitucion' && (
+                  <div>
+                    {reemplazaA === null && (
+                      <p className="mb-2 text-xs font-medium text-gray-500">
+                        Selecciona qué puesto reemplaza
+                      </p>
+                    )}
+                    {pendientes.map((pa) => (
+                      <Card
+                        key={pa.id}
+                        className={`mb-3 ${reemplazaA === pa.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
+                        onClick={() => handlePendienteSelect(pa)}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <p className="flex items-center gap-1.5 truncate font-semibold text-gray-800">
+                              {pa.color && <PrinterColorDot color={pa.color} />}
+                              {pa.alias ||
+                                `${pa.impresora_marca ?? ''} ${pa.impresora_modelo ?? ''}`.trim() ||
+                                'Equipo retirado'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-gray-500">
+                              Serie: {pa.impresora_serie ?? '-'}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              Liberada{' '}
+                              {pa.fecha_liberacion ? formatDayLabel(pa.fecha_liberacion) : '-'}
+                              {pa.motivo_liberacion &&
+                                ` · ${MOTIVO_LIBERACION_LABEL[pa.motivo_liberacion] ?? pa.motivo_liberacion}`}
+                            </p>
+                          </div>
+                          {reemplazaA === pa.id && <span className="text-blue-600">✓</span>}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+                {modoInstalacion === 'nueva' && (
+                  <Card className="!border-gray-200 bg-gray-50">
+                    <p className="text-xs text-gray-600">
+                      Se instalará como equipo adicional. Los puestos liberados seguirán pendientes
+                      de reemplazo.
+                    </p>
                   </Card>
-                ))}
+                )}
               </div>
             )}
 
@@ -474,10 +525,16 @@ export default function InstallationPage() {
               </div>
             )}
 
+            {eleccionPendiente && selectedId !== null && (
+              <p className="mt-3 text-center text-xs text-gray-500">
+                Elige si esta instalación reemplaza un equipo retirado o es un equipo adicional
+                para continuar.
+              </p>
+            )}
             <Button
               block
               className="mt-4"
-              disabled={selectedId === null || !online || submitting}
+              disabled={selectedId === null || !online || submitting || eleccionPendiente}
               loading={submitting}
               onClick={() => void handleSubmit()}
             >
