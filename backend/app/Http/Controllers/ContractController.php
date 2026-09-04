@@ -175,7 +175,15 @@ class ContractController extends Controller
                 Rule::in(['SUSTITUCION_FALLA', 'FIN_CONTRATO', 'CANCELACION_CONTRATO', 'ROTACION', 'OTRO']),
             ],
             'justificacion_sin_lectura' => 'required_without:lectura_final|nullable|string|max:2000',
+            'crear_orden_mantenimiento' => 'nullable|boolean',
+            'desc_problema' => 'required_with:crear_orden_mantenimiento|nullable|string|max:2000',
         ]);
+
+        $crearOrden = filter_var($data['crear_orden_mantenimiento'] ?? false, FILTER_VALIDATE_BOOLEAN);
+
+        if ($crearOrden && $data['motivo_liberacion'] !== 'SUSTITUCION_FALLA') {
+            throw new BusinessRuleException('La orden de mantenimiento solo puede crearse en retiros por falla');
+        }
 
         $visita = isset($data['visita_id'])
             ? $this->resolveVisitaParaContrato((int) $data['visita_id'], $contract)
@@ -190,7 +198,9 @@ class ContractController extends Controller
             $visita?->id,
             isset($data['lectura_final']) ? (int) $data['lectura_final'] : null,
             $data['motivo_liberacion'],
-            $data['justificacion_sin_lectura'] ?? null
+            $data['justificacion_sin_lectura'] ?? null,
+            $crearOrden,
+            $data['desc_problema'] ?? null
         );
 
         // Sin autocierre (misma regla que la instalación): cierre explícito.

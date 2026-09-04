@@ -98,3 +98,34 @@ export function useRemoveArticleFromMaintenance() {
     },
   })
 }
+
+export interface MaintenanceStats {
+  abiertas: number
+  completadas_mes: number
+  costo_mes: number
+  pct_correctivas: number
+}
+
+export function useMaintenanceStats() {
+  return useQuery<MaintenanceStats>({
+    queryKey: ['maintenance-orders', 'stats'],
+    queryFn: () => api.get('/maintenance-orders/stats').then(r => r.data),
+  })
+}
+
+export interface CompatibleArticle {
+  id: number
+  nombre: string
+  marca: string | null
+  modelo_sku: string | null
+  stock_actual: number
+  costo_unitario: number
+}
+
+export function useCompatibleArticles(printerId: number) {
+  return useQuery<CompatibleArticle[]>({
+    queryKey: ['printers', printerId, 'compatible-articles'],
+    queryFn: () => api.get(`/printers/${printerId}/compatible-articles`).then(r => r.data),
+    enabled: !!printerId,
+  })
+}

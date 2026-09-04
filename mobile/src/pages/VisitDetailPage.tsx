@@ -57,6 +57,7 @@ export default function VisitDetailPage() {
 
   const canContratos = hasPermission('contratos')
   const canInsumos = hasPermission('inventario.articulos')
+  const canMantener = hasPermission('inventario.mantenimiento')
   const canInstalar = canContratos && hasPermission('inventario.impresoras')
 
   const load = useCallback(async () => {
@@ -380,6 +381,16 @@ export default function VisitDetailPage() {
                 </div>
                 {m.desc_problema && (
                   <p className="mt-2 text-sm text-gray-600">{m.desc_problema}</p>
+                )}
+                {m.estado === 'PROGRAMADA' && canMantener && (
+                  <Button
+                    variant="secondary"
+                    block
+                    className="mt-3"
+                    onClick={() => navigate(`/visita/${visitId}/mantenimiento/${m.id}/completar`)}
+                  >
+                    Completar orden
+                  </Button>
                 )}
               </Card>
             ))}

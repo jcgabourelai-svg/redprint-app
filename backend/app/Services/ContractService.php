@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ContractStatus;
+use App\Enums\MaintenanceType;
 use App\Enums\PrinterStatus;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
@@ -25,7 +26,8 @@ class ContractService
     public function __construct(
         private CodeGeneratorService $codeGenerator,
         private VisitSchedulerService $visitScheduler,
-        private ReadingService $readingService
+        private ReadingService $readingService,
+        private MaintenanceService $maintenanceService
     ) {}
 
     public function create(array $data, User $creator): Contract
@@ -322,6 +324,11 @@ class ContractService
      * la ventana) para que el tramo "última lectura facturada -> retiro" no
      * se pierda; sin ella se exige $justificacionSinLectura y la brecha
      * queda visible como advertencia en el cálculo de facturación.
+     *
+     * Con $crearOrdenMantenimiento (solo SUSTITUCION_FALLA, guard en el
+     * controller) nace una orden CORRECTIVA en la MISMA transacción: al
+     * ejecutarse tras el paso a EN_ALMACEN, la orden la deja EN_MANTENIMIENTO
+     * con estado_anterior=EN_ALMACEN.
      */
     public function releasePrinter(
         Contract $contract,
@@ -331,11 +338,14 @@ class ContractService
         ?int $visitaId = null,
         ?int $lecturaFinal = null,
         ?string $motivoLiberacion = null,
-        ?string $justificacionSinLectura = null
+        ?string $justificacionSinLectura = null,
+        bool $crearOrdenMantenimiento = false,
+        ?string $descProblema = null
     ): void {
         DB::transaction(function () use (
             $contract, $printer, $warehouseId, $user, $visitaId,
-            $lecturaFinal, $motivoLiberacion, $justificacionSinLectura
+            $lecturaFinal, $motivoLiberacion, $justificacionSinLectura,
+            $crearOrdenMantenimiento, $descProblema
         ) {
             // Fila activa por id: con el unique parcial pueden coexistir varias
             // filas históricas del mismo par; updateExistingPivot re-estamparía
@@ -399,11 +409,28 @@ class ContractService
 
             $filaActiva->update($pivotUpdate);
 
+            // La orden nace después de que la impresora ya está EN_ALMACEN:
+            // create() la pasa a EN_MANTENIMIENTO con estado_anterior=EN_ALMACEN
+            // (retirada por falla = en taller pendiente de reparar).
+            $ordenMantenimiento = null;
+            if ($crearOrdenMantenimiento) {
+                $ordenMantenimiento = $this->maintenanceService->create([
+                    'impresora_id' => $printer->id,
+                    'fecha' => today(),
+                    'tipo_mantto' => MaintenanceType::CORRECTIVO,
+                    'desc_problema' => $descProblema,
+                    'visita_id' => $visitaId,
+                ], $user);
+            }
+
             $datosAdicionales = [
                 'contrato_id' => $contract->id,
                 'almacen_destino' => $warehouseId,
                 'assignment_id' => $filaActiva->id,
             ];
+            if ($ordenMantenimiento !== null) {
+                $datosAdicionales['orden_mantto_id'] = $ordenMantenimiento->id;
+            }
             if ($visitaId) {
                 $datosAdicionales['visita_id'] = $visitaId;
             }

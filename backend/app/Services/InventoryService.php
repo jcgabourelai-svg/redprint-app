@@ -146,7 +146,7 @@ class InventoryService
             return;
         }
 
-        $adminUsers = \App\Models\User::where('rol', 'ADMIN')->where('activo', true)->get();
+        $adminUsers = User::withPermission('inventario.articulos')->get();
 
         foreach ($adminUsers as $user) {
             Notification::create([

@@ -44,6 +44,20 @@ class User extends Authenticatable
         return $query->whereHas('role', fn ($q) => $q->where('slug', 'administrador'));
     }
 
+    /**
+     * Usuarios activos cuyo rol tiene el permiso indicado: roles sistema
+     * (bypass total) o roles con la fila correspondiente en permission_role.
+     * Reemplaza al legacy User::where('rol', 'ADMIN').
+     */
+    public function scopeWithPermission($query, string $clave)
+    {
+        return $query
+            ->where('activo', true)
+            ->whereHas('role', fn ($q) => $q
+                ->where('es_sistema', true)
+                ->orWhereHas('permissions', fn ($p) => $p->where('clave', $clave)));
+    }
+
     public function role(): BelongsTo
     {
         return $this->belongsTo(Role::class, 'rol_id');

@@ -1,16 +1,43 @@
 import { useNavigate } from 'react-router-dom'
-import { Plus, Wrench } from 'lucide-react'
+import { Plus, Wrench, ClipboardList, CheckCircle2, DollarSign, AlertTriangle, RotateCcw } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import Input from '@/components/ui/Input'
+import Select from '@/components/ui/Select'
+import { Card, CardContent } from '@/components/ui/Card'
 import api from '@/lib/api'
 import { useServerTable } from '@/hooks/useServerTable'
-import { formatDate, formatCurrency, getMaintenanceStatusColor } from '@/lib/formatters'
+import { useMaintenanceStats } from '@/hooks/useMaintenanceOrders'
+import { formatDate, formatCurrency } from '@/lib/formatters'
 import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import type { MaintenanceOrder } from '@/types/maintenance-order'
+
+const estadoOptions = [
+  { value: '', label: 'Todos los estados' },
+  { value: 'PROGRAMADA', label: 'Programada' },
+  { value: 'COMPLETADA', label: 'Completada' },
+  { value: 'CANCELADA', label: 'Cancelada' },
+]
+
+const tipoOptions = [
+  { value: '', label: 'Todos los tipos' },
+  { value: 'PREVENTIVO', label: 'Preventivo' },
+  { value: 'CORRECTIVO', label: 'Correctivo' },
+]
+
+const severidadOptions = [
+  { value: '', label: 'Todas las severidades' },
+  ...Object.entries(severityLabels).map(([value, label]) => ({ value, label })),
+]
+
+const tipoProblemaOptions = [
+  { value: '', label: 'Todos los problemas' },
+  ...Object.entries(problemTypeLabels).map(([value, label]) => ({ value, label })),
+]
 
 export default function MaintenanceList() {
   const navigate = useNavigate()
@@ -20,6 +47,13 @@ export default function MaintenanceList() {
     fetcher: (p) => api.get('/maintenance-orders', { params: p }).then((r) => r.data),
     defaultSort: { column: 'fecha', dir: 'desc' },
   })
+
+  const { data: stats } = useMaintenanceStats()
+
+  const setFilter = (key: string, value: string) =>
+    tableProps.onFilterChange({ ...tableProps.filterState, [key]: value })
+
+  const activeFilters = Object.values(tableProps.filterState || {}).some((v) => v !== '' && v != null)
 
   const columns = [
     {
@@ -138,6 +172,128 @@ export default function MaintenanceList() {
             <Button onClick={() => navigate('/inventario/mantenimiento/crear')}>
               <Plus className="mr-2 h-4 w-4" />
               Nueva Orden
+            </Button>
+          )}
+        </div>
+
+        {stats && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Abiertas</p>
+                    <p className="text-lg font-bold">{stats.abiertas}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-success/10 p-2">
+                    <CheckCircle2 className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Completadas del mes</p>
+                    <p className="text-lg font-bold">{stats.completadas_mes}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-success/10 p-2">
+                    <DollarSign className="h-5 w-5 text-success" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Costo del mes</p>
+                    <p className="text-lg font-bold">{formatCurrency(stats.costo_mes)}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-warning/10 p-2">
+                    <AlertTriangle className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">% Correctivas</p>
+                    <p className="text-lg font-bold">{stats.pct_correctivas}%</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="w-44">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Estado</label>
+            <Select
+              options={estadoOptions}
+              value={tableProps.filterState.estado || ''}
+              onChange={(v) => setFilter('estado', v)}
+              placeholder="Estado"
+            />
+          </div>
+          <div className="w-40">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Tipo</label>
+            <Select
+              options={tipoOptions}
+              value={tableProps.filterState.tipo_mantto || ''}
+              onChange={(v) => setFilter('tipo_mantto', v)}
+              placeholder="Tipo"
+            />
+          </div>
+          <div className="w-44">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Severidad</label>
+            <Select
+              options={severidadOptions}
+              value={tableProps.filterState.severidad || ''}
+              onChange={(v) => setFilter('severidad', v)}
+              placeholder="Severidad"
+            />
+          </div>
+          <div className="w-48">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Problema</label>
+            <Select
+              options={tipoProblemaOptions}
+              value={tableProps.filterState.tipo_problema || ''}
+              onChange={(v) => setFilter('tipo_problema', v)}
+              placeholder="Problema"
+            />
+          </div>
+          <div className="w-40">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Desde</label>
+            <Input
+              type="date"
+              value={tableProps.filterState.fecha_desde || ''}
+              onChange={(e) => setFilter('fecha_desde', e.target.value)}
+            />
+          </div>
+          <div className="w-40">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Hasta</label>
+            <Input
+              type="date"
+              value={tableProps.filterState.fecha_hasta || ''}
+              onChange={(e) => setFilter('fecha_hasta', e.target.value)}
+            />
+          </div>
+          {activeFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => tableProps.onFilterChange({})}
+            >
+              <RotateCcw className="mr-1 h-4 w-4" />
+              Limpiar filtros
             </Button>
           )}
         </div>

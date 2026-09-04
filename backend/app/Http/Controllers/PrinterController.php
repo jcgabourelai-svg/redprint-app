@@ -87,4 +87,19 @@ class PrinterController extends Controller
         $history = $this->printerService->getHistory($printer, $request->tipo_evento);
         return response()->json($history);
     }
+
+    /**
+     * Artículos compatibles con el modelo de la impresora (pivote
+     * article_printer_model): sugerencias para la UI de piezas de
+     * mantenimiento, con stock y costo vigentes.
+     */
+    public function compatibleArticles(Printer $printer): JsonResponse
+    {
+        $articles = $printer->printerModel?->articles()
+            ->where('activo', true)
+            ->orderBy('nombre')
+            ->get(['id', 'nombre', 'marca', 'modelo_sku', 'stock_actual', 'costo_unitario']);
+
+        return response()->json($articles ?? collect());
+    }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MaintenanceStatus;
+use App\Enums\MaintenanceType;
 use App\Http\Requests\StoreMaintenanceOrderRequest;
 use App\Http\Requests\UpdateMaintenanceOrderRequest;
 use App\Http\Resources\MaintenanceOrderResource;
@@ -18,6 +20,30 @@ class MaintenanceOrderController extends Controller
     public function __construct(
         private MaintenanceService $maintenanceService
     ) {}
+
+    /**
+     * KPIs del módulo: abiertas, completadas del mes, costo del mes y
+     * porcentaje de correctivas sobre el total completado del mes.
+     */
+    public function stats(): JsonResponse
+    {
+        $inicioMes = now()->startOfMonth();
+
+        $completadasMes = MaintenanceOrder::where('estado', MaintenanceStatus::COMPLETADA)
+            ->where('fecha_completado', '>=', $inicioMes);
+
+        $totalMes = (clone $completadasMes)->count();
+        $correctivasMes = (clone $completadasMes)
+            ->where('tipo_mantto', MaintenanceType::CORRECTIVO)
+            ->count();
+
+        return response()->json([
+            'abiertas' => MaintenanceOrder::where('estado', MaintenanceStatus::PROGRAMADA)->count(),
+            'completadas_mes' => $totalMes,
+            'costo_mes' => (float) $completadasMes->sum('costo_total'),
+            'pct_correctivas' => $totalMes > 0 ? round($correctivasMes * 100 / $totalMes, 1) : 0,
+        ]);
+    }
 
     public function index(Request $request): JsonResponse
     {

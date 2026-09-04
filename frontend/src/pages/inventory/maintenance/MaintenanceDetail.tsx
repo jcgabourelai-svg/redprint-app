@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
   Wrench,
-  Clock,
   DollarSign,
   User,
   Calendar,
@@ -20,8 +19,19 @@ import Modal from '@/components/ui/Modal'
 import Input from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
-import { useMaintenanceOrder, useUpdateMaintenanceOrder, useCompleteMaintenanceOrder, useCancelMaintenanceOrder, useDeleteMaintenanceOrder } from '@/hooks/useMaintenanceOrders'
-import { formatCurrency, formatDate, getMaintenanceStatusColor } from '@/lib/formatters'
+import {
+  useMaintenanceOrder,
+  useUpdateMaintenanceOrder,
+  useCompleteMaintenanceOrder,
+  useCancelMaintenanceOrder,
+  useDeleteMaintenanceOrder,
+  useAddArticleToMaintenance,
+  useRemoveArticleFromMaintenance,
+  useCompatibleArticles,
+} from '@/hooks/useMaintenanceOrders'
+import { useArticles } from '@/hooks/useArticles'
+import { useDebounce } from '@/hooks/useDebounce'
+import { formatCurrency, formatDate, formatDateTime, getMaintenanceStatusColor } from '@/lib/formatters'
 import { problemTypeLabels, severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { parseApiError } from '@/lib/api-errors'
 import { useIsAdmin } from '@/contexts/AuthContext'
@@ -32,8 +42,6 @@ function getEstadoIcon(estado: string) {
       return <CheckCircle className="h-5 w-5 text-success" />
     case 'cancelada':
       return <XCircle className="h-5 w-5 text-destructive" />
-    case 'en_progreso':
-      return <Clock className="h-5 w-5 text-warning" />
     default:
       return <AlertCircle className="h-5 w-5 text-primary" />
   }
@@ -49,6 +57,8 @@ export default function MaintenanceDetail() {
   const cancelMutation = useCancelMaintenanceOrder()
   const updateMutation = useUpdateMaintenanceOrder()
   const deleteMutation = useDeleteMaintenanceOrder()
+  const addArticleMutation = useAddArticleToMaintenance()
+  const removeArticleMutation = useRemoveArticleFromMaintenance()
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [editError, setEditError] = useState('')
@@ -66,6 +76,28 @@ export default function MaintenanceDetail() {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteError, setDeleteError] = useState('')
 
+  // Formulario de piezas (solo ordenes PROGRAMADA + admin)
+  const [articleSearch, setArticleSearch] = useState('')
+  const debouncedArticleSearch = useDebounce(articleSearch, 350)
+  const [selectedArticleId, setSelectedArticleId] = useState<number | null>(null)
+  const [articleQty, setArticleQty] = useState('1')
+  const [articleError, setArticleError] = useState('')
+  const [confirmRemoveId, setConfirmRemoveId] = useState<number | null>(null)
+
+  const { data: articlesData } = useArticles(
+    order?.estado === 'PROGRAMADA' && isAdmin
+      ? debouncedArticleSearch.trim() !== ''
+        ? { search: debouncedArticleSearch, per_page: 20 }
+        : { per_page: 20 }
+      : undefined,
+  )
+
+  const { data: compatibleArticles } = useCompatibleArticles(order?.impresora_id ?? 0)
+  const compatibleIds = new Set((compatibleArticles ?? []).map((a) => a.id))
+
+  const articles = (articlesData as any)?.data ?? []
+  const selectedArticle = articles.find((a: any) => a.id === selectedArticleId) ?? null
+
   const openEditModal = () => {
     setEditError('')
     setEditFecha(orderData.fecha || '')
@@ -73,6 +105,42 @@ export default function MaintenanceDetail() {
     setEditTrabajo(orderData.trabajo_realizado || '')
     setEditCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
     setShowEditModal(true)
+  }
+
+  const handleAddArticle = async () => {
+    setArticleError('')
+    const qty = parseInt(articleQty)
+    if (!selectedArticleId) {
+      setArticleError('Selecciona un artículo de la búsqueda')
+      return
+    }
+    if (!Number.isFinite(qty) || qty < 1) {
+      setArticleError('La cantidad debe ser un número entero mayor o igual a 1')
+      return
+    }
+    try {
+      await addArticleMutation.mutateAsync({
+        orderId,
+        articulo_id: selectedArticleId,
+        cantidad: qty,
+      })
+      setSelectedArticleId(null)
+      setArticleSearch('')
+      setArticleQty('1')
+    } catch (err) {
+      setArticleError(parseApiError(err))
+    }
+  }
+
+  const handleRemoveArticle = async (articleUsedId: number) => {
+    setArticleError('')
+    try {
+      await removeArticleMutation.mutateAsync({ orderId, articleUsedId })
+    } catch (err) {
+      setArticleError(parseApiError(err))
+    } finally {
+      setConfirmRemoveId(null)
+    }
   }
 
   const handleEditSubmit = async () => {
@@ -157,13 +225,15 @@ export default function MaintenanceDetail() {
 
   const orderData = order as any
   const refacciones = orderData.articles_used || []
-  const notas = orderData.notas || []
 
+  // Total autoritativo del servidor (congelado al completar); la suma de
+  // subtotales es solo desglose visual de las filas.
   const costoRefacciones = refacciones.reduce(
-    (sum: number, r: any) => sum + r.costo_unitario * r.cantidad,
+    (sum: number, r: any) => sum + Number(r.costo_unitario) * Number(r.cantidad),
     0,
   )
-  const costoTotal = orderData.costo_mano_obra + costoRefacciones
+  const costoTotal = orderData.costo_total ?? Number(orderData.costo_mano_obra ?? 0) + costoRefacciones
+  const puedeEditarPiezas = orderData.estado === 'PROGRAMADA' && isAdmin
 
   return (
     <PageLayout title={`Inventario › Mantenimiento › ${orderData.id}`}>
@@ -286,6 +356,86 @@ export default function MaintenanceDetail() {
                         label: 'Artículos Usados',
                         content: (
                           <div className="space-y-4 pb-4">
+                            {puedeEditarPiezas && (
+                              <div className="border border-border rounded-lg p-4 space-y-3 bg-muted/30">
+                                <p className="text-sm font-medium text-foreground">Agregar pieza / insumo</p>
+                                <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+                                  <div>
+                                    <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                      Buscar artículo
+                                    </label>
+                                    <Input
+                                      value={selectedArticle ? selectedArticle.nombre : articleSearch}
+                                      onChange={(e) => {
+                                        setSelectedArticleId(null)
+                                        setArticleSearch(e.target.value)
+                                      }}
+                                      placeholder="Nombre, marca o SKU..."
+                                    />
+                                    {!selectedArticle && articleSearch.trim() !== '' && (
+                                      <div className="mt-2 max-h-48 overflow-y-auto rounded-md border border-border bg-card divide-y divide-border">
+                                        {articles.length === 0 ? (
+                                          <p className="px-3 py-2 text-sm text-muted-foreground">
+                                            Sin resultados
+                                          </p>
+                                        ) : (
+                                          articles.map((a: any) => (
+                                            <button
+                                              key={a.id}
+                                              type="button"
+                                              onClick={() => {
+                                                setSelectedArticleId(a.id)
+                                                setArticleQty('1')
+                                              }}
+                                              className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm text-left hover:bg-muted"
+                                            >
+                                              <span className="truncate">
+                                                {a.nombre}
+                                                {compatibleIds.has(a.id) && (
+                                                  <Badge variant="success" className="ml-2">Compatible</Badge>
+                                                )}
+                                              </span>
+                                              <span className="whitespace-nowrap text-xs text-muted-foreground">
+                                                {a.stock_actual} disp. — {formatCurrency(a.costo_unitario)}
+                                              </span>
+                                            </button>
+                                          ))
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="flex gap-2 items-end">
+                                    <div className="w-24">
+                                      <label className="block text-xs font-medium text-muted-foreground mb-1">
+                                        Cantidad
+                                      </label>
+                                      <Input
+                                        type="number"
+                                        min={1}
+                                        value={articleQty}
+                                        onChange={(e) => setArticleQty(e.target.value)}
+                                      />
+                                    </div>
+                                    <Button
+                                      onClick={handleAddArticle}
+                                      loading={addArticleMutation.isPending}
+                                      disabled={!selectedArticleId}
+                                    >
+                                      Agregar
+                                    </Button>
+                                  </div>
+                                </div>
+                                {articleError && (
+                                  <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
+                                    {articleError}
+                                  </div>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                  El costo se congela al agregar. El stock se descarga del inventario al completar la orden.
+                                </p>
+                              </div>
+                            )}
+
                             {refacciones.length === 0 ? (
                               <div className="text-center py-8">
                                 <p className="text-sm text-muted-foreground">
@@ -309,6 +459,11 @@ export default function MaintenanceDetail() {
                                       <th className="pb-2 text-right text-xs font-medium text-muted-foreground">
                                         Subtotal
                                       </th>
+                                      {puedeEditarPiezas && (
+                                        <th className="pb-2 text-right text-xs font-medium text-muted-foreground">
+                                          Acciones
+                                        </th>
+                                      )}
                                     </tr>
                                   </thead>
                                   <tbody>
@@ -324,43 +479,40 @@ export default function MaintenanceDetail() {
                                         <td className="py-2 text-right font-medium">
                                           {formatCurrency(ref.costo_unitario * ref.cantidad)}
                                         </td>
+                                        {puedeEditarPiezas && (
+                                          <td className="py-2 text-right">
+                                            {confirmRemoveId === ref.id ? (
+                                              <span className="inline-flex items-center gap-2 text-xs">
+                                                <span className="text-muted-foreground">¿Quitar?</span>
+                                                <Button
+                                                  size="sm"
+                                                  variant="danger"
+                                                  onClick={() => handleRemoveArticle(ref.id)}
+                                                  loading={removeArticleMutation.isPending}
+                                                >
+                                                  Sí
+                                                </Button>
+                                                <Button size="sm" variant="secondary" onClick={() => setConfirmRemoveId(null)}>
+                                                  No
+                                                </Button>
+                                              </span>
+                                            ) : (
+                                              <Button
+                                                size="sm"
+                                                variant="ghost"
+                                                onClick={() => setConfirmRemoveId(ref.id)}
+                                                aria-label="Quitar artículo"
+                                              >
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                              </Button>
+                                            )}
+                                          </td>
+                                        )}
                                       </tr>
                                     ))}
                                   </tbody>
                                 </table>
                               </div>
-                            )}
-                          </div>
-                        ),
-                      },
-                      {
-                        id: 'notas',
-                        label: 'Notas',
-                        content: (
-                          <div className="space-y-4 pb-4">
-                            {notas.length === 0 ? (
-                              <div className="text-center py-8">
-                                <p className="text-sm text-muted-foreground">
-                                  No hay notas registradas para esta orden
-                                </p>
-                              </div>
-                            ) : (
-                              notas.map((nota: any) => (
-                                <div
-                                  key={nota.id}
-                                  className="border border-border rounded-lg p-4"
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <p className="text-sm font-medium text-foreground">
-                                      {nota.autor}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {formatDate(nota.fecha)}
-                                    </p>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground">{nota.texto}</p>
-                                </div>
-                              ))
                             )}
                           </div>
                         ),
@@ -408,6 +560,11 @@ export default function MaintenanceDetail() {
                 <div className="text-center">
                   <p className="text-lg font-bold text-foreground">{formatDate(orderData.fecha)}</p>
                   <p className="text-sm text-muted-foreground mt-1">fecha programada</p>
+                  {orderData.fecha_completado && (
+                    <p className="text-sm text-muted-foreground mt-2">
+                      Completada el {formatDateTime(orderData.fecha_completado)}
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>

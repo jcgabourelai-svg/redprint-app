@@ -410,6 +410,18 @@ export default function ReportFailurePage() {
                     {m.estado && <Badge tone="violet">{m.estado}</Badge>}
                   </div>
                 </div>
+                {m.estado === 'PROGRAMADA' && canReport && (
+                  <Button
+                    variant="secondary"
+                    block
+                    className="mt-3"
+                    onClick={() =>
+                      goBackTo(`/visita/${visitId}/mantenimiento/${m.id}/completar`)
+                    }
+                  >
+                    Completar orden
+                  </Button>
+                )}
               </Card>
             ))}
           </section>

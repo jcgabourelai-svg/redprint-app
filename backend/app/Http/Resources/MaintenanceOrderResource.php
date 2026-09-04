@@ -30,6 +30,7 @@ class MaintenanceOrderResource extends JsonResource
             'articles_used' => ArticleUsedResource::collection($this->whenLoaded('articlesUsed')),
             'expenses' => PrinterExpenseResource::collection($this->whenLoaded('expenses')),
             'fecha_creacion' => $this->fecha_creacion,
+            'fecha_completado' => $this->fecha_completado,
         ];
     }
 }

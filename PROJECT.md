@@ -323,8 +323,17 @@ toque una entidad con estado debe respetar (o ampliar explícitamente) su máqui
 
 ### Mantenimiento — `PROGRAMADA → COMPLETADA | CANCELADA` (soft deletes)
 
-- Piezas solo en `PROGRAMADA`. Completar = calcular `costo_total` (mano de obra + piezas) +
+- Solo `PROGRAMADA` se **edita** (guard en `MaintenanceService::update`; 422 en otro estado).
+- Piezas solo en `PROGRAMADA`, validando **stock acumulado** por artículo en la orden
+  (Σ piezas ya registradas + la nueva > `stock_actual` ⇒ 422 accionable). Completar =
+  calcular `costo_total` (mano de obra + piezas), estampar `fecha_completado` +
   **descargar stock** + restaurar impresora. Cancelar borra piezas **sin tocar stock**.
+- La restauración (`restorePrinterState`) es **consciente**: si la impresora ya no está
+  EN_MANTENIMIENTO conserva su estado actual (historia `restauracion_omitida` +
+  `estado_conservado`); si el `estado_anterior` era RENTADA pero ya no hay pivot activo,
+  se libera a EN_ALMACEN; solo en el caso normal restaura `estado_anterior`.
+- Severidad CRITICA al crear ⇒ notificación MAINTENANCE_CRITICAL a cada usuario con
+  permiso `inventario.mantenimiento`.
 
 ### Factura — `PENDIENTE → PARCIALMENTE_PAGADA → PAGADA` (+ `VENCIDA`, `INCOBRABLE`)
 
@@ -401,7 +410,9 @@ se ignoran? ¿el ciclo cierra sin intervention manual?
    (almacén → contrato, `RENTADA`, nueva `lectura_inicial`), ambos desde el móvil durante una
    visita (quedan estampados en `printer_histories` con `visita_id`; **sin autocierre**: la
    visita se cierra de forma explícita, lo que permite seguir capturando actividades —p. ej.
-   entrega de tóner— en la misma visita).
+   entrega de tóner— en la misma visita). Un retiro por `SUSTITUCION_FALLA` puede crear la
+   **orden correctiva** en la misma transacción (flag explícito, D23); la orden se completa
+   después desde el móvil o el panel web.
 4. **Cierre mensual**: validaciones previas (bloquea errores) → snapshot KPIs → historial de
    periodos. Nota: el cierre **no congela escritura** de periodos pasados.
 
@@ -436,6 +447,7 @@ propuesto contradice una decisión consciente (malo) o corrige una omisión (bue
 | D20 | **Bloqueo duro de periodos duplicados en facturas** | Evitar doble cobro del mismo periodo (mismo cliente + rangos solapados), incluso entre borradores | Re-chequeo dentro de la transacción de emisión/borrador (además del detector de solapamiento informativo) |
 | D21 | **Primera visita de lectura a +1 periodo; captura/cierre limitados a 5 días de adelanto** | Evita la lectura cero del día 1 (alta en/antes del inicio), la inconsistencia según la fecha de alta, y quemar el slot del ciclo completando/capturando una visita lejana | `VisitService::assertCapturable` es la única fuente de la regla (la consumen `ReadingService::captureReading` y `VisitService::complete`); la UI avisa con banner para visitas 1–5 días adelantadas; el servidor responde 422 accionable; entregas/mantenimiento quedan como follow-up |
 | D22 | **Arrastre de consumo por ciclos sin lectura de corte** | Un ciclo sin lectura de corte cercana a su fin cobra solo la `tarifa_base` y su paquete se acumula: el siguiente ciclo con corte compara el consumo del hueco completo contra `multiplicador × paginas_incluidas`. Ventana de cierre `[fin del ciclo − 5, fin + dias_gracia]` (el −5 alinea con el adelanto de captura de D21; `dias_gracia` se reusa con este significado —default 7—, antes "gracia para pago" sin uso). Multiplicador por M-derivation: `M = ciclo que contiene la última lectura facturada` (−1 si ninguna), `multiplicador = N − M` (mín 1); no requiere estado nuevo y garantiza conservación global (cada lectura a lo sumo en una factura; Σ allowance consumido = ciclos con lectura facturada). Alcance: SOLO rangos que coinciden exactamente con los bounds de un ciclo (`CicloFacturacion::esRangoAlineadaACiclo`: batch, recálculo de esos borradores y estimación de pendientes); el wizard manual a nivel cliente conserva `whereBetween` + 1× y sus advertencias | Ciclo parcial final (FINALIZADO) mantiene el allowance completo, sin prorrateo; los ciclos a renta base reservan con `lectura_id = null` y no consumen paquete; orden de facturación libre (facturar N antes que N−1 está permitido); drift aceptado: cierres con ±gracia/−5 de desfase aprietan/aflojan un allowance individual, nunca el total de vida del contrato |
+| D23 | **Retiro por `SUSTITUCION_FALLA` puede crear la orden correctiva en la misma transacción (flag explícito)** | El operador ya está frente a la impresora fallando: evita re-capturar el problema en el panel web. El flag (`crear_orden_mantenimiento` + `desc_problema` requerida) es explícito y solo válido con ese motivo (422 en otro caso); la orden nace vía `MaintenanceService::create` dentro de la transacción del retiro, después de liberar la impresora | La impresora queda EN_MANTENIMIENTO con `estado_anterior=EN_ALMACEN`; EN_MANTENIMIENTO **sigue asignada al contrato y facturando renta** (decisión documentada); la historia de liberación guarda `orden_mantto_id` en `datos_adicionales`; `finish()`/`cancel()` de contrato nunca crean órdenes (defaults del parámetro) |
 
 ---
 
@@ -482,9 +494,6 @@ para detectar sugerencias de "terminar lo empezado" (suelen ser de alto valor).
 
 ### Backend
 
-- `InventoryService::generateLowStockNotification` consulta `users.rol='ADMIN'` (columna
-  legacy string) que **coexiste con el RBAC actual** (`rol_id`): las notificaciones de stock
-  bajo podrían no llegar a los admins reales.
 - `PeriodController` cuenta movimientos "conciliados/pendientes" por `tipo` en vez de
   `conciliacion_status` — posible bug latente en el resumen de cierre.
 - **No hay scheduler** para: marcar facturas vencidas (`checkOverdue` existe pero se invoca
@@ -518,7 +527,6 @@ para detectar sugerencias de "terminar lo empezado" (suelen ser de alto valor).
   worker/PWA (la navegación offline no funciona).
 - La **regularización de registros de campo es web-only**: el móvil solo captura; vincular a
   cliente/contrato/impresora y descartar viven en "Operaciones › Registros de campo".
-- Completar la orden correctiva queda solo en el panel web (el móvil solo la crea).
 - `tipo_visita` es motivo, no restricción: todas las acciones están disponibles en cualquier
   visita editable.
 
@@ -584,8 +592,10 @@ Para juzgar si el **modelo de negocio** está bien servido por el sistema:
 4. **Cierre sin congelamiento**: se puede editar un periodo ya cerrado (pagos, facturas) y el
    snapshot queda desfasado. ¿Es aceptable para el tamaño del negocio? ¿Cuándo dejaría de
    serlo?
-5. **Notificaciones de stock bajo** no llegan a admins reales (bug legacy `users.rol`).
-   ¿Qué operaciones de campo dependen de ese aviso?
+5. **Notificaciones de stock bajo**: el bug legacy `users.rol` fue corregido (hoy se envían
+   por permiso `inventario.articulos`) y el modelo `Notification` ya inserta (fix PK uuid);
+   sigue sin haber scheduler que las dispare (§10). ¿Qué operaciones de campo dependerían
+   de ese aviso?
 6. **Fórmula de rentabilidad** del cierre: `(ingresos−egresos)/egresos×100` — ¿es la
    métrica que el dueño espera (sobre egresos, no sobre ingresos)? ¿es consistente con
    `margen` de contratos?
@@ -633,7 +643,6 @@ Señales de problemas que **en este códigobase** suelen indicar deuda real:
 | Enum nuevo sin `*Labels` ni color | `types/enums.ts` | Estado "gris" en la UI |
 | Cambio de schema sin migración | PRs que editan Models/Enums sin archivo en `migrations/` | Drift código ↔ BD |
 | Fetch masivo con `fetchAll` para datos crecientes | `mobile/src/**` | Tope 10 páginas silencioso |
-| Query de `users` por columna `rol` legacy | `backend/app/Services/**` | Notificaciones a nadie (bug §10) |
 
 ### 11.6 Plantilla para sugerencias estructuradas
 
@@ -700,7 +709,11 @@ rg -n "users.rol|->rol\b" backend/app/Services              # usos de columna le
 | Ciclos de facturación por aniversario (D17) | `backend/app/Support/CicloFacturacion.php` (única fuente de la aritmética de ciclos), `ContractBillingService` (pendientes/cubiertos), `InvoiceService::createDraftBatch`, tests `CicloFacturacionTest`/`InvoiceContractBillingTest`, labels de ciclo `frontend/src/pages/contracts/ContractDetail.tsx` (`cicloLabel`) |
 | Arrastre de consumo por ciclos sin corte (D22) | `backend/app/Support/CicloFacturacion.php` (`ventanaCierre` —reusa `VisitService::MAX_DIAS_ADELANTO`—, `esRangoAlineadaACiclo`), `InvoiceCalculationService::infoCicloAlineado` (M-derivation y renta base, `conCacheContextual` para pendientes), `ContractBillingService` (hilado de pendientes con `fechaBaseVirtual`), `Contract::calculateEstimatedAmount`, migraciones `2026_09_02_000000_redefinir_dias_gracia_cierre_de_ciclo.php` + `2026_09_02_000100_normaliza_dias_gracia_y_indices_d22.php` (índices `readings(contrato_id, fecha)` / `invoice_details(contrato_id)`), tests S1–S14 en `InvoiceContractBillingTest`, badge `×N acumulado` en `frontend/src/pages/contracts/ContractDetail.tsx` (modal de pendientes) |
 | Mocks del frontend | §10 + grep `mock` en `frontend/src/pages/finance`, `components/layout/Header.tsx` |
-| Bug legacy `users.rol` | `backend/app/Services/InventoryService.php::generateLowStockNotification` |
+| Retiro por falla crea orden correctiva (D23) | `ContractService::releasePrinter` + `ContractController::releasePrinter`, tests `ReleaseCreatesMaintenanceTest`, captura `mobile/src/pages/RemovalPage.tsx` |
+| Restauración consciente / guard de edición / stock acumulado en piezas | `MaintenanceService` (`restorePrinterState`, `update`, `addArticle`), tests `MaintenanceRestoreStateTest`/`MaintenanceUpdateGuardTest`/`MaintenanceArticlesTest` |
+| `fecha_completado`, KPIs de mantenimiento y piezas compatibles | migración `2026_09_04_000000_add_fecha_completado_to_maintenance_orders_table.php`, `MaintenanceOrderController::stats`, `PrinterController::compatibleArticles`, tests `MaintenanceStatsAndCompatibilityTest` |
+| Notificaciones por permiso (fix `users.rol` + PK uuid) | `User::scopeWithPermission`, `Notification` (`HasUuids`), `MaintenanceService::notifyCriticalFailure`, tests `MaintenanceCriticalNotificationTest` |
+| Piezas y reportes de mantenimiento en la web / completar orden en móvil | `frontend/src/pages/inventory/maintenance/` (`MaintenanceDetail`, `MaintenanceReports`), `mobile/src/pages/CompleteMaintenancePage.tsx` |
 | Resumen de cierre por `tipo` | `backend/app/Http/Controllers/PeriodController.php` |
 
 ---

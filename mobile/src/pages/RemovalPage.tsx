@@ -37,6 +37,7 @@ export default function RemovalPage() {
   const online = useOnline()
 
   const canRemove = hasPermission('contratos') && hasPermission('inventario.almacenes')
+  const canMaintain = hasPermission('inventario.mantenimiento')
 
   const [visit, setVisit] = useState<Visit | null>(null)
   const [loadingVisit, setLoadingVisit] = useState(true)
@@ -49,8 +50,14 @@ export default function RemovalPage() {
   const [lecturaFinal, setLecturaFinal] = useState('')
   const [sinLectura, setSinLectura] = useState(false)
   const [justificacion, setJustificacion] = useState('')
+  const [crearOrden, setCrearOrden] = useState(true)
+  const [descOrden, setDescOrden] = useState('')
+  const [descOrdenTouched, setDescOrdenTouched] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const enviarCrearOrden = crearOrden && canMaintain && motivo === 'SUSTITUCION_FALLA'
+  const descOrdenValida = descOrden.trim().length >= 5
 
   useEffect(() => {
     let cancelled = false
@@ -109,6 +116,7 @@ export default function RemovalPage() {
     (sinLectura
       ? justificacionValida
       : lecturaNum !== null && Number.isFinite(lecturaNum) && lecturaNum >= 0) &&
+    (!enviarCrearOrden || descOrdenValida) &&
     !submitting
 
   async function handleSubmit() {
@@ -123,11 +131,15 @@ export default function RemovalPage() {
         lectura_final: sinLectura ? null : lecturaNum,
         motivo_liberacion: motivo,
         justificacion_sin_lectura: sinLectura ? justificacion.trim() : null,
+        crear_orden_mantenimiento: enviarCrearOrden || undefined,
+        desc_problema: enviarCrearOrden ? descOrden.trim() : undefined,
       })
       toast.success(
-        sinLectura
-          ? 'Impresora liberada sin lectura (brecha registrada)'
-          : 'Impresora liberada con lectura de cierre'
+        enviarCrearOrden
+          ? 'Impresora retirada y orden de mantenimiento creada'
+          : sinLectura
+            ? 'Impresora liberada sin lectura (brecha registrada)'
+            : 'Impresora liberada con lectura de cierre'
       )
       goBackTo(`/visita/${visitId}`, 2)
     } catch (e) {
@@ -332,9 +344,61 @@ export default function RemovalPage() {
                       rows={3}
                       placeholder="Ej. Equipo no enciende, panel sin respuesta"
                       value={justificacion}
-                      onChange={(e) => setJustificacion(e.target.value)}
+                      onChange={(e) => {
+                        setJustificacion(e.target.value)
+                        if (!descOrdenTouched) setDescOrden(e.target.value)
+                      }}
                     />
                   </Field>
+                )}
+
+                {motivo === 'SUSTITUCION_FALLA' && !canMaintain && (
+                  <Banner tone="info">
+                    No tienes permiso de mantenimiento: la impresora se retirará sin orden de
+                    mantenimiento.
+                  </Banner>
+                )}
+
+                {motivo === 'SUSTITUCION_FALLA' && canMaintain && (
+                  <div className="space-y-3 rounded-xl border border-gray-200 p-3">
+                    <label className="flex items-start gap-2.5">
+                      <input
+                        type="checkbox"
+                        className="mt-0.5"
+                        checked={crearOrden}
+                        onChange={(e) => setCrearOrden(e.target.checked)}
+                      />
+                      <span className="text-sm text-gray-700">
+                        <span className="font-semibold">Crear orden correctiva</span>
+                        <span className="block text-xs text-gray-500">
+                          La impresora quedará EN_MANTENIMIENTO (taller) hasta completar la orden.
+                          Se crea en el mismo retiro, de forma transaccional.
+                        </span>
+                      </span>
+                    </label>
+
+                    {crearOrden && (
+                      <Field
+                        label="Descripción del problema *"
+                        help="Se precarga con la justificación sin lectura; edítala si hace falta."
+                        error={
+                          descOrden.trim().length > 0 && !descOrdenValida
+                            ? 'La descripción debe tener al menos 5 caracteres'
+                            : null
+                        }
+                      >
+                        <TextArea
+                          rows={3}
+                          placeholder="Ej. No enciende, olor a quemado en la fuente"
+                          value={descOrden}
+                          onChange={(e) => {
+                            setDescOrdenTouched(true)
+                            setDescOrden(e.target.value)
+                          }}
+                        />
+                      </Field>
+                    )}
+                  </div>
                 )}
               </div>
             )}

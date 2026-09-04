@@ -84,12 +84,15 @@ Route::prefix('v1')->group(function () {
         });
 
         Route::middleware('permission:inventario.mantenimiento')->group(function () {
+            // Antes del apiResource para no colisionar con {maintenanceOrder}.
+            Route::get('maintenance-orders/stats', [MaintenanceOrderController::class, 'stats']);
             Route::apiResource('maintenance-orders', MaintenanceOrderController::class);
             Route::post('maintenance-orders/{maintenanceOrder}/complete', [MaintenanceOrderController::class, 'complete']);
             Route::post('maintenance-orders/{maintenanceOrder}/cancel', [MaintenanceOrderController::class, 'cancel']);
             Route::post('maintenance-orders/{maintenanceOrder}/articles', [MaintenanceOrderController::class, 'addArticle']);
             Route::delete('maintenance-orders/{maintenanceOrder}/articles/{articleUsedId}', [MaintenanceOrderController::class, 'removeArticle']);
             Route::get('maintenance-orders/{maintenanceOrder}/articles', [MaintenanceOrderController::class, 'articles']);
+            Route::get('printers/{printer}/compatible-articles', [PrinterController::class, 'compatibleArticles']);
             Route::get('reports/maintenance/problematic-printers', [MaintenanceReportController::class, 'problematicPrinters']);
             Route::get('reports/maintenance/printer/{printerId}/cost', [MaintenanceReportController::class, 'printerMaintenanceCost']);
         });

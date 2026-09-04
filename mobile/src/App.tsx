@@ -16,6 +16,7 @@ import NewVisitPage from './pages/NewVisitPage'
 import NewFieldRecordPage from './pages/NewFieldRecordPage'
 import DeliveryPage from './pages/DeliveryPage'
 import ReportFailurePage from './pages/ReportFailurePage'
+import CompleteMaintenancePage from './pages/CompleteMaintenancePage'
 import NotificationsPage from './pages/NotificationsPage'
 import ProfilePage from './pages/ProfilePage'
 
@@ -73,6 +74,10 @@ export default function App() {
               <Route path="visita/:id/retiro" element={<RemovalPage />} />
               <Route path="visita/:id/entrega" element={<DeliveryPage />} />
               <Route path="visita/:id/falla" element={<ReportFailurePage />} />
+              <Route
+                path="visita/:id/mantenimiento/:ordenId/completar"
+                element={<CompleteMaintenancePage />}
+              />
               <Route path="notificaciones" element={<NotificationsPage />} />
               <Route path="perfil" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />

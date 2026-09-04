@@ -71,6 +71,7 @@ export interface MaintenanceOrder {
   trabajo_realizado: string | null
   estado: string | null
   visita_id: number | null
+  fecha_completado?: string | null
   printer?: {
     id: number
     marca: string

@@ -25,6 +25,8 @@ export interface MaintenanceOrder {
   estado: MaintenanceStatus
   articles_used?: ArticleUsed[]
   fecha_creacion: string | null
+  fecha_completado?: string | null
+  foto_evidencia?: string | null
 }
 
 export interface ArticleUsed {

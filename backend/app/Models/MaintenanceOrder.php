@@ -34,6 +34,7 @@ class MaintenanceOrder extends Model
         'estado',
         'estado_anterior_impresora',
         'fecha_creacion',
+        'fecha_completado',
     ];
 
     protected function casts(): array
@@ -47,6 +48,7 @@ class MaintenanceOrder extends Model
             'costo_total' => 'decimal:2',
             'estado' => MaintenanceStatus::class,
             'fecha_creacion' => 'datetime',
+            'fecha_completado' => 'datetime',
         ];
     }
 
