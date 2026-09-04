@@ -5,6 +5,8 @@ Plataforma web para la **gestión de flotas de impresoras**: control de inventar
 > **Entorno de desarrollo:** todo corre en **Docker** (incluso en local). La app se abre en `http://localhost:8080` servida por Nginx; no hay flujo habitual de `npm run dev` en el host. Detalles del flujo de trabajo en [`AGENTS.md`](AGENTS.md) y en [`mobile/README.md`](mobile/README.md).
 >
 > **Contexto del negocio y evaluación:** en [`PROJECT.md`](PROJECT.md) está el propósito, alcance, filosofía, flujos de negocio y un marco de evaluación (checklists, preguntas y smells) pensado para que agentes de IA (y humanos) entiendan y juzguen el sistema rápidamente.
+>
+> **Manual de usuario:** en [`docs/manual-usuario/`](docs/manual-usuario/README.md) está la guía del sistema organizada por rol (administrador, operador de campo, técnico, almacenista y finanzas), con conceptos, flujos paso a paso y preguntas frecuentes.
 
 ## Características
 
@@ -101,6 +103,8 @@ redprint-app/
 ├── mobile/                 # App móvil de campo (SPA, servida en /m/)
 │   └── src/                # pages/, hooks/, components/, lib/ (api, sync, db...)
 ├── prototipoMovile/        # Wireframes/prototipos de la app móvil
+├── docs/
+│   └── manual-usuario/     # Manual de usuario por rol (admin, operador, técnico, almacén, finanzas)
 ├── nginx/                  # Plantilla de configuración de Nginx
 ├── docker-compose.yml      # Orquestación de servicios
 ├── setup.sh                # Bootstrap (Linux/macOS/Git Bash)
