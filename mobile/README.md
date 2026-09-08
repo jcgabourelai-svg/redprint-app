@@ -94,6 +94,15 @@ docker compose run --rm --no-deps mobile sh -c "npm run lint && npm run build"
   permite reintentar.
 - `GET /visits` es paginado (default 15): la app siempre manda `per_page=100`
   y pagina vía helper `fetchAll`.
+- **Retiro con orden de servicio (cualquier motivo, D24)**: además de la
+  correctiva por falla, el retiro por rotación/fin/cancelación/otro puede marcar
+  *"Enviar a servicio preventivo"*. El tipo de orden lo deriva el backend del
+  motivo (el móvil nunca envía `tipo_mantto`); para la preventiva las notas son
+  opcionales y el backend autocompleta la descripción. Requiere el permiso
+  `inventario.mantenimiento` (sin él, el retiro prosigue sin orden). La
+  impresora queda EN_MANTENIMIENTO (taller) y **no puede instalarse** en otro
+  contrato hasta cerrar la orden (el backend responde 422 y las tarjetas de
+  instalación muestran el chip 🔧 Orden #N abierta).
 
 ## Cola offline (capturas de campo: lecturas y registros)
 

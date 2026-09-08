@@ -27,6 +27,19 @@ class PrinterResource extends JsonResource
             'contador_actual' => $this->contador_actual,
             'history_count' => $this->whenNotNull($this->history_count),
             'maintenance_orders_count' => $this->whenNotNull($this->maintenance_orders_count),
+            'ordenes_abiertas_count' => $this->whenNotNull($this->ordenes_abiertas_count),
+            // D24: orden PROGRAMADA abierta (preventiva o correctiva) para el
+            // chip "en taller/servicio" del catálogo. null cuando no hay.
+            'open_maintenance_order' => $this->whenLoaded('openMaintenanceOrder', function () {
+                $orden = $this->openMaintenanceOrder;
+
+                return $orden === null ? null : [
+                    'id' => $orden->id,
+                    'tipo_mantto' => $orden->tipo_mantto?->value,
+                    'estado' => $orden->estado?->value,
+                    'fecha' => $orden->fecha?->toDateString(),
+                ];
+            }),
             'warehouse' => $this->whenLoaded('warehouse'),
             // Cliente del contrato con asignacion activa (ubicacion real cuando
             // la impresora esta rentada). null si no hay asignacion activa.

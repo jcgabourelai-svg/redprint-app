@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\ContractStatus;
+use App\Enums\MaintenanceStatus;
 use App\Enums\MaintenanceType;
 use App\Enums\PrinterStatus;
 use App\Enums\VisitStatus;
@@ -11,6 +12,7 @@ use App\Exceptions\BusinessRuleException;
 use App\Models\Contract;
 use App\Models\ContractPrinter;
 use App\Models\ContractPrinterPlan;
+use App\Models\MaintenanceOrder;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\Reading;
@@ -224,6 +226,19 @@ class ContractService
             throw new BusinessRuleException('La impresora debe estar en almacen para asignarla');
         }
 
+        // D24: bloqueo duro por orden abierta (PROGRAMADA). El equipo está en
+        // taller o reservado para servicio: no se puede re-entregar hasta
+        // completar o cancelar la orden.
+        $ordenAbierta = MaintenanceOrder::where('impresora_id', $printerId)
+            ->where('estado', MaintenanceStatus::PROGRAMADA)
+            ->first();
+
+        if ($ordenAbierta !== null) {
+            throw new BusinessRuleException(
+                "La impresora tiene una orden de mantenimiento abierta (#{$ordenAbierta->id}). Complétala o cancélala antes de asignarla."
+            );
+        }
+
         $alreadyAssigned = Contract::whereHas('printers', function ($q) use ($printerId) {
             $q->where('impresora_id', $printerId)->where('activa', true);
         })->where('estado', ContractStatus::ACTIVO)->exists();
@@ -325,10 +340,12 @@ class ContractService
      * se pierda; sin ella se exige $justificacionSinLectura y la brecha
      * queda visible como advertencia en el cálculo de facturación.
      *
-     * Con $crearOrdenMantenimiento (solo SUSTITUCION_FALLA, guard en el
-     * controller) nace una orden CORRECTIVA en la MISMA transacción: al
-     * ejecutarse tras el paso a EN_ALMACEN, la orden la deja EN_MANTENIMIENTO
-     * con estado_anterior=EN_ALMACEN.
+     * Con $crearOrdenMantenimiento nace una orden en la MISMA transacción:
+     * al ejecutarse tras el paso a EN_ALMACEN, la orden la deja
+     * EN_MANTENIMIENTO con estado_anterior=EN_ALMACEN (retiro con orden =
+     * en taller hasta cerrar la orden). El tipo lo decide el caller a partir
+     * del motivo (D24): SUSTITUCION_FALLA => CORRECTIVA, cualquier otro
+     * motivo => PREVENTIVA (servicio al retirar, notas opcionales).
      */
     public function releasePrinter(
         Contract $contract,
@@ -340,12 +357,13 @@ class ContractService
         ?string $motivoLiberacion = null,
         ?string $justificacionSinLectura = null,
         bool $crearOrdenMantenimiento = false,
-        ?string $descProblema = null
+        ?string $descProblema = null,
+        ?MaintenanceType $tipoOrden = null
     ): void {
         DB::transaction(function () use (
             $contract, $printer, $warehouseId, $user, $visitaId,
             $lecturaFinal, $motivoLiberacion, $justificacionSinLectura,
-            $crearOrdenMantenimiento, $descProblema
+            $crearOrdenMantenimiento, $descProblema, $tipoOrden
         ) {
             // Fila activa por id: con el unique parcial pueden coexistir varias
             // filas históricas del mismo par; updateExistingPivot re-estamparía
@@ -411,16 +429,37 @@ class ContractService
 
             // La orden nace después de que la impresora ya está EN_ALMACEN:
             // create() la pasa a EN_MANTENIMIENTO con estado_anterior=EN_ALMACEN
-            // (retirada por falla = en taller pendiente de reparar).
+            // (retiro con orden = en taller pendiente de servicio).
             $ordenMantenimiento = null;
             if ($crearOrdenMantenimiento) {
+                // D7: jamás dos órdenes abiertas sobre la misma impresora
+                // (cierra el hueco reporte-de-falla + retiro-con-orden).
+                $yaTieneOrdenAbierta = MaintenanceOrder::where('impresora_id', $printer->id)
+                    ->where('estado', MaintenanceStatus::PROGRAMADA)
+                    ->exists();
+
+                if ($yaTieneOrdenAbierta) {
+                    throw new BusinessRuleException('La impresora ya tiene una orden de mantenimiento abierta');
+                }
+
+                $tipoOrden = $tipoOrden ?? MaintenanceType::CORRECTIVO;
+
+                // D6: la preventiva no describe una falla; sin notas se
+                // autocompleta con el contrato de origen.
+                if (
+                    $tipoOrden === MaintenanceType::PREVENTIVO
+                    && ($descProblema === null || trim($descProblema) === '')
+                ) {
+                    $descProblema = "Servicio preventivo al retirar del contrato {$contract->codigo_negocio}";
+                }
+
                 $ordenMantenimiento = $this->maintenanceService->create([
                     'impresora_id' => $printer->id,
                     'fecha' => today(),
-                    'tipo_mantto' => MaintenanceType::CORRECTIVO,
+                    'tipo_mantto' => $tipoOrden,
                     'desc_problema' => $descProblema,
                     'visita_id' => $visitaId,
-                ], $user);
+                ], $user, sacarDeCirculacion: true);
             }
 
             $datosAdicionales = [

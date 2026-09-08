@@ -22,9 +22,16 @@ class MaintenanceService
         private InventoryService $inventoryService
     ) {}
 
-    public function create(array $data, User $creator): MaintenanceOrder
+    /**
+     * $sacarDeCirculacion (D24): desplaza la impresora a EN_MANTENIMIENTO
+     * aunque la orden sea PREVENTIVA (orden nacida de un retiro de contrato).
+     * El correctivo siempre saca la impresora (falla en sitio); las
+     * preventivas de web (equipo rentado, servicio en visita) NO cambian el
+     * estado de la impresora.
+     */
+    public function create(array $data, User $creator, bool $sacarDeCirculacion = false): MaintenanceOrder
     {
-        return DB::transaction(function () use ($data, $creator) {
+        return DB::transaction(function () use ($data, $creator, $sacarDeCirculacion) {
             $data['socio_id'] = $creator->id;
             $data['estado'] = MaintenanceStatus::PROGRAMADA;
             $data['fecha_creacion'] = now();
@@ -32,7 +39,7 @@ class MaintenanceService
 
             $order = MaintenanceOrder::create($data);
 
-            if ($order->tipo_mantto === MaintenanceType::CORRECTIVO) {
+            if ($order->tipo_mantto === MaintenanceType::CORRECTIVO || $sacarDeCirculacion) {
                 $printer = $order->printer;
 
                 $order->update(['estado_anterior_impresora' => $printer->estado->value]);
@@ -42,7 +49,11 @@ class MaintenanceService
                 PrinterHistory::create([
                     'impresora_id' => $printer->id,
                     'tipo_evento' => 'MANTENIMIENTO_INICIO',
-                    'descripcion' => "Inicio mantenimiento correctivo - Orden #{$order->id}",
+                    'descripcion' => sprintf(
+                        'Inicio mantenimiento %s - Orden #%d',
+                        $order->tipo_mantto === MaintenanceType::CORRECTIVO ? 'correctivo' : 'preventivo',
+                        $order->id
+                    ),
                     'datos_adicionales' => ['orden_mantto_id' => $order->id],
                     'socio_id' => $creator->id,
                     'fecha' => now(),
@@ -140,15 +151,9 @@ class MaintenanceService
                 $this->actualizarContadorImpresora($order, (int) $data['contador_impresora'], $user);
             }
 
-            if ($order->tipo_mantto === MaintenanceType::CORRECTIVO) {
-                $this->restorePrinterState(
-                    $order,
-                    $user,
-                    'MANTENIMIENTO_FIN',
-                    "Mantenimiento correctivo completado - Orden #{$order->id}",
-                    ['costo_total' => $costoTotal],
-                );
-            } else {
+            // El evento del servicio preventivo SIEMPRE se escribe, haya o no
+            // habido desplazamiento a taller (histórico por orden).
+            if ($order->tipo_mantto === MaintenanceType::PREVENTIVO) {
                 PrinterHistory::create([
                     'impresora_id' => $order->printer->id,
                     'tipo_evento' => 'MANTENIMIENTO_PREVENTIVO',
@@ -160,6 +165,23 @@ class MaintenanceService
                     'socio_id' => $user->id,
                     'fecha' => now(),
                 ]);
+            }
+
+            // D24: la restauración se keyed por "¿desplazamos la impresora?"
+            // (estado_anterior guardado al iniciar), no por el tipo de orden.
+            // La preventiva nacida de un retiro también vuelve del taller.
+            if ($order->estado_anterior_impresora !== null) {
+                $esPreventivo = $order->tipo_mantto === MaintenanceType::PREVENTIVO;
+
+                $this->restorePrinterState(
+                    $order,
+                    $user,
+                    $esPreventivo ? 'MANTENIMIENTO_PREVENTIVO_FIN' : 'MANTENIMIENTO_FIN',
+                    $esPreventivo
+                        ? "Fin mantenimiento preventivo - Orden #{$order->id}"
+                        : "Mantenimiento correctivo completado - Orden #{$order->id}",
+                    ['costo_total' => $costoTotal],
+                );
             }
 
             return $order->fresh(['printer', 'articlesUsed.article']);
@@ -250,7 +272,8 @@ class MaintenanceService
     }
 
     /**
-     * Restaura la impresora al concluir una orden correctiva, pero es
+     * Restaura la impresora al concluir una orden que la sacó de circulación
+     * (correctiva, o preventiva nacida de un retiro de contrato), pero es
      * consciente de lo que pasó mientras la orden estaba abierta:
      *
      * 1. Si la impresora ya no está EN_MANTENIMIENTO (alguien la liberó, la
@@ -261,6 +284,10 @@ class MaintenanceService
      *    a RENTADA sin contrato: la impresora regresa a EN_ALMACEN conservando
      *    su almacén vigente.
      * 3. En cualquier otro caso se restaura el estado anterior tal cual.
+     *
+     * D24: la condición de entrada es `estado_anterior_impresora` (¿la orden
+     * desplazó a la impresora?), NO el tipo de orden. Órdenes preventivas sin
+     * estado guardado (servicio en visita, equipo rentado) no restauran nada.
      */
     private function restorePrinterState(
         MaintenanceOrder $order,
@@ -269,15 +296,13 @@ class MaintenanceService
         string $descripcion,
         array $extraDatos = [],
     ): void {
-        if ($order->tipo_mantto !== MaintenanceType::CORRECTIVO) {
+        if ($order->estado_anterior_impresora === null) {
             return;
         }
 
         $printer = $order->printer->fresh() ?? $order->printer;
 
-        $previousStatus = $order->estado_anterior_impresora
-            ? PrinterStatus::from($order->estado_anterior_impresora)
-            : PrinterStatus::EN_ALMACEN;
+        $previousStatus = PrinterStatus::from($order->estado_anterior_impresora);
 
         $datosBase = array_merge(['orden_mantto_id' => $order->id], $extraDatos);
 

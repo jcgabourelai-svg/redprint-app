@@ -460,11 +460,22 @@ export default function InstallationPage() {
 
             {printers?.map((p) => {
               const enPlan = p.printer_model_id ? planModelIds.has(p.printer_model_id) : false
+              // D24: equipo con orden de servicio abierta: visible pero no
+              // seleccionable (defensivo: hoy el filtro EN_ALMACEN ya excluye
+              // a las retiradas con orden; cubre la preventiva sobre equipo
+              // en almacén creada desde la web).
+              const bloqueada = !!p.open_maintenance_order
               return (
                 <Card
                   key={p.id}
-                  className={`mb-3 ${selectedId === p.id ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                  onClick={() => handleSelect(p)}
+                  className={`mb-3 ${
+                    bloqueada
+                      ? 'opacity-60'
+                      : selectedId === p.id
+                        ? '!border-blue-500 ring-1 ring-blue-500'
+                        : ''
+                  }`}
+                  onClick={bloqueada ? undefined : () => handleSelect(p)}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
@@ -475,6 +486,11 @@ export default function InstallationPage() {
                             EN PLAN
                           </span>
                         )}
+                        {bloqueada && (
+                          <span className="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
+                            🔧 Orden #{p.open_maintenance_order!.id} abierta
+                          </span>
+                        )}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">Serie: {p.num_serie ?? '-'}</p>
                       <p className="text-xs text-gray-500">
@@ -483,7 +499,9 @@ export default function InstallationPage() {
                       </p>
                       <p className="text-xs text-gray-400">Contador: {p.contador_actual}</p>
                     </div>
-                    {selectedId === p.id && <span className="text-blue-600">✓</span>}
+                    {!bloqueada && selectedId === p.id && (
+                      <span className="text-blue-600">✓</span>
+                    )}
                   </div>
                 </Card>
               )

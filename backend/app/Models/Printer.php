@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\MaintenanceStatus;
 use App\Enums\PrinterStatus;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
@@ -81,6 +82,18 @@ class Printer extends Model
     public function maintenanceOrders()
     {
         return $this->hasMany(MaintenanceOrder::class, 'impresora_id');
+    }
+
+    /**
+     * Orden de mantenimiento abierta (PROGRAMADA). Alimenta el chip de
+     * "en taller/servicio" del catálogo y el bloqueo de re-asignación (D24).
+     * Si hubiera varias abiertas (anomalía), gana la más reciente.
+     */
+    public function openMaintenanceOrder(): HasOne
+    {
+        return $this->hasOne(MaintenanceOrder::class, 'impresora_id')
+            ->where('estado', MaintenanceStatus::PROGRAMADA)
+            ->orderByDesc('id');
     }
 
     public function readings()

@@ -56,7 +56,10 @@ export default function RemovalPage() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const enviarCrearOrden = crearOrden && canMaintain && motivo === 'SUSTITUCION_FALLA'
+  // D24: el retiro con orden aplica a CUALQUIER motivo; el tipo (correctiva
+  // por falla, preventiva en el resto) lo deriva el backend del motivo.
+  const enviarCrearOrden = crearOrden && canMaintain
+  const esFalla = motivo === 'SUSTITUCION_FALLA'
   const descOrdenValida = descOrden.trim().length >= 5
 
   useEffect(() => {
@@ -116,7 +119,7 @@ export default function RemovalPage() {
     (sinLectura
       ? justificacionValida
       : lecturaNum !== null && Number.isFinite(lecturaNum) && lecturaNum >= 0) &&
-    (!enviarCrearOrden || descOrdenValida) &&
+    (!(enviarCrearOrden && esFalla) || descOrdenValida) &&
     !submitting
 
   async function handleSubmit() {
@@ -132,11 +135,14 @@ export default function RemovalPage() {
         motivo_liberacion: motivo,
         justificacion_sin_lectura: sinLectura ? justificacion.trim() : null,
         crear_orden_mantenimiento: enviarCrearOrden || undefined,
-        desc_problema: enviarCrearOrden ? descOrden.trim() : undefined,
+        // Preventiva sin notas: el backend autocompleta la descripción (D6).
+        desc_problema: enviarCrearOrden ? descOrden.trim() || undefined : undefined,
       })
       toast.success(
         enviarCrearOrden
-          ? 'Impresora retirada y orden de mantenimiento creada'
+          ? esFalla
+            ? 'Impresora retirada y orden correctiva creada'
+            : 'Impresora retirada y enviada a servicio preventivo'
           : sinLectura
             ? 'Impresora liberada sin lectura (brecha registrada)'
             : 'Impresora liberada con lectura de cierre'
@@ -265,7 +271,12 @@ export default function RemovalPage() {
                       <Card
                         key={m.value}
                         className={`py-2.5 ${motivo === m.value ? '!border-blue-500 ring-1 ring-blue-500' : ''}`}
-                        onClick={() => setMotivo(m.value)}
+                        onClick={() => {
+                          setMotivo(m.value)
+                          // Default por motivo (D24): falla => orden correctiva
+                          // marcada; el resto => servicio preventivo sin marcar.
+                          setCrearOrden(m.value === 'SUSTITUCION_FALLA')
+                        }}
                       >
                         <div className="flex items-center justify-between px-1">
                           <span className="text-sm font-medium text-gray-800">{m.label}</span>
@@ -352,14 +363,14 @@ export default function RemovalPage() {
                   </Field>
                 )}
 
-                {motivo === 'SUSTITUCION_FALLA' && !canMaintain && (
+                {!canMaintain && (
                   <Banner tone="info">
                     No tienes permiso de mantenimiento: la impresora se retirará sin orden de
-                    mantenimiento.
+                    servicio.
                   </Banner>
                 )}
 
-                {motivo === 'SUSTITUCION_FALLA' && canMaintain && (
+                {canMaintain && (
                   <div className="space-y-3 rounded-xl border border-gray-200 p-3">
                     <label className="flex items-start gap-2.5">
                       <input
@@ -369,27 +380,44 @@ export default function RemovalPage() {
                         onChange={(e) => setCrearOrden(e.target.checked)}
                       />
                       <span className="text-sm text-gray-700">
-                        <span className="font-semibold">Crear orden correctiva</span>
+                        <span className="font-semibold">
+                          {esFalla
+                            ? 'Crear orden correctiva'
+                            : 'Enviar a servicio preventivo (crear orden)'}
+                        </span>
                         <span className="block text-xs text-gray-500">
                           La impresora quedará EN_MANTENIMIENTO (taller) hasta completar la orden.
-                          Se crea en el mismo retiro, de forma transaccional.
+                          Se crea en el mismo retiro, de forma transaccional. El tipo de orden (
+                          {esFalla ? 'correctiva' : 'preventiva'}) se deriva del motivo.
                         </span>
                       </span>
                     </label>
 
                     {crearOrden && (
                       <Field
-                        label="Descripción del problema *"
-                        help="Se precarga con la justificación sin lectura; edítala si hace falta."
+                        label={
+                          esFalla
+                            ? 'Descripción del problema *'
+                            : 'Notas para el servicio (opcional)'
+                        }
+                        help={
+                          esFalla
+                            ? 'Se precarga con la justificación sin lectura; edítala si hace falta.'
+                            : 'Si lo dejas vacío, la orden se crea con la descripción "Servicio preventivo al retirar del contrato".'
+                        }
                         error={
-                          descOrden.trim().length > 0 && !descOrdenValida
+                          esFalla && descOrden.trim().length > 0 && !descOrdenValida
                             ? 'La descripción debe tener al menos 5 caracteres'
                             : null
                         }
                       >
                         <TextArea
                           rows={3}
-                          placeholder="Ej. No enciende, olor a quemado en la fuente"
+                          placeholder={
+                            esFalla
+                              ? 'Ej. No enciende, olor a quemado en la fuente'
+                              : 'Ej. Rotación de flota: limpieza y revisión general'
+                          }
                           value={descOrden}
                           onChange={(e) => {
                             setDescOrdenTouched(true)

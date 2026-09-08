@@ -146,7 +146,9 @@ Desde el detalle de la visita → **📥 Instalar impresora** (requiere conexió
      solo si en esta misma visita retiraste un equipo por falla), o
    - **➕ Equipo adicional**.
 2. Selecciona la impresora: solo aparecen equipos **En almacén**; las que corresponden al
-   plan del contrato se muestran primero con la etiqueta **EN PLAN**.
+   plan del contrato se muestran primero con la etiqueta **EN PLAN**. Un equipo con una
+   **orden de servicio abierta** aparece bloqueado con la etiqueta
+   **🔧 Orden #N abierta**: primero debe completarse o cancelarse la orden.
 3. Captura la **lectura inicial** (viene precargada con el contador físico reportado de la
    serie) y, si quieres, un **alias/ubicación** (ej. "Recepción", máx. 60 caracteres).
 4. **Confirmar instalación**.
@@ -166,10 +168,15 @@ Desde el detalle de la impresora → **📤 Retirar impresora** (requiere conexi
    se pinta roja: revisa la captura).
 4. Si **no se puede leer el contador**, marca la casilla y escribe la **justificación
    obligatoria** (ese tramo sin leer no se factura).
-5. Si el motivo es **Sustitución por falla** y tienes permiso de mantenimiento, puedes
-   dejar activada la casilla **"Crear orden correctiva"** (viene activada) con la
-   **descripción del problema** obligatoria: el sistema crea la orden en el mismo acto y la
-   impresora queda en taller.
+5. Si tienes permiso de mantenimiento, puedes crear la orden de servicio en el mismo
+   retiro (la impresora queda en taller hasta cerrarla):
+   - **Sustitución por falla**: casilla **"Crear orden correctiva"** (viene activada) con
+     la **descripción del problema** obligatoria.
+   - **Cualquier otro motivo** (rotación, fin/cancelación, otro): casilla
+     **"Enviar a servicio preventivo (crear orden)"** (viene desactivada) con notas
+     opcionales; si las dejas vacías, la orden se crea con la descripción
+     *"Servicio preventivo al retirar del contrato"*.
+   El tipo de orden (correctiva/preventiva) lo decide el sistema a partir del motivo.
 6. Elige el **almacén destino** y confirma con **Confirmar retiro**.
 
 ## 9. Completar, reprogramar u omitir la visita

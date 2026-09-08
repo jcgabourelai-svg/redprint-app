@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MaintenanceType;
 use App\Enums\VisitStatus;
 use App\Exceptions\BusinessRuleException;
 use App\Http\Requests\StoreContractRequest;
@@ -17,6 +18,7 @@ use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class ContractController extends Controller
 {
@@ -176,13 +178,32 @@ class ContractController extends Controller
             ],
             'justificacion_sin_lectura' => 'required_without:lectura_final|nullable|string|max:2000',
             'crear_orden_mantenimiento' => 'nullable|boolean',
-            'desc_problema' => 'required_with:crear_orden_mantenimiento|nullable|string|max:2000',
+            'desc_problema' => 'nullable|string|max:2000',
         ]);
 
         $crearOrden = filter_var($data['crear_orden_mantenimiento'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-        if ($crearOrden && $data['motivo_liberacion'] !== 'SUSTITUCION_FALLA') {
-            throw new BusinessRuleException('La orden de mantenimiento solo puede crearse en retiros por falla');
+        // D24: el tipo de orden se deriva del motivo (nunca lo envía el
+        // cliente): falla => CORRECTIVA, cualquier otro motivo => PREVENTIVA.
+        $tipoOrden = $data['motivo_liberacion'] === 'SUSTITUCION_FALLA'
+            ? MaintenanceType::CORRECTIVO
+            : MaintenanceType::PREVENTIVO;
+
+        if ($crearOrden && !$request->user()->tienePermiso('inventario.mantenimiento')) {
+            abort(403, 'Crear una orden de mantenimiento al retirar requiere el permiso de mantenimiento (inventario.mantenimiento).');
+        }
+
+        // La descripción del problema solo es obligatoria para la correctiva
+        // (required_with condicional: Laravel no expresa "required_with X
+        // salvo motivo Y" con una sola regla).
+        if (
+            $crearOrden
+            && $tipoOrden === MaintenanceType::CORRECTIVO
+            && (empty($data['desc_problema']) || trim((string) $data['desc_problema']) === '')
+        ) {
+            throw ValidationException::withMessages([
+                'desc_problema' => 'La descripción del problema es obligatoria cuando se crea una orden correctiva al retirar.',
+            ]);
         }
 
         $visita = isset($data['visita_id'])
@@ -200,7 +221,8 @@ class ContractController extends Controller
             $data['motivo_liberacion'],
             $data['justificacion_sin_lectura'] ?? null,
             $crearOrden,
-            $data['desc_problema'] ?? null
+            $data['desc_problema'] ?? null,
+            $tipoOrden
         );
 
         // Sin autocierre (misma regla que la instalación): cierre explícito.

@@ -31,6 +31,11 @@ const PRINTER_FILTERS: FilterConfig[] = [
   },
 ]
 
+const TIPO_ORDEN_LABEL: Record<string, string> = {
+  PREVENTIVO: 'preventivo',
+  CORRECTIVO: 'correctivo',
+}
+
 export default function PrinterList() {
   const navigate = useNavigate()
   const isAdmin = useIsAdmin()
@@ -91,10 +96,21 @@ export default function PrinterList() {
       key: 'estado',
       label: 'Estado',
       sortable: true,
-      render: (value: string) => (
-        <Badge variant="printer_status" color={value}>
-          {(value || '').replace(/_/g, ' ').toUpperCase()}
-        </Badge>
+      render: (value: string, row: any) => (
+        <div className="flex flex-col items-start gap-1">
+          <Badge variant="printer_status" color={value}>
+            {(value || '').replace(/_/g, ' ').toUpperCase()}
+          </Badge>
+          {row.open_maintenance_order && (
+            <span
+              className="inline-flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning"
+              title={`Orden de servicio abierta desde ${row.open_maintenance_order.fecha ?? '-'}`}
+            >
+              🔧 Orden {TIPO_ORDEN_LABEL[row.open_maintenance_order.tipo_mantto] ?? ''} #
+              {row.open_maintenance_order.id}
+            </span>
+          )}
+        </div>
       ),
     },
     {

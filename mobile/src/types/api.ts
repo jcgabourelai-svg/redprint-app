@@ -193,6 +193,13 @@ export interface Printer {
   estado: PrinterEstado | null
   contador_actual: number
   warehouse?: WarehouseRef | null
+  /** Orden de servicio PROGRAMADA abierta (chip "en taller/servicio", D24). */
+  open_maintenance_order?: {
+    id: number
+    tipo_mantto: 'PREVENTIVO' | 'CORRECTIVO' | null
+    estado?: string | null
+    fecha?: string | null
+  } | null
 }
 
 export interface ContractPlanRow {

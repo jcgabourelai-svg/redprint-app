@@ -106,6 +106,12 @@ el sistema la rechaza con un mensaje claro.
 Los almacenes son el destino natural de: impresoras liberadas de contratos (retiros),
 equipos de nueva compra y equipos que salen de taller.
 
+> **Retiro con orden de servicio:** un equipo retirado con casilla de orden (correctiva o
+> preventiva) queda registrado contra el almacén destino pero **EN_MANTENIMIENTO
+> (taller)**: no puede re-entregarse a otro contrato hasta completar o cancelar la orden
+> en *Inventario → Mantenimiento*. En el catálogo se distingue por el estado
+> EN_MANTENIMIENTO y el chip **🔧 Orden #N**.
+
 ## 5. Movimientos (kardex)
 
 **Menú: Inventario -> Movimientos**

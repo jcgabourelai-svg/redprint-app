@@ -22,6 +22,13 @@ export interface Printer {
   garantia_status?: string
   codigo_negocio?: string
   stock_consumibles?: number
+  ordenes_abiertas_count?: number
+  open_maintenance_order?: {
+    id: number
+    tipo_mantto: 'PREVENTIVO' | 'CORRECTIVO'
+    estado?: string
+    fecha?: string
+  } | null
 }
 
 export interface PrinterHistory {

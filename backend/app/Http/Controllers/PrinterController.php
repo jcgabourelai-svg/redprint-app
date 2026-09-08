@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\MaintenanceStatus;
 use App\Http\Requests\StorePrinterRequest;
 use App\Http\Requests\UpdatePrinterRequest;
 use App\Http\Resources\PrinterDetailResource;
@@ -27,7 +28,13 @@ class PrinterController extends Controller
             'creator',
             'currentAssignment.contract:id,cliente_id,codigo_negocio',
             'currentAssignment.contract.client:id,razon_social',
+            'openMaintenanceOrder:id,impresora_id,tipo_mantto,estado,fecha',
         ])
+            ->withCount([
+                // D24: ordenes abiertas (PROGRAMADA) para el chip del catálogo.
+                'maintenanceOrders as ordenes_abiertas_count' => fn ($q) => $q
+                    ->where('estado', MaintenanceStatus::PROGRAMADA),
+            ])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
             ->when($request->marca, fn($q, $m) => $q->where('marca', 'ilike', "%{$m}%"))
             ->when($request->modelo, fn($q, $m) => $q->where('modelo', 'ilike', "%{$m}%"))
@@ -48,10 +55,15 @@ class PrinterController extends Controller
             'warehouse',
             'currentAssignment.contract:id,cliente_id,codigo_negocio',
             'currentAssignment.contract.client:id,razon_social',
+            'openMaintenanceOrder:id,impresora_id,tipo_mantto,estado,fecha',
             'history' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(100),
             'readings' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),
             'maintenanceOrders' => fn ($q) => $q->with('socio')->orderByDesc('fecha')->limit(50),
             'creator',
+        ]);
+        $printer->loadCount([
+            'maintenanceOrders as ordenes_abiertas_count' => fn ($q) => $q
+                ->where('estado', MaintenanceStatus::PROGRAMADA),
         ]);
         return new PrinterDetailResource($printer);
     }

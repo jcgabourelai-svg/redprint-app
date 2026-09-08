@@ -130,6 +130,9 @@ export default function ContractDetail() {
   const billing = useContractBilling(idNum, puedeFacturar)
   const createDraftBatch = useCreateInvoiceDraftBatch()
 
+  // D24: crear la orden de servicio al retirar exige permiso de mantenimiento.
+  const canMaintain = useTienePermiso('inventario.mantenimiento')
+
   const [showGenerarFacturas, setShowGenerarFacturas] = useState(false)
   const [periodosSeleccionados, setPeriodosSeleccionados] = useState<string[]>([])
   const [batchError, setBatchError] = useState('')
@@ -153,6 +156,8 @@ export default function ContractDetail() {
   const [releaseSinLectura, setReleaseSinLectura] = useState(false)
   const [releaseJustificacion, setReleaseJustificacion] = useState('')
   const [releaseMotivo, setReleaseMotivo] = useState<MotivoLiberacion>('SUSTITUCION_FALLA')
+  const [releaseCrearOrden, setReleaseCrearOrden] = useState(false)
+  const [releaseDescOrden, setReleaseDescOrden] = useState('')
   const [releaseError, setReleaseError] = useState('')
   const [showPlanEdit, setShowPlanEdit] = useState(false)
   const [planRows, setPlanRows] = useState<PlanEditRow[]>([])
@@ -250,6 +255,14 @@ export default function ContractDetail() {
       setAssignError('Selecciona una impresora disponible')
       return
     }
+    const elegida = availablePrinters.find((p) => String(p.id) === assignForm.impresora_id)
+    if (elegida?.open_maintenance_order) {
+      // D24: el backend la rechaza con 422; se anticipa el mismo mensaje.
+      setAssignError(
+        `La impresora tiene una orden de mantenimiento abierta (#${elegida.open_maintenance_order.id}). Complétala o cancélala antes de asignarla.`
+      )
+      return
+    }
     assignPrinter.mutate(
       {
         id: idNum,
@@ -275,8 +288,21 @@ export default function ContractDetail() {
     setReleaseSinLectura(false)
     setReleaseJustificacion('')
     setReleaseMotivo('SUSTITUCION_FALLA')
+    setReleaseCrearOrden(true)
+    setReleaseDescOrden('')
     setReleaseError('')
   }
+
+  // El tipo de orden lo deriva el backend del motivo: falla => correctiva
+  // (default marcado), resto => preventiva (default sin marcar).
+  const handleReleaseMotivoChange = (value: string) => {
+    const motivo = value as MotivoLiberacion
+    setReleaseMotivo(motivo)
+    setReleaseCrearOrden(motivo === 'SUSTITUCION_FALLA')
+  }
+
+  const releaseEsFalla = releaseMotivo === 'SUSTITUCION_FALLA'
+  const releaseEnviarOrden = releaseCrearOrden && canMaintain
 
   const handleReleaseSave = () => {
     if (!releaseTarget) return
@@ -297,6 +323,11 @@ export default function ContractDetail() {
         return
       }
     }
+    if (releaseEnviarOrden && releaseEsFalla && releaseDescOrden.trim().length < 5) {
+      setReleaseError('Describe el problema de la falla (mínimo 5 caracteres)')
+      return
+    }
+    const conOrden = releaseEnviarOrden
     releasePrinter.mutate(
       {
         id: idNum,
@@ -305,6 +336,9 @@ export default function ContractDetail() {
         lectura_final: releaseSinLectura ? null : parseInt(releaseLecturaFinal),
         motivo_liberacion: releaseMotivo,
         justificacion_sin_lectura: releaseSinLectura ? releaseJustificacion.trim() : null,
+        crear_orden_mantenimiento: conOrden || undefined,
+        // Preventiva sin notas: el backend autocompleta la descripción.
+        desc_problema: conOrden ? releaseDescOrden.trim() || undefined : undefined,
       },
       {
         onSuccess: () => {
@@ -312,9 +346,13 @@ export default function ContractDetail() {
           setToast({
             open: true,
             variant: 'success',
-            message: releaseSinLectura
-              ? 'Impresora liberada sin lectura (brecha registrada)'
-              : 'Impresora liberada con lectura de cierre',
+            message: conOrden
+              ? releaseEsFalla
+                ? 'Impresora liberada y orden correctiva creada'
+                : 'Impresora liberada y enviada a servicio preventivo'
+              : releaseSinLectura
+                ? 'Impresora liberada sin lectura (brecha registrada)'
+                : 'Impresora liberada con lectura de cierre',
           })
         },
         onError: (err) => setReleaseError(parseApiError(err)),
@@ -1132,7 +1170,12 @@ export default function ContractDetail() {
                 searchable
                 options={availablePrinters.map((p) => ({
                   value: String(p.id),
-                  label: `${p.marca} ${p.modelo} — ${p.num_serie}`,
+                  label: `${p.marca} ${p.modelo} — ${p.num_serie}${
+                    p.open_maintenance_order ? ` (orden #${p.open_maintenance_order.id} abierta)` : ''
+                  }`,
+                  // D24: visible pero no seleccionable mientras tenga una
+                  // orden de servicio abierta.
+                  disabled: !!p.open_maintenance_order,
                 }))}
                 value={assignForm.impresora_id}
                 onChange={handleAssignPrinterSelect}
@@ -1299,7 +1342,7 @@ export default function ContractDetail() {
                   label: MotivoLiberacionLabels[m],
                 }))}
                 value={releaseMotivo}
-                onChange={(v) => setReleaseMotivo(v as MotivoLiberacion)}
+                onChange={handleReleaseMotivoChange}
               />
             </div>
 
@@ -1351,6 +1394,62 @@ export default function ContractDetail() {
               </div>
             )}
 
+            {canMaintain ? (
+              <div className="space-y-3 rounded-lg border border-border p-3">
+                <label className="flex items-start gap-2.5">
+                  <input
+                    type="checkbox"
+                    className="mt-1"
+                    checked={releaseCrearOrden}
+                    onChange={(e) => setReleaseCrearOrden(e.target.checked)}
+                  />
+                  <span className="text-sm">
+                    <span className="font-medium">
+                      {releaseEsFalla
+                        ? 'Crear orden de mantenimiento correctiva'
+                        : 'Enviar a servicio preventivo (crear orden)'}
+                    </span>
+                    <span className="block text-xs text-muted-foreground">
+                      La impresora quedará EN_MANTENIMIENTO (taller) hasta completar o cancelar la
+                      orden, que se crea en el mismo retiro de forma transaccional. El tipo de
+                      orden ({releaseEsFalla ? 'correctiva' : 'preventiva'}) se deriva del motivo.
+                    </span>
+                  </span>
+                </label>
+
+                {releaseCrearOrden && (
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
+                      {releaseEsFalla ? 'Descripción del problema *' : 'Notas para el servicio (opcional)'}
+                    </label>
+                    <textarea
+                      className="flex min-h-[70px] w-full rounded-md border border-input bg-card px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                      rows={3}
+                      maxLength={2000}
+                      placeholder={
+                        releaseEsFalla
+                          ? 'Ej. No enciende, olor a quemado en la fuente'
+                          : 'Ej. Rotación de flota: limpieza y revisión general'
+                      }
+                      value={releaseDescOrden}
+                      onChange={(e) => setReleaseDescOrden(e.target.value)}
+                    />
+                    {!releaseEsFalla && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Si lo dejas vacío, la orden se crea con la descripción "Servicio preventivo
+                        al retirar del contrato".
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground rounded-lg border border-border p-3">
+                No tienes permiso de mantenimiento: la impresora se retirará sin orden de
+                servicio.
+              </p>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">
                 Almacén de destino
@@ -1368,8 +1467,9 @@ export default function ContractDetail() {
                 />
               )}
               <p className="text-xs text-muted-foreground mt-1">
-                La impresora volverá al inventario del almacén seleccionado y quedará disponible
-                para otro contrato.
+                {releaseEnviarOrden
+                  ? 'La impresora se registrará contra este almacén y quedará EN_MANTENIMIENTO (taller) hasta cerrar la orden de servicio.'
+                  : 'La impresora volverá al inventario del almacén seleccionado y quedará disponible para otro contrato.'}
               </p>
             </div>
 

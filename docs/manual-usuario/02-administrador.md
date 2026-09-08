@@ -146,8 +146,18 @@ Desde aquí se administra toda la vida del contrato:
 
 - **Asignar impresora**: modal que exige la **lectura inicial** (contador físico al
   instalar; es la base de cálculo del primer periodo) y un alias/ubicación opcional
-  (ej. "Recepción").
+  (ej. "Recepción"). Un equipo con una **orden de servicio abierta** aparece listado
+  pero **no seleccionable** (sufijo `(orden #N abierta)`): debe completarse o cancelarse
+  la orden antes de re-entregarlo.
 - **Liberar impresora**: retiro con **motivo obligatorio**; el equipo vuelve a un almacén.
+  - Si tienes permiso de mantenimiento (`inventario.mantenimiento`) puedes marcar
+    **"Crear orden de mantenimiento correctiva"** (retiro por falla; requiere la
+    descripción del problema) o **"Enviar a servicio preventivo (crear orden)"** (cualquier
+    otro motivo; notas opcionales). El tipo de orden se deriva del motivo.
+  - Con la casilla marcada la impresora queda **EN_MANTENIMIENTO (taller)** hasta completar
+    o cancelar la orden, y **no puede asignarse** a otro contrato mientras tanto.
+  - Sin permiso de mantenimiento, el retiro prosigue sin orden (el aviso se muestra en el
+    modal).
 
 **Comercial**
 
