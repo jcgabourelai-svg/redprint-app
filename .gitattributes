@@ -1,0 +1,3 @@
+# Los scripts .sh se editan en Windows y corren en Linux (VPS/cron): el CRLF
+# rompe bash ("command not found" por el \r residual). LF obligatorio en repo.
+*.sh text eol=lf

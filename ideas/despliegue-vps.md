@@ -1,9 +1,13 @@
 # Ideas — Deploy a VPS "semiproducción" + botón "Actualizar" desde la app
 
-> **Estado:** propuesta para discusión / implementación futura.
+> **Estado:** Fase 0 + Fase 1 **implementadas en el repo** (`deploy/update.sh`,
+> `update-cron.sh`, `backup-cron.sh`, `.gitattributes`, guía en DEPLOY.md
+> §4.1–4.3). Pendiente en el VPS: migración tarball→git (DEPLOY.md §4.2) +
+> cron (§4.3). Fase 2 (botón) sin implementar.
 > **Origen:** sesión 2026-09-10. Analiza el código real (docker-compose.yml,
-> backend/entrypoint.sh, Dockerfile, seeders, config/permisos.php) antes de
-> redactarse.
+> backend/entrypoint.sh, Dockerfile, seeders, config/permisos.php) y el
+> despliegue existente (deploy/DEPLOY.md, deploy/docker-compose.prod.yml)
+> antes de redactarse.
 > **Idea original:** "quiero subir el sistema a mi VPS y seguir desarrollando;
 > cuando esté en la web y el VPS no esté actualizado, quiero un botón que diga
 > 'Actualizar' y que se actualice solo, sin romper mis datos ni re-crear las
@@ -25,9 +29,11 @@ las otras ideas vigentes (tóner, ubicación) y cualquier fix futuro aterrizan
 vía este mecanismo.
 
 **Prerrequisito de formato:** el botón depende de que el código llegue por
-**git** (repo privado + deploy key en el VPS). Un flujo de tarball
-(`redprint.tar.gz`) no puede auto-actualizarse. Primer paso real: migrar el
-movimiento de código a git.
+**git** en el VPS. El repo ya vive en GitHub (`jcgabourelai-svg/redprint-app`,
+accesible por https), pero el VPS hoy recibe tarballs (`redprint.tar.gz`,
+flujo legacy de DEPLOY.md §4.4): un tarball no puede auto-actualizarse.
+Primer paso real: migrar el VPS a git clone preservando los volúmenes
+(guía en DEPLOY.md §4.2, pendiente de ejecutar en el VPS).
 
 ---
 
@@ -39,7 +45,7 @@ movimiento de código a git.
 | "Que no siembre datos demo" | Resuelto: seed solo si la tabla `users` está vacía; si no puede verificar, **omite por seguridad** | `backend/entrypoint.sh:119-139` |
 | Migrar en cada reinicio | Resuelto: `RUN_MIGRATIONS=0` omite migrate/seed | `entrypoint.sh:116-139`, compose |
 | Deps según entorno | Resuelto: `APP_ENV=production` → `composer install --no-dev` | `entrypoint.sh:96-104` |
-| HTTPS detrás de proxy | Resuelto: `PUBLIC_URL` (Caddy como único punto público; puertos ya en 127.0.0.1) | compose `x-app-env`, `nginx`/`database` ports |
+| HTTPS detrás de proxy | Resuelto: `PUBLIC_URL` (Traefik/Dokploy existente como único punto público vía `deploy/docker-compose.prod.yml`; puertos ya en 127.0.0.1) | compose `x-app-env`, `nginx`/`database` ports, labels Traefik |
 | Persistencia de datos | Resuelto: `pg_data` y `app_storage` son volúmenes nombrados (sobreviven rebuild) | compose `volumes:` |
 | Imagen versionada | Parcial: `TAG` ya existe en compose (`redprint-app:${TAG:-latest}`) | compose `app.image` |
 
@@ -85,7 +91,7 @@ el pedido ejecutando el mismo script que usarías por SSH**.
 sequenceDiagram
     participant UI as Web (admin)
     participant API as Laravel (contenedor app)
-    participant Flag as storage/app/update-request
+    participant Flag as storage/app/update/request
     participant Cron as Cron del host (cada 1 min)
     participant S as Script update.sh
 
@@ -117,15 +123,24 @@ Por qué así:
 
 Canales de comunicación (archivos, no sockets):
 
-- **Pedido:** el endpoint crea `storage/app/update-request` (contenido:
-  timestamp + usuario que pidió). El cron lo detecta, lo borra y arranca.
-- **Estado:** el script escribe `storage/app/status.json` (`estado`:
+- **Pedido:** el endpoint crea `storage/app/update/request` (contenido:
+  timestamp + usuario que pidió). El cron lo reclama atómicamente con `mv`
+  (sin seguir symlinks) y NUNCA loguea su contenido (el directorio es
+  escribible por www-data; un symlink plantado exfiliaría secretos).
+- **Estado:** el script escribe `storage/app/update/status.json` (`estado`:
   `inactivo|corriendo|listo|error`, SHA, `inicio`/`fin`, tail del log en
   `update.log`). El endpoint de status lo lee y lo devuelve tal cual.
-- **Versión:** el script escribe `storage/app/version.json` con el SHA
+- **Versión:** el script escribe `storage/app/update/version.json` con el SHA
   resultante. Vive en el volumen `app_storage`: sobrevive reinicios y no
   está en git (necesario porque el contenedor **no ve** el `.git` del repo
   raíz — solo `./backend` está montado; §6-gotcha 3).
+- **Mecanismo host↔volumen (decidido):** los cuatro archivos viven en
+  `storage/app/update/` dentro del volumen nombrado `app_storage` (NO en el
+  árbol del repo). El script del host los lee/escribe con
+  `docker compose exec -T`, sin depender del path interno
+  `/var/lib/docker/volumes/...`. El directorio lo crea el script y lo deja
+  `www-data:www-data` para que Laravel (Fase 2) pueda escribir la bandera;
+  los archivos que escribe root quedan legibles por www-data.
 
 ---
 
@@ -144,10 +159,13 @@ Canales de comunicación (archivos, no sockets):
 7.  docker compose exec app php artisan config:cache \
       && docker compose exec app php artisan route:cache
 8.  docker compose up -d    # recrea lo que cambió
-9.  curl health check (/up o endpoint API con 401 esperado)
-    → status "listo" + SHA; si falla → status "error"
-    (el backup del paso 2 es el plan B documentado)
+9.  curl health check: GET /sanctum/csrf-cookie espera 204
+    (no hay /up real: nginx lo resolvería como SPA) → status "listo" + SHA;
+    si falla → status "error" (el backup del paso 2 es el plan B documentado)
 ```
+
+> Implementación real: `deploy/update.sh` (7 pasos, con short-circuit
+> "sin cambios" + `FORCE=1`, retención de backups y `flock`; ver DEPLOY.md §4.1).
 
 Gotchas específicos encontrados al verificar el repo:
 
@@ -162,11 +180,27 @@ Gotchas específicos encontrados al verificar el repo:
    paso 5 es explícito y no confía en el entrypoint.
 3. **El contenedor `app` no ve el repo raíz**: solo `./backend` está
    montado, así que el `.git` del proyecto no le es visible. La versión
-   actual no puede leerse con git desde PHP → la escribe el script del host
-   a `storage/app/version.json`.
+    actual no puede leerse con git desde PHP → la escribe el script del host
+    a `storage/app/update/version.json`.
 4. **`git pull --ff-only`** (no `reset --hard`): si el VPS divergió, FALLA
    ruidosamente en vez de descartar cambios. Política hermana: jamás editar
    código a mano en el VPS.
+5. **El stack del VPS usa DOS archivos de compose**: todo comando del
+   orquestador es `docker compose -f docker-compose.yml -f
+   deploy/docker-compose.prod.yml` (override Traefik/Dokploy). Un `docker
+   compose` a secas pierde la red `dokploy-network` y el dominio público.
+6. **Reinicios explícitos tras el update**: `up -d` solo recrea lo que
+   cambió de config/imagen; el código PHP llega por bind mount, así que el
+   script reinicia `app`, `scheduler` (omitido en el primer borrado de esta
+   idea) y `nginx` (gotcha del inodo de `dist`).
+7. **La ventana real de indisponibilidad es el rebuild del dist (paso 3),
+   no el `up -d`**: mientras corre `npm run build`, las cargas nuevas de la
+   SPA rompen (index viejo referenciando bundles borrados); la API y las
+   sesiones ya cargadas siguen vivas. 1–3 min, aceptado en semiproducción.
+8. **`exec -T` siempre** (contexto cron sin TTY: los pipes `pg_dump | gzip`
+   se colgarían) y **`flock`** al inicio (el cron de 1 min no debe solapar
+   una ejecución de 3 min). Guard de CRLF: `.gitattributes` con
+   `*.sh text eol=lf` (los scripts se editan en Windows y corren en Linux).
 
 **Sobre `RUN_MIGRATIONS` en la VPS:** ponerlo en `0` y dejar que el paso 6
 migre explícitamente. Aunque el entrypoint es seguro (migrate incremental +
@@ -204,22 +238,37 @@ indisponibilidad durante el paso 8 es razonable. Si molesta, envolver con
 
 ### Fase 0 — Prerrequisitos (sin código de app)
 
-- Repo privado en GitHub + deploy key en el VPS (adiós tarball).
-- Primera instalación en el VPS: clone, `.env` de compose con
-  `APP_ENV=production`, `RUN_MIGRATIONS=0`, `PUBLIC_URL=https://…`, DB
-  password real; Caddy en 80/443 apuntando al 8080 de nginx.
-- Cron de backup diario (`pg_dump` + retención) aunque no haya botón.
+- **El VPS ya está desplegado y sirviendo** (`erp.redprint.cloud` tras
+  Traefik/Dokploy, `APP_PORT=8090`, `/opt/redprint`; ver DEPLOY.md §1).
+  No hay que instalar nada desde cero.
+- Pendiente real: **migrar el VPS de tarball a git** preservando los
+  volúmenes nombrados (guía en DEPLOY.md §4.2: mismo path +
+  `COMPOSE_PROJECT_NAME=redprint`, verificación de volúmenes y datos).
+- Ajuste del `.env` del VPS: `RUN_MIGRATIONS=0` (que migre el orquestador,
+  no cada arranque). `APP_ENV=production`, `PUBLIC_URL` y DB real ya están.
+- Cron de backup diario (`pg_dump` + retención): `deploy/backup-cron.sh`
+  (hecho; instalar con DEPLOY.md §4.3).
 
-### Fase 1 — Orquestador manual (el script existe, sin botón)
+### Fase 1 — Orquestador manual (IMPLEMENTADA en el repo; falta ejecutar en el VPS)
 
-- `deploy/update.sh` (pasos §5) + `deploy/update-cron.sh` (detecta bandera,
-  invoca `update.sh`, escribe status).
-- Cron del host cada minuto para `update-cron.sh`.
-- Probar el flujo completo por SSH tocando la bandera a mano.
+- `deploy/update.sh` + `deploy/update-cron.sh` + `deploy/backup-cron.sh`
+  con las correcciones de la revisión: compose de dos archivos, `exec -T`,
+  `flock`, reinicios explícitos (app/scheduler/nginx), backups en
+  `/root/backups` (fuera del árbol de git), pre-flight `git status
+  --porcelain`, short-circuit sin cambios + `FORCE=1`, health check contra
+  `/sanctum/csrf-cookie`.
+- Cron del host cada minuto: instalar con DEPLOY.md §4.3.
+- Probar el flujo completo por SSH tocando la bandera a mano (DEPLOY.md §4.3).
 
 ### Fase 2 — El botón
 
-- Permiso `sistema.actualizar` + los 3 endpoints.
+- Permiso `sistema.actualizar` en `backend/config/permisos.php` **+
+  migración nueva que lo siembre con `Permission::firstOrCreate`** (patrón
+  existente: `2026_08_26_000003_create_field_records_table.php::
+  seedPermission()`). Sin esa migración, la BD existente del VPS jamás
+  aprende el permiso: la migración RBAC `0001...32` ya corrió ahí y no se
+  re-ejecuta.
+- Los 3 endpoints (§6).
 - Frontend: modal de confirmación + panel de log con polling.
 - Primera actualización real con una migración trivial de prueba.
 
@@ -302,11 +351,14 @@ indisponibilidad durante el paso 8 es razonable. Si molesta, envolver con
 
 | Superficie | Archivo |
 |---|---|
-| Script orquestador | `deploy/update.sh` (nuevo) |
-| Detector de bandera | `deploy/update-cron.sh` (nuevo, cron del host cada 1 min) |
-| Endpoints | `backend/routes/api.php` + `backend/app/Http/Controllers/System/UpdateController.php` (nuevo) |
-| Permiso | `backend/config/permisos.php` (`sistema.actualizar`) |
-| Lectura de estado | `backend/app/Services/UpdateService.php` (nuevo, delgado: leer/escribir archivos de `storage/app`) |
-| UI | `frontend/src/pages/ConfigPage.tsx` (o Header) + modal de confirmación + panel de log |
-| Cron de backup | `deploy/backup-cron.sh` (nuevo, diario) |
-| Compose / env | `.env` del compose en VPS (`APP_ENV=production`, `RUN_MIGRATIONS=0`, `PUBLIC_URL`); sin cambios estructurales al yml |
+| Compartidos (COMPOSE, APPC, dump+retención) | `deploy/common.sh` (**implementado**) |
+| Script orquestador | `deploy/update.sh` (**implementado**) |
+| Detector de bandera | `deploy/update-cron.sh` (**implementado**; cron del host cada 1 min) |
+| Cron de backup | `deploy/backup-cron.sh` (**implementado**, diario) |
+| Guard CRLF | `.gitattributes` (`*.sh text eol=lf`, **implementado**) |
+| Guía de operación | `deploy/DEPLOY.md` §4.1–4.3: orquestador, migración tarball→git (preservando volúmenes), cron (**actualizado**) |
+| Endpoints | `backend/routes/api.php` + `backend/app/Http/Controllers/System/UpdateController.php` (nuevo, Fase 2) |
+| Permiso | `backend/config/permisos.php` (`sistema.actualizar`) **+ migración que lo siembre en BDs existentes** (Fase 2) |
+| Lectura de estado | `backend/app/Services/UpdateService.php` (nuevo, Fase 2, delgado: leer `storage/app/update/`) |
+| UI | `frontend/src/pages/ConfigPage.tsx` (o Header) + modal de confirmación + panel de log (Fase 2) |
+| Compose / env | `.env` del VPS (`RUN_MIGRATIONS=0`, `COMPOSE_PROJECT_NAME=redprint`); sin cambios estructurales al yml |

@@ -145,7 +145,7 @@ y el Traefik del host solicita el certificado Let's Encrypt automáticamente
 docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml ps
 curl -I https://erp.redprint.cloud/                                  # 200
 curl -o /dev/null -w "%{http_code}\n" http://erp.redprint.cloud/      # 302 -> https
-curl -o /dev/null -w "%{http_code}\n" -X POST https://erp.redprint.cloud/sanctum/csrf-cookie  # 204
+curl -o /dev/null -w "%{http_code}\n" https://erp.redprint.cloud/sanctum/csrf-cookie  # 204 (GET: la ruta es GET-only en Sanctum)
 ```
 
 Luego iniciar sesión en el navegador con el usuario sembrado (credenciales en
@@ -153,10 +153,112 @@ Luego iniciar sesión en el navegador con el usuario sembrado (credenciales en
 
 ## 4. Actualizar producción (flujo normal)
 
-Repetible desde cualquier máquina con el repo. **El `.env` del VPS y los
-volúmenes de datos se conservan solos** (nunca vienen en el empaquetado).
+Hay dos flujos: el **orquestador git** (recomendado, §4.1) y el **tarball
+manual** (§4.4, legacy). En ambos, el `.env` del VPS y los volúmenes de datos
+se conservan solos.
+
+### 4.1 Actualizar con el orquestador `deploy/update.sh` (recomendado)
+
+Requiere el VPS migrado a git (§4.2). El orquestador es idempotente y hace
+todo en este orden: backup `pg_dump` (retención ~10) → `git pull --ff-only`
+(aborta si el árbol está sucio) → rebuild forzado de front y móvil →
+`composer install --no-dev` → `migrate --force` → caches → `up -d --build` →
+restart de app/scheduler/nginx → health check. Si no hay commits nuevos y el
+último estado fue `listo`, no toca nada (usar `FORCE=1` para forzar).
 
 ```bash
+ssh root@erp.redprint.cloud "cd /opt/redprint && bash deploy/update.sh"
+ssh root@erp.redprint.cloud "cd /opt/redprint && FORCE=1 bash deploy/update.sh"  # forzado
+```
+
+Estado y log del orquestador (viven en el volumen `app_storage`, dentro del
+contenedor; el script del host los replica ahí vía `exec -T`):
+
+```bash
+COMPOSE="docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml"
+$COMPOSE exec -T app sh -c 'cat storage/app/update/status.json'   # estado actual
+tail -f /var/log/redprint/update.log                              # log en el host
+```
+
+Reglas de oro que el script asume (y hace valer):
+
+- **Jamás editar código a mano en el VPS**: el pre-flight aborta con
+  `estado:"error"` si `git status --porcelain` no está vacío.
+- **Nunca `migrate:fresh` / `migrate:refresh` / `db:wipe`** en el VPS: esos
+  comandos borran datos y solo existen en la máquina de desarrollo.
+- Migraciones aditivas primero (expand-contract): columnas nuevas `nullable`
+  o con default; dropear/renombrar recién en el release siguiente.
+
+### 4.2 Migración de tarball a git (una sola vez; prerrequisito del orquestador)
+
+Los volúmenes nombrados (`pg_data`, `app_storage`) pertenecen al *proyecto*
+de compose, cuyo nombre deriva del directorio (`/opt/redprint` →
+`redprint`). **Si el clone aterriza en otro directorio, compose crea
+volúmenes vacíos nuevos y parece que "se perdieron los datos"**. Por eso:
+mismo path + `COMPOSE_PROJECT_NAME` explícito.
+
+```bash
+ssh root@erp.redprint.cloud
+
+# 1. Parar el stack (los volúmenes sobreviven al "down")
+cd /opt/redprint && docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml down
+
+# 2. Resguardar el .env y anotar los volúmenes existentes
+cp .env /root/redprint.env.bak
+docker volume ls | grep redprint      # anotar redprint_pg_data y redprint_app_storage
+
+# 3. Clonar en el MISMO path (repo público por https; privado: deploy key
+#    read-only en GitHub y clonar con git@github.com:...)
+mv /opt/redprint /opt/redprint.old-tarball
+git clone https://github.com/jcgabourelai-svg/redprint-app.git /opt/redprint
+
+# 4. Restaurar el .env y fijar el nombre de proyecto (cinturón y tirantes)
+cp /root/redprint.env.bak /opt/redprint/.env
+chmod 600 /opt/redprint/.env
+grep -q '^COMPOSE_PROJECT_NAME=' /opt/redprint/.env || echo 'COMPOSE_PROJECT_NAME=redprint' >> /opt/redprint/.env
+
+# 5. Levantar y verificar que los volúmenes son LOS MISMOS (mismos nombres)
+cd /opt/redprint && docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml up -d --build
+docker volume ls | grep redprint      # deben seguir siendo redprint_pg_data / redprint_app_storage
+
+# 6. Verificar datos intactos (login en la web + conteo rápido):
+docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml \
+  exec -T database psql -U redprint -d redprint -c 'select count(*) from users;'
+
+# 7. Solo cuando todo esté verificado:
+rm -rf /opt/redprint.old-tarball
+```
+
+### 4.3 Cron del host (bandera de actualización + backup diario)
+
+`crontab -e` como root en el VPS:
+
+```cron
+# Detector de la bandera storage/app/update/request (botón Fase 2 o manual)
+* * * * * /bin/bash /opt/redprint/deploy/update-cron.sh >> /var/log/redprint/cron.log 2>&1
+# Backup diario de la base con retención (log de éxitos Y fallos: /var/log/redprint/backup.log)
+0 3 * * * /bin/bash /opt/redprint/deploy/backup-cron.sh >> /var/log/redprint/backup.log 2>&1
+```
+
+Probar el flujo de bandera a mano (Fase 1, sin botón todavía):
+
+```bash
+cd /opt/redprint
+COMPOSE="docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml"
+$COMPOSE exec -T app sh -c 'echo manual > storage/app/update/request'
+# esperar <60 s al cron (o ejecutar "bash deploy/update-cron.sh" directamente)
+tail -f /var/log/redprint/update.log
+$COMPOSE exec -T app sh -c 'cat storage/app/update/status.json'
+```
+
+### 4.4 Fallback manual con tarball (sin git ni orquestador)
+
+```bash
+# 0. Backup previo OBLIGATORIO (política: pg_dump antes de cada actualización;
+#    este flujo legacy no lo hace solo, a diferencia del orquestador §4.1)
+ssh root@erp.redprint.cloud "cd /opt/redprint && docker compose -f docker-compose.yml -f deploy/docker-compose.prod.yml \
+  exec -T database pg_dump -U redprint -d redprint | gzip > /root/backups/redprint-\$(date +%F)-manual.sql.gz"
+
 # 1. Obtener el código a desplegar (commit previo hecho)
 cd redprint-app && git pull          # o clonar de cero
 git archive --format=tar.gz -o redprint.tar.gz HEAD
@@ -186,7 +288,10 @@ ssh root@erp.redprint.cloud "cd /opt/redprint \
   lockfiles). El código PHP de `backend/` va por volumen: los cambios de código
   PHP aplican con el reinicio del contenedor `app` sin rebuild.
 
-### 4.1 Casos particulares tras una actualización
+### 4.5 Casos particulares tras una actualización
+
+El orquestador (§4.1) ya ejecuta automáticamente composer/caches/migraciones;
+esta tabla aplica al fallback tarball (§4.4) y a verificaciones manuales.
 
 | Cambió... | Acción extra |
 |---|---|
@@ -196,9 +301,11 @@ ssh root@erp.redprint.cloud "cd /opt/redprint \
 | Solo archivos del backend (PHP) | Basta `tar` + `restart app scheduler` (sin rebuild) |
 | `docker-compose.yml` o `deploy/` | `up -d --build` recrea los servicios afectados |
 
-### 4.2 Nota sobre archivos eliminados
+### 4.6 Nota sobre archivos eliminados
 
-`tar` extrae encima: los archivos **borrados** del repo quedan como residuo en
+Con git (§4.1–§4.2) esto desaparece: `git pull` borra y actualiza los
+archivos trackeados. La nota aplica solo al flujo tarball: `tar` extrae
+encima, así que los archivos **borrados** del repo quedan como residuo en
 el VPS. Para un "deep clean" (poco frecuente):
 
 ```bash
@@ -246,6 +353,9 @@ $COMPOSE exec app php artisan migrate --force
 
 ### 5.4 Backup y restore de la base de datos
 
+El backup diario está automatizado por `deploy/backup-cron.sh` (§4.3), y
+`update.sh` hace su propio backup antes de cada actualización. Manualmente:
+
 ```bash
 # Backup (dump comprimido con fecha)
 $COMPOSE exec -T database pg_dump -U redprint -d redprint | gzip > /root/backups/redprint-$(date +%F).sql.gz
@@ -276,6 +386,9 @@ un cron para automatizarlo.
 | Login correcto pero la sesión no persiste (401 en `/auth/user`) | `SESSION_DOMAIN` con valor heredado (p. ej. `localhost`) | Dejarlo vacío: `$COMPOSE exec app sh -c "sed -i 's/^SESSION_DOMAIN=.*/SESSION_DOMAIN=/' .env"` y `restart app` |
 | `address already in use` al levantar nginx | `APP_PORT` ocupado por otro servicio del VPS | Cambiar `APP_PORT` en `.env` a un puerto libre |
 | El certificado no se emite | DNS sin propagar o router Traefik ausente | `dig +short erp.redprint.cloud`; verificar labels con `docker inspect redprint-nginx` |
+| `update.sh` aborta con "árbol de git sucio" | Cambios locales en el VPS (prohibidos) o `\r` en scripts | `cd /opt/redprint && git status` para ver qué hay; si es CRLF: `sed -i 's/\r$//' deploy/*.sh`; el guard permanente es `.gitattributes` (`*.sh text eol=lf`) |
+| La bandera nunca se atiende | Falta la entrada de cron o falló en silencio | `crontab -l`; `/var/log/redprint/cron.log`; probar `bash deploy/update-cron.sh` a mano |
+| `update.sh` se queda en "corriendo" para siempre | Script muerto a mitad (reboot del VPS, OOM) | Borrar `/tmp/redprint-update.lock` si quedó tomado y re-ejecutar; el short-circuit/`FORCE=1` re-ejecutan seguro |
 
 ## 8. Checklist de seguridad de la instalación
 
@@ -283,5 +396,9 @@ un cron para automatizarlo.
 - [ ] `docker-compose.yml` bindea `database` y `nginx` solo a `127.0.0.1`.
 - [ ] Único punto de entrada público: Traefik en 80/443.
 - [ ] SSH del VPS por clave (contraseña deshabilitada preferiblemente).
+- [ ] VPS migrado a git con `COMPOSE_PROJECT_NAME=redprint` (§4.2).
+- [ ] Cron del host instalado: `update-cron.sh` cada 1 min y `backup-cron.sh` diario (§4.3).
+- [ ] Un update de prueba ejecutado con `bash deploy/update.sh` y health check en verde.
+- [ ] Restore de un backup probado al menos una vez (§5.4).
 - [ ] Backups de la base de datos programados (§5.4).
 - [ ] Cambiar las contraseñas de los usuarios sembrados tras el primer login.
