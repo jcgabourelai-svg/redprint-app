@@ -44,3 +44,39 @@ export async function apiUpload<T>(url: string, formData: FormData): Promise<T> 
   })
   return res.data
 }
+
+// --- Actualización del sistema (canal de archivos con el orquestador del VPS) ---
+
+export interface UpdateVersion {
+  sha: string
+  rama: string
+  fecha: string
+}
+
+export interface UpdateStatus {
+  estado: 'inactivo' | 'en_cola' | 'corriendo' | 'listo' | 'error' | string
+  rama: string | null
+  sha: string | null
+  inicio: string | null
+  fin: string | null
+  detalle: string | null
+  log: string | null
+}
+
+/** POST /system/update — 202 en cola; 409 si ya hay una en curso o en cola. */
+export async function requestUpdate(): Promise<{ estado: string }> {
+  const res = await api.post('/system/update')
+  return res.data
+}
+
+/** GET /system/update/status — estado del run del orquestador + tail del log. */
+export async function getUpdateStatus(): Promise<UpdateStatus> {
+  const res = await api.get('/system/update/status')
+  return res.data
+}
+
+/** GET /system/update/version — version instalada por el ultimo run. */
+export async function getUpdateVersion(): Promise<{ version: UpdateVersion | null }> {
+  const res = await api.get('/system/update/version')
+  return res.data
+}

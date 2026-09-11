@@ -60,6 +60,7 @@ return [
         ['clave' => 'sistema.usuarios', 'etiqueta' => 'Usuarios'],
         ['clave' => 'sistema.notificaciones', 'etiqueta' => 'Notificaciones'],
         ['clave' => 'sistema.configuracion', 'etiqueta' => 'Configuracion'],
+        ['clave' => 'sistema.actualizar', 'etiqueta' => 'Actualizar sistema'],
     ],
 
 ];

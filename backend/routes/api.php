@@ -28,6 +28,7 @@ use App\Http\Controllers\ReconciliationController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
+use App\Http\Controllers\System\UpdateController;
 use App\Http\Controllers\VisitController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\UserController;
@@ -232,6 +233,12 @@ Route::prefix('v1')->group(function () {
             Route::get('notifications', [NotificationController::class, 'index']);
             Route::post('notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
             Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+        });
+
+        Route::middleware('permission:sistema.actualizar')->group(function () {
+            Route::post('system/update', [UpdateController::class, 'request']);
+            Route::get('system/update/status', [UpdateController::class, 'status']);
+            Route::get('system/update/version', [UpdateController::class, 'version']);
         });
     });
 });

@@ -1,12 +1,18 @@
-import { useState, useEffect } from 'react'
-import { Settings, User, Bell, Palette, Shield, Info, Save, Monitor, Moon, Sun } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Settings, User, Bell, Palette, Shield, Info, Save, Monitor, Moon, Sun, RefreshCw } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Select from '@/components/ui/Select'
 import Toast from '@/components/ui/Toast'
+import Modal from '@/components/ui/Modal'
+import Badge from '@/components/ui/Badge'
+import { useTienePermiso } from '@/contexts/AuthContext'
 import { useTheme } from '@/hooks/useTheme'
+import { requestUpdate, getUpdateStatus, getUpdateVersion } from '@/lib/api'
+import { formatDateTime } from '@/lib/formatters'
+import type { UpdateStatus, UpdateVersion } from '@/lib/api'
 
 type AppConfig = {
   nombre: string
@@ -69,6 +75,114 @@ export default function ConfigPage() {
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
   const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success')
+
+  // --- Actualización del Sistema -------------------------------------------
+  const puedeActualizar = useTienePermiso('sistema.actualizar')
+  const [version, setVersion] = useState<UpdateVersion | null>(null)
+  const [status, setStatus] = useState<UpdateStatus | null>(null)
+  const [confirmOpen, setConfirmOpen] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [terminoRecien, setTerminoRecien] = useState<'listo' | null>(null)
+  const [hintCron, setHintCron] = useState(false)
+  const notificadoRef = useRef(false)
+  const enColaDesdeRef = useRef<number | null>(null)
+  const logRef = useRef<HTMLPreElement>(null)
+
+  const enCurso = status?.estado === 'en_cola' || status?.estado === 'corriendo'
+
+  // Al montar: refleja una actualización iniciada desde otra pestaña/sesión.
+  useEffect(() => {
+    if (!puedeActualizar) return
+    getUpdateVersion().then((r) => setVersion(r.version)).catch(() => {})
+    getUpdateStatus().then((s) => setStatus(s)).catch(() => {})
+  }, [puedeActualizar])
+
+  // Polling cada 2 s mientras hay algo en curso. Durante la ventana de
+  // reinicio (php-fpm up -d) los polls fallan con 502/conexión rechazada:
+  // NO se tratan como error fatal, se mantiene el estado y se reintenta.
+  useEffect(() => {
+    if (!enCurso) return
+    let cancelado = false
+    const id = setInterval(async () => {
+      try {
+        const s = await getUpdateStatus()
+        if (cancelado) return
+        setStatus(s)
+        if (s.estado === 'en_cola') {
+          if (enColaDesdeRef.current === null) {
+            enColaDesdeRef.current = Date.now()
+          } else if (Date.now() - enColaDesdeRef.current > 120000) {
+            setHintCron(true)
+          }
+        } else {
+          enColaDesdeRef.current = null
+          setHintCron(false)
+        }
+        if (!notificadoRef.current && s.estado === 'listo') {
+          notificadoRef.current = true
+          setTerminoRecien('listo')
+          setToastMessage('Actualización completada')
+          setToastVariant('success')
+          setToastOpen(true)
+          getUpdateVersion().then((r) => setVersion(r.version)).catch(() => {})
+        }
+        if (!notificadoRef.current && s.estado === 'error') {
+          notificadoRef.current = true
+          setToastMessage('La actualización falló')
+          setToastVariant('error')
+          setToastOpen(true)
+        }
+      } catch {
+        /* ventana de reinicio: reintenta el siguiente tick */
+      }
+    }, 2000)
+    return () => {
+      cancelado = true
+      clearInterval(id)
+    }
+  }, [enCurso])
+
+  // Auto-scroll del log en vivo.
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  }, [status?.log])
+
+  const confirmarActualizacion = async () => {
+    setStarting(true)
+    try {
+      await requestUpdate()
+      notificadoRef.current = false
+      setTerminoRecien(null)
+      enColaDesdeRef.current = Date.now()
+      setStatus((prev) => ({
+        estado: 'en_cola',
+        rama: prev?.rama ?? null,
+        sha: null,
+        inicio: null,
+        fin: null,
+        detalle: null,
+        log: null,
+      }))
+      setConfirmOpen(false)
+    } catch (err: any) {
+      setToastMessage(err?.response?.data?.message || 'No se pudo solicitar la actualización')
+      setToastVariant('error')
+      setToastOpen(true)
+    } finally {
+      setStarting(false)
+    }
+  }
+
+  const badgeEstado =
+    status?.estado === 'en_cola'
+      ? { variant: 'info' as const, label: 'En cola' }
+      : status?.estado === 'corriendo'
+        ? { variant: 'warning' as const, label: 'Actualizando…' }
+        : status?.estado === 'error'
+          ? { variant: 'error' as const, label: 'Error' }
+          : status?.estado === 'listo'
+            ? { variant: 'neutral' as const, label: 'Actualizado' }
+            : { variant: 'neutral' as const, label: 'Sin novedad' }
 
   useEffect(() => {
     saveStoredConfig(config)
@@ -376,24 +490,121 @@ export default function ConfigPage() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Versión</p>
-                <p className="text-foreground">1.0.0</p>
+                <p className="text-foreground">{version ? version.sha.slice(0, 7) : '—'}</p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Rama</p>
+                <p className="text-foreground">{version?.rama ?? '—'}</p>
               </div>
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Última actualización</p>
-                <p className="text-foreground">11/05/2026</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Entorno</p>
-                <p className="text-foreground">Producción</p>
-              </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Licencia</p>
-                <p className="text-foreground">RedPrint S.A. de C.V.</p>
+                <p className="text-foreground">{version ? formatDateTime(version.fecha) : '—'}</p>
               </div>
             </div>
           </CardContent>
         </Card>
+
+        {puedeActualizar && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <RefreshCw className="h-5 w-5 text-primary" />
+                  <CardTitle>Actualización del Sistema</CardTitle>
+                </div>
+                <Badge variant={badgeEstado.variant}>{badgeEstado.label}</Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Actualiza la aplicación al último commit de la rama{' '}
+                <span className="font-medium text-foreground">{status?.rama ?? 'main'}</span>. El
+                orquestador del VPS respalda la base de datos antes de tocar nada.
+              </p>
+
+              {status?.estado === 'error' && (
+                <div className="space-y-2 rounded-lg border border-destructive/40 bg-destructive/10 p-3">
+                  <p className="text-sm font-medium text-destructive">
+                    La última actualización falló{status.detalle ? `: ${status.detalle}` : '.'}
+                  </p>
+                  {status.log && (
+                    <pre
+                      ref={logRef}
+                      className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-background p-2 text-xs text-muted-foreground"
+                    >
+                      {status.log}
+                    </pre>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Para diagnosticar: revisa <code>/var/log/redprint/update.log</code> por SSH en
+                    el VPS.
+                  </p>
+                </div>
+              )}
+
+              {terminoRecien === 'listo' && (
+                <p className="text-sm text-success">
+                  Actualización completada. Recarga con Ctrl+F5 para cargar la nueva versión.
+                </p>
+              )}
+
+              {status?.estado === 'corriendo' && (
+                <div className="space-y-1">
+                  <p className="text-sm font-medium text-foreground">
+                    Actualizando a {status.sha ? status.sha.slice(0, 7) : 'main'}…
+                  </p>
+                  {status.log && (
+                    <pre
+                      ref={logRef}
+                      className="max-h-48 overflow-auto whitespace-pre-wrap break-all rounded bg-muted p-2 text-xs text-muted-foreground"
+                    >
+                      {status.log}
+                    </pre>
+                  )}
+                </div>
+              )}
+
+              {status?.estado === 'en_cola' && (
+                <p className="text-sm text-muted-foreground">
+                  Esperando al orquestador (hasta ~60 s)…
+                  {hintCron &&
+                    ' Si no cambia en ~2 min, verifica `crontab -l` y /var/log/redprint/cron.log en el VPS.'}
+                </p>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <Button onClick={() => setConfirmOpen(true)} disabled={enCurso} loading={starting}>
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Actualizar ahora
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
+
+      <Modal
+        isOpen={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title="Actualizar sistema"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Se respaldará la base de datos y la app puede tardar{' '}
+            <strong className="text-foreground">1–3 minutos</strong> en volver (la sesión no se
+            pierde). El sistema se actualizará al último commit de{' '}
+            <strong className="text-foreground">main</strong>.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+              Cancelar
+            </Button>
+            <Button variant="danger" loading={starting} onClick={confirmarActualizacion}>
+              Actualizar ahora
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       <Toast
         isOpen={toastOpen}
