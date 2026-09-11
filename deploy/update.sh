@@ -130,7 +130,7 @@ printf '' | vwrite update.log || true
 
 # Estado previo ANTES de marcar "corriendo" (decide el short-circuit de abajo).
 ESTADO_PREVIO="$(
-    cexec app sh -c "cat $UPDATE_DIR/status.json 2>/dev/null" \
+    cexec app sh -c "cat $UPDATE_DIR/status.json 2>/dev/null || true" \
         | sed -n 's/.*"estado":"\([^"]*\)".*/\1/p' | head -1
 )"
 SHA_INICIAL="$(git rev-parse --short HEAD)"
