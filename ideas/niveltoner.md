@@ -1,6 +1,9 @@
 # Ideas — Captura de nivel de tóner en lecturas
 
-> **Estado:** propuesta para discusión / implementación futura.
+> **Estado:** Fase 1 (captura + `es_color`) + alerta TONER_LOW **implementadas**
+> (2026-09-12, plan `.kilo/plans/1789172943934-nivel-toner-captura-alerta.md`;
+> ver checklist §8). Fases 2/4 (TonerService, widget dashboard, costo por
+> página) siguen siendo propuestas futuras.
 > **Origen:** sesión 2026-09-04. Analiza el código real (lecturas, entregas,
 > FieldRecord, cola offline móvil) antes de redactarse.
 > **Regla de oro de este documento:** el nivel de tóner es un dato **informativo
@@ -241,24 +244,38 @@ Reglas del servicio:
 
 ---
 
-## 8. Checklist de implementación (Fase 1)
+## 8. Checklist de implementación (Fase 1 + alerta) — COMPLETADO 2026-09-12
 
-- [ ] Migración: `niveles_toner` jsonb nullable en `readings`
-- [ ] Migración: `niveles_toner` jsonb nullable en `field_records`
-- [ ] `Reading`: fillable + cast array
-- [ ] `FieldRecord`: fillable + cast array
-- [ ] `StoreReadingRequest`: validación array + k/c/m/y 0-100 + claves cerradas
-- [ ] Validación equivalente en `FieldRecordService`
-- [ ] `ReadingResource`: exponer `niveles_toner`
-- [ ] Regularización de FieldRecord: passthrough a la lectura creada
-- [ ] Móvil `db.ts`: `ReadingPayload.niveles_toner?`
-- [ ] Móvil `CaptureReadingPage.tsx`: sección colapsable + botones 25/50/75/100
-- [ ] Móvil `NewFieldRecordPage.tsx`: paridad
-- [ ] Web: chips en detalle de lectura; tendencia en detalle de impresora
-- [ ] Tests: captura con niveles, sin niveles (retrocompat), offline,
-      FieldRecord passthrough
-- [ ] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c "npm run build"`
-  y `... mobile ...` (ver AGENTS.md; nunca `npm run dev` en el host)
+- [x] Migración: `niveles_toner` jsonb nullable en `readings`
+- [x] Migración: `niveles_toner` jsonb nullable en `field_records`
+- [x] Migración: `printer_models.es_color` boolean + backfill ILIKE sobre pivote
+- [x] `Reading`: fillable + cast array
+- [x] `FieldRecord`: fillable + cast array
+- [x] `StoreReadingRequest`: validación array + k/c/m/y 0-100 + claves cerradas
+      (`array:k,c,m,y`) + normalización all-null ⇒ null
+- [x] Validación equivalente en `StoreFieldRecordRequest` (staging)
+- [x] `ReadingResource` + `FieldRecordResource`: exponer `niveles_toner`
+- [x] Regularización de FieldRecord: passthrough a la lectura creada
+      (`FieldRecordService::link`)
+- [x] `VisitResource::resolveImpresoras`: `es_color` + eager loads
+      `contract.activePrinters.printerModel` en VisitController
+- [x] Alerta TONER_LOW: `TonerAlertService` (umbral 15%, frescura 7 días,
+      dedupe por impresora no-leída, destinatarios `operaciones.lecturas` +
+      socio) enganchado en `ReadingService::captureReading`
+- [x] API: `PUT /printer-models/{id}` para corregir `es_color` del catálogo
+- [x] Móvil `db.ts`: `ReadingPayload`/`FieldRecordPayload.niveles_toner?`
+      (sin bump de DB_VERSION; la cola transporta el campo verbatim)
+- [x] Móvil `TonerLevelInput` (chips Bajo(10)/25/50/75/100 + input libre)
+- [x] Móvil `CaptureReadingPage.tsx`: sección colapsable, K + C/M/Y si
+      `es_color` (fallback "+ Es de color"), niveles en tarjeta de resultado
+- [x] Móvil `NewFieldRecordPage.tsx`: paridad (solo tipo LECTURA, "+ Colores")
+- [x] Web: chips en detalle de lectura, detalle de registro de campo y pestaña
+      lecturas del detalle de impresora (`TonerLevelsChips`)
+- [x] Tests `TonerLevelTest`: persistencia, validación, retrocompat,
+      passthrough de regularización, alerta (destinatarios, dedupe, frescura,
+      nivel sano), exposición de `es_color`
+- [x] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c "npm run build"`
+      y `... mobile ...` (ver AGENTS.md; nunca `npm run dev` en el host)
 
 ## 9. Mapa de archivos tocados (referencia rápida)
 

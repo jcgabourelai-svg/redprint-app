@@ -2,7 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import { useParams } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
+import { useTonerLevels } from '../hooks/useTonerLevels'
 import PrinterColorDot from '../components/PrinterColorDot'
+import { TonerLevelsSummary } from '../components/TonerLevelsSection'
+import TonerLevelsSection from '../components/TonerLevelsSection'
 import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useSyncQueue } from '../hooks/useSyncQueue'
@@ -43,6 +46,7 @@ export default function CaptureReadingPage() {
 
   const [valor, setValor] = useState('')
   const [justificacion, setJustificacion] = useState('')
+  const { toner, setToner, tonerConValor, tieneNiveles } = useTonerLevels()
   const [photo, setPhoto] = useState<string | null>(null)
   const [photoBusy, setPhotoBusy] = useState(false)
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null)
@@ -164,6 +168,7 @@ export default function CaptureReadingPage() {
       contrato_id: visit?.contrato_id ?? null,
       fecha: todayISO(),
       valor_contador: valorNum,
+      ...(tieneNiveles ? { niveles_toner: tonerConValor } : {}),
       foto_evidencia: photo,
       justificacion_anomalia: showJustification ? justificacion.trim() : null,
       ubicacion_lat: gps?.lat ?? null,
@@ -246,6 +251,7 @@ export default function CaptureReadingPage() {
               <p>
                 Consumo estimado: <strong>{formatMoney(result.monto_estimado)}</strong>
               </p>
+              {result.reading.niveles_toner && <TonerLevelsSummary levels={result.reading.niveles_toner} />}
               {result.reading.es_anomalia && (
                 <p className="text-xs text-amber-700">
                   ⚠ Registrada como lectura anómala justificada
@@ -408,6 +414,13 @@ export default function CaptureReadingPage() {
             disabled={!canLecturas}
           />
         </Field>
+
+        <TonerLevelsSection
+          esColor={printer.es_color === true}
+          disclosureLabel="+ Es de color"
+          toner={toner}
+          onChange={setToner}
+        />
 
         {anomaly && (
           <div className="mb-4">

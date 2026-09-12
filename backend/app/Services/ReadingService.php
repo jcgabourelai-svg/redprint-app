@@ -13,7 +13,8 @@ use Illuminate\Support\Facades\DB;
 class ReadingService
 {
     public function __construct(
-        private VisitService $visitService
+        private VisitService $visitService,
+        private TonerAlertService $tonerAlertService
     ) {}
 
     /**
@@ -63,6 +64,15 @@ class ReadingService
             $reading = Reading::create($data);
 
             $printer->update(['contador_actual' => $data['valor_contador']]);
+
+            // Alerta de tóner bajo (TONER_LOW), misma transacción. La alerta
+            // es informativa: una falla en su ruta nunca debe tumbar la
+            // captura de la lectura (se registra y se continúa).
+            try {
+                $this->tonerAlertService->evaluar($reading, $printer);
+            } catch (\Throwable $e) {
+                \Log::warning("[toner-alert] No se pudo notificar tóner bajo para lectura #{$reading->id}: {$e->getMessage()}");
+            }
 
             return $reading;
         });

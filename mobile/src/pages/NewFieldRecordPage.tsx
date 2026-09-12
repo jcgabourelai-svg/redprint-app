@@ -5,6 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useGoBack } from '../hooks/useGoBack'
 import { useOnline } from '../hooks/useOnline'
 import { useToast } from '../components/Toast'
+import TonerLevelsSection from '../components/TonerLevelsSection'
+import { useTonerLevels } from '../hooks/useTonerLevels'
 import { SyncManager } from '../lib/sync'
 import { compressImage } from '../lib/photo'
 import type { FieldRecordPayload } from '../lib/db'
@@ -58,6 +60,7 @@ export default function NewFieldRecordPage() {
   const [modelo, setModelo] = useState('')
   const [numSerie, setNumSerie] = useState('')
   const [valorContador, setValorContador] = useState('')
+  const { toner, setToner, tonerConValor, tieneNiveles } = useTonerLevels()
   const [articuloRows, setArticuloRows] = useState<ArticuloRow[]>([
     { key: ++rowKeySeq, descripcion: '', cantidad: 1 },
   ])
@@ -131,6 +134,7 @@ export default function NewFieldRecordPage() {
         modelo_reportada: modelo.trim() || null,
         num_serie_reportado: numSerie.trim() || null,
         valor_contador: tipo === 'LECTURA' ? valorNum : null,
+        ...(tipo === 'LECTURA' && tieneNiveles ? { niveles_toner: tonerConValor } : {}),
         articulos_entregados:
           tipo === 'ENTREGA_INSUMOS'
             ? articulosValidos.map((r) => ({ descripcion: r.descripcion.trim(), cantidad: r.cantidad }))
@@ -290,6 +294,15 @@ export default function NewFieldRecordPage() {
               onChange={(e) => setValorContador(e.target.value)}
             />
           </Field>
+        )}
+
+        {tipo === 'LECTURA' && (
+          <TonerLevelsSection
+            esColor={false}
+            disclosureLabel="+ Colores"
+            toner={toner}
+            onChange={setToner}
+          />
         )}
 
         {tipo === 'ENTREGA_INSUMOS' && (

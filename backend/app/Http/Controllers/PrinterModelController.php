@@ -35,6 +35,26 @@ class PrinterModelController extends Controller
             'nombre' => $nombre,
         ]);
 
+        if ($request->has('es_color')) {
+            $model->update(['es_color' => (bool) $request->input('es_color')]);
+        }
+
         return response()->json(new PrinterModelResource($model->load('brand')), 201);
+    }
+
+    /**
+     * Correccion puntual del catalogo (p. ej. es_color tras un backfill
+     * imperfecto). No hay UI admin de modelos: la API es la via de ajuste.
+     */
+    public function update(Request $request, PrinterModel $model): JsonResponse
+    {
+        $data = $request->validate([
+            'es_color' => 'nullable|boolean',
+            'nombre' => 'sometimes|string|max:255',
+        ]);
+
+        $model->update(array_filter($data, fn ($v) => $v !== null));
+
+        return response()->json(new PrinterModelResource($model->load('brand')));
     }
 }

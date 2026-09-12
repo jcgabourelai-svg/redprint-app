@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
+import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import { FieldRecordEstadoBadge, FieldRecordTipoBadge } from '@/components/fieldrecords/FieldRecordBadges'
 import { FieldRecordStatusLabels } from '@/types/enums'
 import { formatDateTime } from '@/lib/formatters'
@@ -60,6 +61,13 @@ export default function FieldRecordDetailModal({
             }
           />
           <Row label="Socio (capturó en campo)" value={record.socio_nombre ?? `#${record.socio_id}`} />
+          {record.niveles_toner &&
+            Object.values(record.niveles_toner).some((v) => v != null) && (
+              <div className="flex flex-col">
+                <span className="text-xs text-muted-foreground">Nivel de tóner</span>
+                <TonerLevelsChips levels={record.niveles_toner} className="mt-1" />
+              </div>
+            )}
           <Row
             label="Ubicación"
             value={

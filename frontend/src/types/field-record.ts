@@ -2,6 +2,7 @@ export { FieldRecordStatus, FieldRecordType } from './enums'
 import type { FieldRecordStatus, FieldRecordType } from './enums'
 import type { Contract, PrinterAssignment } from './contract'
 import type { Printer } from './printer'
+import type { TonerLevels } from './toner'
 
 export interface FieldRecordArticuloEntregado {
   descripcion: string
@@ -19,6 +20,7 @@ export interface FieldRecord {
   modelo_reportada?: string | null
   num_serie_reportado?: string | null
   valor_contador?: number | null
+  niveles_toner?: TonerLevels | null
   articulos_entregados?: FieldRecordArticuloEntregado[] | null
   notas?: string | null
   foto_evidencia?: string | null

@@ -263,7 +263,11 @@ class SystemUpdateTest extends TestCase
         $this->assertFalse($operador->permissions()->whereKey($permiso->id)->exists());
 
         // down()/up(): reversible y vuelve a converger al mismo estado.
-        $this->artisan('migrate:rollback', ['--step' => 1])->assertSuccessful();
+        // --path targetea SOLO esa migración dentro del último batch: inmune
+        // a que se agreguen migraciones posteriores al repo.
+        $this->artisan('migrate:rollback', [
+            '--path' => 'database/migrations/2026_09_11_000001_seed_permiso_sistema_actualizar.php',
+        ])->assertSuccessful();
         $this->assertFalse(Permission::where('clave', 'sistema.actualizar')->exists());
 
         $this->artisan('migrate')->assertSuccessful();

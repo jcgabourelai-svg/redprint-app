@@ -16,6 +16,7 @@ class StorePrinterModelRequest extends FormRequest
         return [
             'brand_id' => 'required|exists:printer_brands,id',
             'nombre' => 'required|string|max:255',
+            'es_color' => 'nullable|boolean',
         ];
     }
 }

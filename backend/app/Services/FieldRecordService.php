@@ -115,6 +115,7 @@ class FieldRecordService
                     'contrato_id' => $contract->id,
                     'fecha' => $record->capturado_en->toDateString(),
                     'valor_contador' => $record->valor_contador,
+                    'niveles_toner' => $record->niveles_toner,
                     'foto_evidencia' => $record->foto_evidencia,
                     'justificacion_anomalia' => $data['justificacion_anomalia'] ?? null,
                     'ubicacion_lat' => $record->ubicacion_lat,

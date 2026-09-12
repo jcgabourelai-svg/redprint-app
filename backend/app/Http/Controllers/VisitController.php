@@ -40,7 +40,7 @@ class VisitController extends Controller
 
     public function index(Request $request)
     {
-        $query = Visit::with(['client', 'contract.activePrinters', 'socio', 'readings'])
+        $query = Visit::with(['client', 'contract.activePrinters.printerModel', 'socio', 'readings'])
             ->when($request->estado, function ($q, $e) {
                 $estados = array_filter(explode(',', (string) $e));
                 $q->whereIn('estado', $estados);
@@ -67,6 +67,7 @@ class VisitController extends Controller
         $visit->load([
             'client', 'contract', 'socio', 'readings.printer.assignments',
             'contract.activePrinters.latestReading',
+            'contract.activePrinters.printerModel',
             'deliveries.article',
             'maintenanceOrders.printer',
         ]);
@@ -92,7 +93,7 @@ class VisitController extends Controller
         $data['contrato_id'] = $this->resolverContratoId($data);
 
         $visit = Visit::create($data);
-        return response()->json(new VisitResource($visit->load(['client', 'contract.activePrinters', 'socio'])), 201);
+        return response()->json(new VisitResource($visit->load(['client', 'contract.activePrinters.printerModel', 'socio'])), 201);
     }
 
     /**
@@ -175,7 +176,7 @@ class VisitController extends Controller
 
         $visit = $visitService->complete($visit, $data['motivo_cierre'] ?? null);
 
-        return new VisitResource($visit->load(['client', 'contract', 'socio']));
+        return new VisitResource($visit->load(['client', 'contract.activePrinters.printerModel', 'socio']));
     }
 
     public function reschedule(Request $request, Visit $visit): VisitResource

@@ -1,9 +1,18 @@
+/** Niveles de tóner (%) capturados en una lectura: claves cerradas k/c/m/y. */
+export interface TonerLevels {
+  k?: number
+  c?: number
+  m?: number
+  y?: number
+}
+
 export interface ReadingPayload {
   visita_id: number
   impresora_id: number
   contrato_id?: number | null
   fecha: string
   valor_contador: number
+  niveles_toner?: TonerLevels | null
   foto_evidencia?: string | null
   justificacion_anomalia?: string | null
   ubicacion_lat?: number | null
@@ -20,6 +29,7 @@ export interface FieldRecordPayload {
   modelo_reportada?: string | null
   num_serie_reportado?: string | null
   valor_contador?: number | null
+  niveles_toner?: TonerLevels | null
   articulos_entregados?: { descripcion: string; cantidad: number }[] | null
   notas?: string | null
   foto_evidencia?: string | null

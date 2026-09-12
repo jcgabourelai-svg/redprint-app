@@ -1,3 +1,5 @@
+import type { TonerLevels } from './toner'
+
 export interface Reading {
   id: string
   visita_id: string
@@ -16,5 +18,6 @@ export interface Reading {
   es_anomalia?: boolean
   excepcion?: string | null
   justificacion_anomalia?: string | null
+  niveles_toner?: TonerLevels | null
   printer?: Record<string, unknown>
 }

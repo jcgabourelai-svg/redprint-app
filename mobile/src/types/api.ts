@@ -1,3 +1,5 @@
+import type { TonerLevels } from '../lib/db'
+
 export type TipoVisita =
   | 'LECTURA'
   | 'MANTENIMIENTO'
@@ -35,6 +37,8 @@ export interface VisitPrinter {
   fecha_lectura_anterior: string | null
   /** Umbral de salto atípico del contrato (null = sin historial suficiente). */
   umbral_anomalia?: number | null
+  /** Capacidad CMY del modelo de impresora (catálogo). Fallback: disclosure manual. */
+  es_color?: boolean
 }
 
 export interface Reading {
@@ -51,6 +55,7 @@ export interface Reading {
   es_anomalia: boolean
   excepcion: string | null
   justificacion_anomalia: string | null
+  niveles_toner?: TonerLevels | null
   impresora_nombre?: string
   socio_capturista?: string
   evidencia_foto: string | null

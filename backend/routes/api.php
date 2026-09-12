@@ -63,9 +63,12 @@ Route::prefix('v1')->group(function () {
             Route::get('printer-expenses/{printerExpense}', [ExpenseController::class, 'show']);
             Route::post('printer-expenses', [ExpenseController::class, 'store']);
 
-            // Creación de catálogo (solo admin con permiso de impresoras)
+            // Creación de catálogo (solo admin con permiso de impresoras).
+            // El placeholder {model} debe calzar con la variable del método
+            // (PrinterModel $model) o el binding implícito se salta.
             Route::post('printer-brands', [PrinterBrandController::class, 'store']);
             Route::post('printer-models', [PrinterModelController::class, 'store']);
+            Route::put('printer-models/{model}', [PrinterModelController::class, 'update']);
         });
 
         Route::middleware('permission:inventario.articulos')->group(function () {

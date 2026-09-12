@@ -12,6 +12,7 @@ import {
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
+import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useReading } from '@/hooks/useReadings'
 import { formatDate } from '@/lib/formatters'
@@ -155,6 +156,13 @@ export default function ReadingDetailPage() {
                   {anomala ? 'Anómala' : 'Normal'}
                 </Badge>
               </div>
+              {reading.niveles_toner &&
+                Object.values(reading.niveles_toner).some((v) => v != null) && (
+                  <div className="flex flex-wrap items-center gap-2 sm:col-span-2">
+                    <span className="text-muted-foreground">Nivel de tóner:</span>
+                    <TonerLevelsChips levels={reading.niveles_toner} />
+                  </div>
+                )}
             </div>
 
             {printer && (

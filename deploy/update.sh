@@ -5,14 +5,18 @@
 # Idempotente y seguro para los datos:
 #   1. pg_dump de respaldo (siempre, con retención; fuera del árbol de git)
 #   2. git fetch + pull --ff-only (aborta si el árbol está sucio o divergió)
-#   3. rebuild forzado de frontend y mobile (los builders one-shot se saltan
+#   3. migrate --force ANTES de los rebuilds: el código PHP llega por bind
+#      mount (vivo apenas termina el pull), así que la BD debe tener las
+#      columnas nuevas antes de que los payloads nuevos las usen (las
+#      migraciones de este repo son aditivas y toleran código viejo)
+#   4. rebuild forzado de frontend y mobile (los builders one-shot se saltan
 #      el build si dist/ existe; npm run build vacía el CONTENIDO de dist sin
 #      borrar la carpeta -> respeta el bind mount de nginx, decisión D14)
-#   4. composer install --no-dev + migrate --force + caches de Laravel
-#   5. up -d --build + reinicios explícitos de app/scheduler/nginx
-#   6. health check GET contra /sanctum/csrf-cookie (204 esperado; la ruta
-#      es GET-only en Sanctum, un POST devolvería 405)
-#   7. estado final + version.json dentro del volumen app_storage
+#   5. composer install --no-dev + caches de Laravel
+#   6. up -d --build + reinicios explícitos de app/scheduler/nginx
+#   7. health check GET contra /sanctum/csrf-cookie (204 esperado; la ruta
+#      es GET-only en Sanctum, un POST devolvería 405) + estado final +
+#      version.json dentro del volumen app_storage
 #
 # La app NUNCA ejecuta shell ni Docker: la comunicación es por archivos en
 # storage/app/update/ (volumen nombrado app_storage). Las escrituras desde el
@@ -157,32 +161,41 @@ fi
 
 git pull --ff-only origin "$BRANCH"
 
-# --- Paso 3/7: recompilar frontends (forzado) ---------------------------------
+# --- Paso 3/7: migraciones ANTES de exponer código nuevo -----------------------
+# El código PHP llega por bind mount: en cuanto `git pull` termina, la app YA
+# corre el código nuevo. Migrar primero elimina la ventana mixta donde un
+# payload nuevo (p. ej. niveles_toner en lecturas) golpea columnas
+# inexistentes y la captura 500ea. Las migraciones de este repo son aditivas
+# y retrocompatibles con el código anterior (validated() viejo ignora las
+# columnas nuevas), así que este orden es siempre el seguro.
+log "Paso 3/7: migrate --force (antes de exponer código nuevo)..."
+cexec app php artisan migrate --force
+
+# --- Paso 4/7: recompilar frontends (forzado) ----------------------------------
 # Nota: esta es la ventana REAL de indisponibilidad (1-3 min): durante el
 # rebuild, dist queda semivacío y las cargas NUEVAS de la SPA rompen; la API
 # y las sesiones ya cargadas siguen vivas. Aceptado en semiproducción.
-log "Paso 3/7: recompilando frontend y móvil (forzado)..."
+log "Paso 4/7: recompilando frontend y móvil (forzado)..."
 $COMPOSE run --rm --no-deps -T frontend sh -c 'npm install --no-audit --no-fund && npm run build'
 $COMPOSE run --rm --no-deps -T mobile sh -c 'npm install --no-audit --no-fund && npm run build'
 
-# --- Paso 4/7: composer + migraciones + caches --------------------------------
-log "Paso 4/7: composer install + migrate --force + caches..."
+# --- Paso 5/7: composer + caches -----------------------------------------------
+log "Paso 5/7: composer install + caches..."
 cexec app composer install --no-dev --no-interaction --optimize-autoloader
-cexec app php artisan migrate --force
 cexec app php artisan config:cache
 cexec app php artisan route:cache
 cexec app php artisan view:cache
 
-# --- Paso 5/7: levantar y reiniciar -------------------------------------------
-log "Paso 5/7: up -d --build + reinicios explícitos..."
+# --- Paso 6/7: levantar y reiniciar --------------------------------------------
+log "Paso 6/7: up -d --build + reinicios explícitos..."
 $COMPOSE up -d --build
 # up -d solo recrea lo que cambió de config/imagen; el código PHP llega por
 # bind mount, así que reiniciamos explícitamente app/scheduler (opcache y
 # procesos de larga vida) y nginx (gotcha del inodo de dist; DEPLOY.md §7).
 $COMPOSE restart app scheduler nginx
 
-# --- Paso 6/7: health check ----------------------------------------------------
-log "Paso 6/7: health check (hasta 2 min)..."
+# --- Paso 7/7: health check, versión y estado final ----------------------------
+log "Paso 7/7: health check (hasta 2 min) + versión..."
 SANO=0
 CODE=000
 for _ in $(seq 1 24); do
@@ -198,8 +211,7 @@ if [ "$SANO" != "1" ]; then
     exit 1
 fi
 
-# --- Paso 7/7: registrar versión y estado final --------------------------------
-log "Paso 7/7: registrando versión y estado final..."
+# --- Paso 7/7 (cont.): registrar versión y estado final -----------------------
 SHA_FINAL="$(git rev-parse --short HEAD)"
 printf '{"sha":"%s","rama":"%s","fecha":"%s"}\n' \
     "$(git rev-parse HEAD)" "$BRANCH" "$(now)" \

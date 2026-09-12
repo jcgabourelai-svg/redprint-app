@@ -79,6 +79,7 @@ class VisitResource extends JsonResource
                     'numero_serie' => $printer->num_serie,
                     'alias' => $printer->pivot?->alias,
                     'color' => $printer->pivot?->color,
+                    'es_color' => (bool) ($printer->printerModel?->es_color ?? false),
                     'contrato_id' => (string) $contract->id,
                     'lectura_anterior' => (int) $lecturaAnterior,
                     'fecha_lectura_anterior' => $latest?->fecha?->toDateString(),

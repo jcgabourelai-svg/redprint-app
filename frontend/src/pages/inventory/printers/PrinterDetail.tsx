@@ -7,6 +7,7 @@ import Badge from '@/components/ui/Badge'
 import Modal from '@/components/ui/Modal'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
+import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import PrinterForm from '@/components/printer/PrinterForm'
 import type { PrinterFormData } from '@/components/printer/PrinterForm'
 import { usePrinter, useUpdatePrinter, useDeactivatePrinter, useDeletePrinter } from '@/hooks/usePrinters'
@@ -284,6 +285,7 @@ export default function PrinterDetail() {
                                       <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Contador</th>
                                       <th className="pb-2 text-right text-xs font-medium text-muted-foreground">Consumo</th>
                                       <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Visitante</th>
+                                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">Tóner</th>
                                       <th className="pb-2 text-center text-xs font-medium text-muted-foreground">Estado</th>
                                     </tr>
                                   </thead>
@@ -294,6 +296,9 @@ export default function PrinterDetail() {
                                         <td className="py-2 text-right tabular-nums">{Number(reading.valor_contador ?? 0).toLocaleString('es-MX')}</td>
                                         <td className="py-2 text-right tabular-nums text-success">+{Number(reading.paginas_periodo ?? 0).toLocaleString('es-MX')}</td>
                                         <td className="py-2 text-muted-foreground">{reading.socio_capturista || '-'}</td>
+                                        <td className="py-2">
+                                          <TonerLevelsChips levels={reading.niveles_toner} />
+                                        </td>
                                         <td className="py-2 text-center">
                                           {reading.es_anomalia ? '⚠️' : '✅'}
                                         </td>

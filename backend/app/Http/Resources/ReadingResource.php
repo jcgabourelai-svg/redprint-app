@@ -21,6 +21,7 @@ class ReadingResource extends JsonResource
             'lectura_actual' => $this->valor_contador,
             'paginas_periodo' => $this->paginas_periodo,
             'paginas_consumidas' => $this->paginas_periodo,
+            'niveles_toner' => $this->niveles_toner,
             'es_anomalia' => $this->es_anomalia,
             'excepcion' => $this->es_anomalia ? ($this->justificacion_anomalia ?? 'Anómala') : null,
             'justificacion_anomalia' => $this->justificacion_anomalia,

@@ -19,6 +19,7 @@ class FieldRecordResource extends JsonResource
             'modelo_reportada' => $this->modelo_reportada,
             'num_serie_reportado' => $this->num_serie_reportado,
             'valor_contador' => $this->valor_contador,
+            'niveles_toner' => $this->niveles_toner,
             'articulos_entregados' => $this->articulos_entregados,
             'notas' => $this->notas,
             'foto_evidencia' => $this->foto_evidencia,

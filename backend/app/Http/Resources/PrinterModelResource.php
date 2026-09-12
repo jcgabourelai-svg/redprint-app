@@ -13,6 +13,7 @@ class PrinterModelResource extends JsonResource
             'id' => $this->id,
             'brand_id' => $this->brand_id,
             'nombre' => $this->nombre,
+            'es_color' => (bool) $this->es_color,
             'marca' => $this->whenLoaded('brand', fn () => $this->brand?->nombre),
         ];
     }

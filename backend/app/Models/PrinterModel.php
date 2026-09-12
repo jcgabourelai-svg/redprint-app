@@ -10,7 +10,14 @@ class PrinterModel extends Model
 {
     protected $table = 'printer_models';
 
-    protected $fillable = ['brand_id', 'nombre'];
+    protected $fillable = ['brand_id', 'nombre', 'es_color'];
+
+    protected function casts(): array
+    {
+        return [
+            'es_color' => 'boolean',
+        ];
+    }
 
     public function brand(): BelongsTo
     {
