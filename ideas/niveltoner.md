@@ -1,9 +1,12 @@
 # Ideas — Captura de nivel de tóner en lecturas
 
-> **Estado:** Fase 1 (captura + `es_color`) + alerta TONER_LOW **implementadas**
-> (2026-09-12, plan `.kilo/plans/1789172943934-nivel-toner-captura-alerta.md`;
-> ver checklist §8). Fases 2/4 (TonerService, widget dashboard, costo por
-> página) siguen siendo propuestas futuras.
+> **Estado:** Fases 1–3 **implementadas**: captura + `es_color` + alerta
+> TONER_LOW (2026-09-12, plan
+> `.kilo/plans/1789172943934-nivel-toner-captura-alerta.md`) y
+> `TonerService` (estimados) + widget "tóner bajo" del dashboard
+> (2026-09-13, plan
+> `.kilo/plans/1789332081904-toner-fase2-estimados-widget.md`; ver §8).
+> Fase 4 (costo por página real) sigue pendiente.
 > **Origen:** sesión 2026-09-04. Analiza el código real (lecturas, entregas,
 > FieldRecord, cola offline móvil) antes de redactarse.
 > **Regla de oro de este documento:** el nivel de tóner es un dato **informativo
@@ -244,7 +247,9 @@ Reglas del servicio:
 
 ---
 
-## 8. Checklist de implementación (Fase 1 + alerta) — COMPLETADO 2026-09-12
+## 8. Checklist de implementación
+
+### Fase 1 + alerta — COMPLETADO 2026-09-12
 
 - [x] Migración: `niveles_toner` jsonb nullable en `readings`
 - [x] Migración: `niveles_toner` jsonb nullable en `field_records`
@@ -276,6 +281,45 @@ Reglas del servicio:
       nivel sano), exposición de `es_color`
 - [x] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c "npm run build"`
       y `... mobile ...` (ver AGENTS.md; nunca `npm run dev` en el host)
+
+### Fase 2 (TonerService) + widget de Fase 3 — COMPLETADO 2026-09-13
+
+- [x] `App\Services\TonerService` (nuevo, sin tocar `ReadingService`):
+      constantes `UMBRAL_CAMBIO=30`, `DIAS_URGENCIA=14`,
+      `VENTANA_PROMEDIO_DIAS=90`, `CORRELACION_DIAS=7`, `PANEL_LIMITE=10`;
+      umbral de inclusión reutilizado de `TonerAlertService::UMBRAL` (15)
+- [x] `paginasRestantes`/`diasParaAgotarse` por color entre las dos últimas
+      lecturas con ese color; pares con Δcontador ≤ 0 o Δnivel ≤ 0 ⇒ null;
+      sin contrato activo `dias` = null (las páginas sí se reportan)
+- [x] `cambiosDetectados`: reset = subida ≥ 30 pts; correlación con entrega
+      TONER ±7 días por contrato (`con_entrega`, `entrega_articulo`);
+      sin entrega ⇒ flag informativo, nunca error
+- [x] `rendimientoReal(modelId, ?articuloId)`: mediana de tramos entre
+      resets (el primer tramo arranca en la primera lectura con nivel);
+      con articuloId solo tramos correlacionados a entregas de ese artículo
+- [x] `estimados(Printer)` + `panelBajo()` (rentadas, nivel ≤ 15 **o** días
+      ≤ 14, orden días asc + nulls al final + nivel asc, cruce con próxima
+      visita PENDIENTE/REPROGRAMADA y `urgente_antes_de_visita`), queries
+      en lote (flota, lecturas, volumen por contrato, visitas)
+- [x] API: `GET /toner/panel` bajo `permission:operaciones.lecturas`
+      (routes/api.php) y `GET /printers/{printer}/toner` bajo
+      `permission:inventario.impresoras`; `TonerController` delgado
+- [x] Tests `TonerServiceTest` (pendiente, descartes, parciales, promedios,
+      eventos, mediana con outlier) y `TonerPanelTest` (401/403/200,
+      inclusión por nivel y por días, orden, cruce con visita, exclusiones,
+      endpoint de impresora)
+- [x] Web: tipos `TonerPanelItem`/`TonerEstimados` + hooks `useTonerPanel`/
+      `usePrinterToner` (react-query)
+- [x] Widget `TonerBajoWidget` en el dashboard (fila propia, gated por
+      `operaciones.lecturas`, chips + "~N días" + línea de visita con
+      "llevá tóner"/"se agota antes", click → detalle de impresora)
+- [x] Card "Tóner (estimado)" en el detalle de impresora: niveles,
+      "~N págs / ~N días" por color, último cambio detectado con
+      correlación de entrega, rendimiento real del modelo (mediana)
+- [x] Sin migraciones ni permisos nuevos; D1 intacto (facturación no
+      tocada, verificado con `git diff --stat`)
+- [x] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c "npm
+      run build"` (móvil sin cambios, no se recompila)
 
 ## 9. Mapa de archivos tocados (referencia rápida)
 

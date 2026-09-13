@@ -29,6 +29,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\System\UpdateController;
+use App\Http\Controllers\TonerController;
 use App\Http\Controllers\VisitController;
 use App\Http\Controllers\WarehouseController;
 use App\Http\Controllers\UserController;
@@ -59,6 +60,7 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('printers', PrinterController::class);
             Route::delete('printers/{printer}/force', [PrinterController::class, 'forceDelete']);
             Route::get('printers/{printer}/history', [PrinterController::class, 'history']);
+            Route::get('printers/{printer}/toner', [TonerController::class, 'printer']);
             Route::get('printer-expenses', [ExpenseController::class, 'index']);
             Route::get('printer-expenses/{printerExpense}', [ExpenseController::class, 'show']);
             Route::post('printer-expenses', [ExpenseController::class, 'store']);
@@ -139,6 +141,8 @@ Route::prefix('v1')->group(function () {
             Route::apiResource('readings', ReadingController::class)->only(['index', 'store', 'show']);
             Route::get('readings/visit/{visitId}', [ReadingController::class, 'getByVisit']);
             Route::get('readings/printer/{printerId}', [ReadingController::class, 'getByPrinter']);
+            // Panel "tóner bajo" del dashboard (mismos destinatarios que la alerta TONER_LOW).
+            Route::get('toner/panel', [TonerController::class, 'panel']);
         });
 
         // =====================================================

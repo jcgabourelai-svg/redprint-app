@@ -6,6 +6,7 @@ import KPICard from '@/components/dashboard/KPICard'
 import AlertCard from '@/components/dashboard/AlertCard'
 import PendingTasksList from '@/components/dashboard/PendingTasksList'
 import TopProfitabilityCard from '@/components/dashboard/TopProfitabilityCard'
+import TonerBajoWidget from '@/components/dashboard/TonerBajoWidget'
 import IngresosChart from '@/components/dashboard/charts/IngresosChart'
 import FlujoCajaChart from '@/components/dashboard/charts/FlujoCajaChart'
 import EstadoFlotaChart from '@/components/dashboard/charts/EstadoFlotaChart'
@@ -253,6 +254,8 @@ export default function Dashboard() {
             )}
           </div>
         )}
+
+        {tieneLecturas && <TonerBajoWidget />}
       </div>
     </PageLayout>
   )

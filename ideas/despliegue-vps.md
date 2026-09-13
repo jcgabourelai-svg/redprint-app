@@ -1,9 +1,13 @@
 # Ideas — Deploy a VPS "semiproducción" + botón "Actualizar" desde la app
 
-> **Estado:** Fase 0 + Fase 1 **implementadas en el repo** (`deploy/update.sh`,
-> `update-cron.sh`, `backup-cron.sh`, `.gitattributes`, guía en DEPLOY.md
-> §4.1–4.3). Pendiente en el VPS: migración tarball→git (DEPLOY.md §4.2) +
-> cron (§4.3). Fase 2 (botón) sin implementar.
+> **Estado:** ✅ **Terminada** (confirmación del usuario, 2026-09-13). Fases 0–2
+> implementadas y operando: orquestador/backup en el repo (`deploy/update.sh`,
+> `update-cron.sh`, `backup-cron.sh`, `.gitattributes`, guía DEPLOY.md
+> §4.1–4.3), VPS migrado de tarball a git (§4.2) con cron instalado (§4.3), y
+> botón "Actualizar" (Fase 2) implementado (commit `839ce64`; plan
+> `.kilo/plans/1789074503591-fase-2-boton-actualizar.md`; tests
+> `SystemUpdateTest`). Fase 3 (badge con GitHub API / disparo externo) queda
+> como opcional no implementada.
 > **Origen:** sesión 2026-09-10. Analiza el código real (docker-compose.yml,
 > backend/entrypoint.sh, Dockerfile, seeders, config/permisos.php) y el
 > despliegue existente (deploy/DEPLOY.md, deploy/docker-compose.prod.yml)
@@ -29,11 +33,10 @@ las otras ideas vigentes (tóner, ubicación) y cualquier fix futuro aterrizan
 vía este mecanismo.
 
 **Prerrequisito de formato:** el botón depende de que el código llegue por
-**git** en el VPS. El repo ya vive en GitHub (`jcgabourelai-svg/redprint-app`,
-accesible por https), pero el VPS hoy recibe tarballs (`redprint.tar.gz`,
-flujo legacy de DEPLOY.md §4.4): un tarball no puede auto-actualizarse.
-Primer paso real: migrar el VPS a git clone preservando los volúmenes
-(guía en DEPLOY.md §4.2, pendiente de ejecutar en el VPS).
+**git** en el VPS. El repo vive en GitHub (`jcgabourelai-svg/redprint-app`,
+accesible por https); el VPS recibía tarballs (`redprint.tar.gz`, flujo
+legacy de DEPLOY.md §4.4), que no pueden auto-actualizarse. La migración a
+git clone preservando los volúmenes (guía DEPLOY.md §4.2) ya está ejecutada.
 
 ---
 
@@ -241,15 +244,15 @@ indisponibilidad durante el paso 8 es razonable. Si molesta, envolver con
 - **El VPS ya está desplegado y sirviendo** (`erp.redprint.cloud` tras
   Traefik/Dokploy, `APP_PORT=8090`, `/opt/redprint`; ver DEPLOY.md §1).
   No hay que instalar nada desde cero.
-- Pendiente real: **migrar el VPS de tarball a git** preservando los
-  volúmenes nombrados (guía en DEPLOY.md §4.2: mismo path +
-  `COMPOSE_PROJECT_NAME=redprint`, verificación de volúmenes y datos).
+- **Migración del VPS de tarball a git** preservando los volúmenes nombrados
+  (guía en DEPLOY.md §4.2: mismo path + `COMPOSE_PROJECT_NAME=redprint`,
+  verificación de volúmenes y datos): **hecho**.
 - Ajuste del `.env` del VPS: `RUN_MIGRATIONS=0` (que migre el orquestador,
   no cada arranque). `APP_ENV=production`, `PUBLIC_URL` y DB real ya están.
 - Cron de backup diario (`pg_dump` + retención): `deploy/backup-cron.sh`
-  (hecho; instalar con DEPLOY.md §4.3).
+  (hecho e instalado, DEPLOY.md §4.3).
 
-### Fase 1 — Orquestador manual (IMPLEMENTADA en el repo; falta ejecutar en el VPS)
+### Fase 1 — Orquestador manual (IMPLEMENTADA en el repo y ejecutada en el VPS)
 
 - `deploy/update.sh` + `deploy/update-cron.sh` + `deploy/backup-cron.sh`
   con las correcciones de la revisión: compose de dos archivos, `exec -T`,
@@ -257,10 +260,11 @@ indisponibilidad durante el paso 8 es razonable. Si molesta, envolver con
   `/root/backups` (fuera del árbol de git), pre-flight `git status
   --porcelain`, short-circuit sin cambios + `FORCE=1`, health check contra
   `/sanctum/csrf-cookie`.
-- Cron del host cada minuto: instalar con DEPLOY.md §4.3.
-- Probar el flujo completo por SSH tocando la bandera a mano (DEPLOY.md §4.3).
+- Cron del host cada minuto: instalado (DEPLOY.md §4.3).
+- Probar el flujo completo por SSH tocando la bandera a mano (DEPLOY.md §4.3):
+  probado.
 
-### Fase 2 — El botón
+### Fase 2 — El botón (IMPLEMENTADA: commit `839ce64`, tests `SystemUpdateTest`)
 
 - Permiso `sistema.actualizar` en `backend/config/permisos.php` **+
   migración nueva que lo siembre con `Permission::firstOrCreate`** (patrón

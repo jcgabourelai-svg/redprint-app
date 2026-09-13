@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import PrinterForm from '@/components/printer/PrinterForm'
+import TonerEstimadoCard from '@/components/printer/TonerEstimadoCard'
 import type { PrinterFormData } from '@/components/printer/PrinterForm'
 import { usePrinter, useUpdatePrinter, useDeactivatePrinter, useDeletePrinter } from '@/hooks/usePrinters'
 import { useIsAdmin } from '@/contexts/AuthContext'
@@ -319,6 +320,8 @@ export default function PrinterDetail() {
           </div>
 
           <div className="space-y-6">
+            <TonerEstimadoCard printerId={printerId} />
+
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">

@@ -1,3 +1,5 @@
+import type { TonerLevels } from './toner'
+
 export interface PaginationMeta {
   current_page: number
   last_page: number
@@ -139,4 +141,58 @@ export interface DashboardData {
   impresoras_por_estado: Partial<Record<PrinterEstado, number>>
   series: DashboardSeries
   alertas: DashboardAlertas
+}
+
+// --- Tóner estimado (TonerService): panel del dashboard + detalle de impresora ---
+
+export type TonerColor = keyof TonerLevels
+
+export interface TonerPorColor {
+  paginas_restantes: number | null
+  dias: number | null
+}
+
+export interface TonerCambioDetectado {
+  color: string
+  fecha: string
+  nivel_antes: number
+  nivel_despues: number
+  contador: number
+  con_entrega: boolean
+  entrega_fecha: string | null
+  entrega_articulo: string | null
+}
+
+export interface TonerEstimados {
+  niveles_actuales: TonerLevels | null
+  fecha_ultimo_nivel: string | null
+  por_color: Partial<Record<TonerColor, TonerPorColor>>
+  color_critico: TonerColor | null
+  nivel_critico: number | null
+  rendimiento_real_modelo: number | null
+  cambios?: TonerCambioDetectado[]
+}
+
+export interface TonerPanelItem {
+  impresora_id: number
+  codigo_negocio: string | null
+  marca: string
+  modelo: string
+  alias: string | null
+  cliente_id: number | null
+  cliente_nombre: string | null
+  contrato_id: number | null
+  niveles: TonerLevels
+  color_critico: TonerColor | null
+  nivel_critico: number | null
+  paginas_restantes: number | null
+  dias_para_agotarse: number | null
+  proxima_visita_fecha: string | null
+  proxima_visita_socio_nombre: string | null
+  urgente_antes_de_visita: boolean | null
+  fecha_ultimo_nivel: string | null
+}
+
+export interface TonerPanelData {
+  impresoras: TonerPanelItem[]
 }
