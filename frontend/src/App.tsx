@@ -9,6 +9,7 @@ import MaintenanceList from '@/pages/inventory/maintenance/MaintenanceList'
 import MaintenanceDetail from '@/pages/inventory/maintenance/MaintenanceDetail'
 import CreateMaintenanceOrder from '@/pages/inventory/maintenance/CreateMaintenanceOrder'
 import MaintenanceReports from '@/pages/inventory/maintenance/MaintenanceReports'
+import TallerDashboard from '@/pages/inventory/taller/TallerDashboard'
 import WarehouseList from '@/pages/inventory/warehouses/WarehouseList'
 import WarehouseDetail from '@/pages/inventory/warehouses/WarehouseDetail'
 import MovementList from '@/pages/inventory/movements/MovementList'
@@ -60,6 +61,7 @@ function App() {
           <Route path="inventario/mantenimiento/crear" element={<RequirePermission permiso="inventario.mantenimiento"><CreateMaintenanceOrder /></RequirePermission>} />
           <Route path="inventario/mantenimiento/reportes" element={<RequirePermission permiso="inventario.mantenimiento"><MaintenanceReports /></RequirePermission>} />
           <Route path="inventario/mantenimiento/:id" element={<RequirePermission permiso="inventario.mantenimiento"><MaintenanceDetail /></RequirePermission>} />
+          <Route path="inventario/taller" element={<RequirePermission permiso="inventario.mantenimiento"><TallerDashboard /></RequirePermission>} />
           <Route path="inventario/almacenes" element={<RequirePermission permiso="inventario.almacenes"><WarehouseList /></RequirePermission>} />
           <Route path="inventario/almacenes/:id" element={<RequirePermission permiso="inventario.almacenes"><WarehouseDetail /></RequirePermission>} />
           <Route path="inventario/movimientos" element={<RequirePermission permiso="inventario.movimientos"><MovementList /></RequirePermission>} />

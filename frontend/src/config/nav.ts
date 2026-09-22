@@ -17,6 +17,7 @@ import {
   FileCheck2,
   HelpCircle,
   ClipboardList,
+  Wrench,
 } from 'lucide-react'
 
 export interface NavItem {
@@ -51,6 +52,7 @@ export const navItems: NavItem[] = [
       { id: 'impresoras', label: 'Impresoras', icon: Package, path: '/inventario/impresoras', permiso: 'inventario.impresoras' },
       { id: 'articulos', label: 'Artículos', icon: Package, path: '/inventario/articulos', permiso: 'inventario.articulos' },
       { id: 'mantenimiento', label: 'Mantenimiento', icon: Settings, path: '/inventario/mantenimiento', permiso: 'inventario.mantenimiento' },
+      { id: 'taller', label: 'Taller', icon: Wrench, path: '/inventario/taller', permiso: 'inventario.mantenimiento' },
       { id: 'mantenimiento-reportes', label: 'Reportes Mantenimiento', icon: Settings, path: '/inventario/mantenimiento/reportes', permiso: 'inventario.mantenimiento' },
       { id: 'almacenes', label: 'Almacenes', icon: Package, path: '/inventario/almacenes', permiso: 'inventario.almacenes' },
       { id: 'movimientos', label: 'Movimientos', icon: ArrowLeftRight, path: '/inventario/movimientos', permiso: 'inventario.movimientos' },

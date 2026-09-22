@@ -11,6 +11,7 @@ use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\PrinterModel;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class PrinterService
@@ -129,10 +130,12 @@ class PrinterService
                 'condicion_actualizada_en' => now(),
             ]);
 
+            Cache::forget('taller.dashboard');
+
             return $printer->fresh();
         }
 
-        return DB::transaction(function () use ($printer, $nueva, $nota, $motivo, $user, $origen, $previa) {
+        $printer = DB::transaction(function () use ($printer, $nueva, $nota, $motivo, $user, $origen, $previa) {
             $printer->update([
                 'condicion' => $nueva,
                 'condicion_nota' => $nota,
@@ -155,6 +158,10 @@ class PrinterService
 
             return $printer->fresh();
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $printer;
     }
 
     /**
@@ -173,7 +180,7 @@ class PrinterService
             );
         }
 
-        return DB::transaction(function () use ($printer, $data, $user) {
+        $article = DB::transaction(function () use ($printer, $data, $user) {
             $cantidad = (int) $data['cantidad'];
             $costoUnitario = isset($data['costo_unitario']) ? (float) $data['costo_unitario'] : 0.0;
 
@@ -223,6 +230,10 @@ class PrinterService
 
             return $article->fresh();
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $article;
     }
 
     public function forceDelete(Printer $printer): void

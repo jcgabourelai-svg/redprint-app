@@ -15,6 +15,7 @@ use App\Models\MaintenanceOrder;
 use App\Models\Notification;
 use App\Models\PrinterHistory;
 use App\Models\User;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class MaintenanceService
@@ -33,7 +34,7 @@ class MaintenanceService
      */
     public function create(array $data, User $creator, bool $sacarDeCirculacion = false): MaintenanceOrder
     {
-        return DB::transaction(function () use ($data, $creator, $sacarDeCirculacion) {
+        $order = DB::transaction(function () use ($data, $creator, $sacarDeCirculacion) {
             $data['socio_id'] = $creator->id;
             $data['estado'] = MaintenanceStatus::PROGRAMADA;
             $data['fecha_creacion'] = now();
@@ -92,6 +93,10 @@ class MaintenanceService
 
             return $order->fresh(['printer', 'visit']);
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $order;
     }
 
     public function addArticle(MaintenanceOrder $order, int $articleId, int $quantity, User $user): ArticleUsed
@@ -144,7 +149,7 @@ class MaintenanceService
             throw new BusinessRuleException('Solo se pueden completar ordenes programadas');
         }
 
-        return DB::transaction(function () use ($order, $data, $user) {
+        $order = DB::transaction(function () use ($order, $data, $user) {
             $articlesUsed = $order->articlesUsed()->with('article')->get();
             $articlesCost = $articlesUsed->sum('subtotal');
 
@@ -247,6 +252,10 @@ class MaintenanceService
 
             return $order->fresh(['printer', 'articlesUsed.article']);
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $order;
     }
 
     public function cancel(MaintenanceOrder $order, User $user): MaintenanceOrder
@@ -255,7 +264,7 @@ class MaintenanceService
             throw new BusinessRuleException('Solo se pueden cancelar ordenes programadas');
         }
 
-        return DB::transaction(function () use ($order, $user) {
+        $order = DB::transaction(function () use ($order, $user) {
             $order->update(['estado' => MaintenanceStatus::CANCELADA]);
 
             $order->articlesUsed()->delete();
@@ -269,6 +278,10 @@ class MaintenanceService
 
             return $order->fresh();
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $order;
     }
 
     public function delete(MaintenanceOrder $order, User $user): MaintenanceOrder
@@ -277,7 +290,7 @@ class MaintenanceService
             throw new BusinessRuleException('Solo se pueden eliminar ordenes programadas o canceladas');
         }
 
-        return DB::transaction(function () use ($order, $user) {
+        $order = DB::transaction(function () use ($order, $user) {
             if ($order->estado === MaintenanceStatus::PROGRAMADA) {
                 $order->articlesUsed()->delete();
 
@@ -295,6 +308,10 @@ class MaintenanceService
 
             return $order;
         });
+
+        Cache::forget('taller.dashboard');
+
+        return $order;
     }
 
     /**

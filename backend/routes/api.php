@@ -29,6 +29,7 @@ use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\System\UpdateController;
+use App\Http\Controllers\TallerController;
 use App\Http\Controllers\TonerController;
 use App\Http\Controllers\VisitController;
 use App\Http\Controllers\WarehouseController;
@@ -106,6 +107,8 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/maintenance/printer/{printerId}/cost', [MaintenanceReportController::class, 'printerMaintenanceCost']);
             Route::get('reports/maintenance/top-articles', [MaintenanceReportController::class, 'topArticles']);
             Route::get('reports/maintenance/failures', [MaintenanceReportController::class, 'failures']);
+            // F3: dashboard operativo del taller.
+            Route::get('taller/dashboard', [TallerController::class, 'dashboard']);
         });
 
         Route::middleware('permission:inventario.almacenes')->group(function () {

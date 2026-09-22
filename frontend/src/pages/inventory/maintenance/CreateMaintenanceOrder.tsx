@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, Camera, X } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
@@ -16,18 +16,30 @@ import { parseApiError } from '@/lib/api-errors'
 
 export default function CreateMaintenanceOrder() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [showConfirm, setShowConfirm] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   const [error, setError] = useState('')
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null)
   const [photoError, setPhotoError] = useState('')
 
+  // Impresora precargada (p. ej. desde el dashboard del Taller).
+  const preselectedPrinterId = (() => {
+    const raw = searchParams.get('impresora')
+    const parsed = raw === null ? NaN : Number.parseInt(raw, 10)
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  })()
+  const [preselectDescartada, setPreselectDescartada] = useState(false)
+  const usarFiltroPreselect = preselectedPrinterId !== null && !preselectDescartada
+
   const [printerSearch, setPrinterSearch] = useState('')
   const debouncedPrinterSearch = useDebounce(printerSearch, 350)
   const { data: printersData, isFetching: printersFetching } = usePrinters(
     debouncedPrinterSearch.trim() !== ''
       ? { search: debouncedPrinterSearch, per_page: 20 }
-      : { per_page: 20 },
+      : usarFiltroPreselect
+        ? { impresora_id: preselectedPrinterId as number, per_page: 20 }
+        : { per_page: 20 },
   )
 
   const printers = printersData?.data || []
@@ -47,8 +59,8 @@ export default function CreateMaintenanceOrder() {
     ...Object.entries(severityLabels).map(([value, label]) => ({ value, label })),
   ]
 
-  const [printerId, setPrinterId] = useState<number | null>(null)
-  const [tipo, setTipo] = useState<'preventivo' | 'correctivo'>('preventivo')
+  const [printerId, setPrinterId] = useState<number | null>(preselectedPrinterId)
+  const [tipo, setTipo] = useState<'preventivo' | 'correctivo'>(preselectedPrinterId !== null ? 'correctivo' : 'preventivo')
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
   const [descripcion, setDescripcion] = useState('')
   const [costoManoObra, setCostoManoObra] = useState('')
@@ -147,7 +159,25 @@ export default function CreateMaintenanceOrder() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setPrinterId(null)}
+                      onClick={() => {
+                        setPrinterId(null)
+                        setPreselectDescartada(true)
+                      }}
+                      className="text-muted-foreground hover:text-foreground"
+                      aria-label="Cambiar impresora"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                ) : printerId != null && selectedPrinter === undefined ? (
+                  <div className="flex items-center justify-between rounded-md border border-input bg-card px-3 py-2">
+                    <span className="text-sm text-foreground">Impresora #{printerId} precargada</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPrinterId(null)
+                        setPreselectDescartada(true)
+                      }}
                       className="text-muted-foreground hover:text-foreground"
                       aria-label="Cambiar impresora"
                     >
