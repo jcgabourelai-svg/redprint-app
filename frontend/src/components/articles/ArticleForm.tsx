@@ -11,6 +11,13 @@ const tipoOptions = [
   { value: 'REPARACION', label: 'Pieza de repuesto' },
 ]
 
+const origenOptions = [
+  { value: '', label: 'Sin especificar' },
+  { value: 'ORIGINAL', label: 'Original (fabricante)' },
+  { value: 'COMPATIBLE', label: 'Compatible (alterno)' },
+  { value: 'REFACCIONADA', label: 'Refaccionada (deshuese)' },
+]
+
 interface FormErrors {
   nombre?: string
   marca?: string
@@ -32,6 +39,7 @@ export default function ArticleForm({ onSubmit, onCancel, submitting, initialDat
   const [tipo, setTipo] = useState<'CONSUMIBLE' | 'REPARACION'>(
     (initialData?.tipo_articulo as 'CONSUMIBLE' | 'REPARACION') ?? 'CONSUMIBLE'
   )
+  const [origen, setOrigen] = useState<string>(initialData?.origen ?? '')
   const [marca, setMarca] = useState(initialData?.marca ?? '')
   const [modelo, setModelo] = useState(initialData?.modelo_sku ?? '')
   const [stock_actual, setStockActual] = useState(initialData?.stock_actual?.toString() ?? '')
@@ -78,6 +86,7 @@ export default function ArticleForm({ onSubmit, onCancel, submitting, initialDat
     onSubmit({
       nombre: nombre.trim(),
       tipo_articulo: tipo,
+      origen: (origen || null) as Article['origen'],
       marca: marca.trim(),
       modelo_sku: modelo.trim(),
       stock_actual: Number(stock_actual),
@@ -106,6 +115,16 @@ export default function ArticleForm({ onSubmit, onCancel, submitting, initialDat
           options={tipoOptions}
           value={tipo}
           onChange={(v) => setTipo(v as 'CONSUMIBLE' | 'REPARACION')}
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-muted-foreground mb-1">Origen</label>
+        <Select
+          options={origenOptions}
+          value={origen}
+          onChange={setOrigen}
+          placeholder="Sin especificar"
         />
       </div>
 

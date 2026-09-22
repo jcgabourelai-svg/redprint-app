@@ -4,6 +4,7 @@ import type { PrinterModel } from './printer-model'
 export interface Article {
   id: string
   tipo_articulo: ArticleType
+  origen?: 'ORIGINAL' | 'COMPATIBLE' | 'REFACCIONADA' | null
   subtipo?: string | null
   nombre: string
   marca?: string | null

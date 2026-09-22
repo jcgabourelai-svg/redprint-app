@@ -15,6 +15,7 @@ class StoreArticleRequest extends FormRequest
     {
         return [
             'tipo_articulo' => 'required|in:CONSUMIBLE,REPARACION',
+            'origen' => 'nullable|in:ORIGINAL,COMPATIBLE,REFACCIONADA',
             'subtipo' => 'nullable|string|max:100',
             'nombre' => 'required|string|max:255',
             'marca' => 'nullable|string|max:150',

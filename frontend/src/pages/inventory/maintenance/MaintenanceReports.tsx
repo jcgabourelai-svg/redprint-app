@@ -258,7 +258,7 @@ export default function MaintenanceReports() {
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
               </div>
-            ) : !topArticles || topArticles.length === 0 ? (
+            ) : !topArticles || topArticles.top.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground">
                   No hay piezas consumidas en órdenes completadas para este rango
@@ -276,7 +276,7 @@ export default function MaintenanceReports() {
                     </tr>
                   </thead>
                   <tbody>
-                    {topArticles.map((row) => (
+                    {topArticles.top.map((row) => (
                       <tr key={row.articulo_id} className="border-b border-border">
                         <td className="px-4 py-2 font-medium">{row.nombre}</td>
                         <td className="px-4 py-2 text-muted-foreground">{row.tipo_articulo}</td>
@@ -286,6 +286,19 @@ export default function MaintenanceReports() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+            {topArticles && Object.keys(topArticles.por_origen ?? {}).length > 0 && (
+              <div className="border-t border-border px-4 py-3">
+                <p className="text-xs font-medium text-muted-foreground mb-2">Desglose por origen (snapshot al usar la pieza)</p>
+                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                  {Object.entries(topArticles.por_origen).map(([origen, datos]) => (
+                    <span key={origen} className="text-sm">
+                      {origen === 'SIN_ESPECIFICAR' ? 'Sin especificar' : origen.charAt(0) + origen.slice(1).toLowerCase()} ·{' '}
+                      {datos.total_cantidad} u · {formatCurrency(datos.total_costo)}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </CardContent>

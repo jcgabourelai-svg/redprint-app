@@ -12,6 +12,7 @@ class ArticleResource extends JsonResource
         return [
             'id' => $this->id,
             'tipo_articulo' => $this->tipo_articulo?->value ?? $this->tipo_articulo,
+            'origen' => $this->origen?->value,
             'subtipo' => $this->subtipo,
             'nombre' => $this->nombre,
             'marca' => $this->marca,

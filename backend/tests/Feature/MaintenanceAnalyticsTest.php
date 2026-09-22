@@ -307,7 +307,8 @@ class MaintenanceAnalyticsTest extends TestCase
         ]);
         $this->attachArticle($programada, $toner, 5, 100);
 
-        $top = $this->getJson('/api/v1/reports/maintenance/top-articles')->assertOk()->json();
+        $response = $this->getJson('/api/v1/reports/maintenance/top-articles')->assertOk();
+        $top = $response->json('top');
 
         $filaFusor = collect($top)->firstWhere('articulo_id', $fusor->id);
         $this->assertNotNull($filaFusor);
@@ -319,10 +320,16 @@ class MaintenanceAnalyticsTest extends TestCase
         $this->assertSame(2, $filaToner['total_cantidad']);
         $this->assertSame(200.0, (float) $filaToner['total_costo']);
 
-        $soloReparaciones = $this->getJson('/api/v1/reports/maintenance/top-articles?tipo_articulo=REPARACION')->assertOk()->json();
+        $soloReparacionesResponse = $this->getJson('/api/v1/reports/maintenance/top-articles?tipo_articulo=REPARACION')->assertOk();
+        $soloReparaciones = $soloReparacionesResponse->json('top');
 
         $this->assertNotNull(collect($soloReparaciones)->firstWhere('articulo_id', $fusor->id));
         $this->assertNull(collect($soloReparaciones)->firstWhere('articulo_id', $toner->id));
+
+        // Desglose por origen (snapshot): ambas filas de fusor sin origen.
+        $porOrigen = $response->json('por_origen');
+        $this->assertArrayHasKey('SIN_ESPECIFICAR', $porOrigen);
+        $this->assertSame(700.0, (float) $porOrigen['SIN_ESPECIFICAR']['total_costo']);
     }
 
     public function test_failures_agrupa_por_problema_y_modelo(): void

@@ -16,6 +16,7 @@ class ArticleUsedResource extends JsonResource
             'cantidad' => $this->cantidad,
             'costo_unitario' => $this->costo_unitario,
             'subtotal' => $this->subtotal,
+            'origen_snapshot' => $this->origen_snapshot?->value,
         ];
     }
 }

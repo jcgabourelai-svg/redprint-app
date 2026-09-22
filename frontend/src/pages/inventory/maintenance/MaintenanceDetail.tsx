@@ -399,6 +399,7 @@ export default function MaintenanceDetail() {
                                                 )}
                                               </span>
                                               <span className="whitespace-nowrap text-xs text-muted-foreground">
+                                                {a.origen ? `${a.origen.charAt(0)}${a.origen.slice(1).toLowerCase()} — ` : ''}
                                                 {a.stock_actual} disp. — {formatCurrency(a.costo_unitario)}
                                               </span>
                                             </button>
@@ -453,6 +454,9 @@ export default function MaintenanceDetail() {
                                       <th className="pb-2 text-left text-xs font-medium text-muted-foreground">
                                         Artículo
                                       </th>
+                                      <th className="pb-2 text-left text-xs font-medium text-muted-foreground">
+                                        Origen
+                                      </th>
                                       <th className="pb-2 text-center text-xs font-medium text-muted-foreground">
                                         Cantidad
                                       </th>
@@ -474,6 +478,11 @@ export default function MaintenanceDetail() {
                                       <tr key={ref.id} className="border-b border-border">
                                         <td className="py-2 font-medium text-foreground">
                                           {ref.article?.nombre}
+                                        </td>
+                                        <td className="py-2 text-xs text-muted-foreground">
+                                          {ref.origen_snapshot
+                                            ? ref.origen_snapshot.charAt(0) + ref.origen_snapshot.slice(1).toLowerCase()
+                                            : 'Sin especificar'}
                                         </td>
                                         <td className="py-2 text-center">{ref.cantidad}</td>
                                         <td className="py-2 text-right">

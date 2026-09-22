@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\ArticleOrigin;
 use App\Enums\ArticleType;
 use App\Enums\PrinterCondition;
 use App\Enums\PrinterStatus;
@@ -189,6 +190,9 @@ class PrinterService
             } else {
                 $article = Article::create([
                     'tipo_articulo' => ArticleType::from($data['tipo_articulo']),
+                    // F4: pieza de deshuese => REFACCIONADA salvo indicación
+                    // explícita del operador.
+                    'origen' => ArticleOrigin::tryFrom($data['origen'] ?? '') ?? ArticleOrigin::REFACCIONADA,
                     'subtipo' => 'Pieza de deshuese',
                     'nombre' => $data['nombre_nuevo'],
                     'modelo_sku' => $data['num_parte'] ?? null,

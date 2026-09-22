@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ArticleOrigin;
 use App\Enums\ArticleType;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +18,7 @@ class Article extends Model
 
     protected $fillable = [
         'tipo_articulo',
+        'origen',
         'subtipo',
         'nombre',
         'marca',
@@ -35,6 +37,7 @@ class Article extends Model
     {
         return [
             'tipo_articulo' => ArticleType::class,
+            'origen' => ArticleOrigin::class,
             'stock_actual' => 'integer',
             'umbral_reposicion' => 'integer',
             'costo_unitario' => 'decimal:2',

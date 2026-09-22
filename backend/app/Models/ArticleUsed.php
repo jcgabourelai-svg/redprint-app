@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ArticleOrigin;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -17,6 +18,7 @@ class ArticleUsed extends Model
         'cantidad',
         'costo_unitario',
         'subtotal',
+        'origen_snapshot',
     ];
 
     protected function casts(): array
@@ -25,6 +27,7 @@ class ArticleUsed extends Model
             'cantidad' => 'integer',
             'costo_unitario' => 'decimal:2',
             'subtotal' => 'decimal:2',
+            'origen_snapshot' => ArticleOrigin::class,
         ];
     }
 

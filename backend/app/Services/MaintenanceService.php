@@ -128,6 +128,9 @@ class MaintenanceService
             'cantidad' => $quantity,
             'costo_unitario' => $article->costo_unitario,
             'subtotal' => $quantity * (float) $article->costo_unitario,
+            // D3/F4: el origen se congela al agregar la pieza; reclasificar
+            // el artículo después no altera el histórico de la orden.
+            'origen_snapshot' => $article->origen?->value,
         ]);
     }
 

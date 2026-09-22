@@ -24,6 +24,11 @@ export interface TopUsedArticle {
   total_costo: number
 }
 
+export interface TopArticlesResponse {
+  top: TopUsedArticle[]
+  por_origen: Record<string, { total_cantidad: number; total_costo: number }>
+}
+
 export interface FailureRankingRow {
   tipo_problema: string
   modelo_id: number | null
@@ -39,7 +44,7 @@ export interface FailureRankingResponse {
 }
 
 export function useTopArticles(params?: { fecha_desde?: string; fecha_hasta?: string; tipo_articulo?: string; limit?: number }) {
-  return useQuery<TopUsedArticle[]>({
+  return useQuery<TopArticlesResponse>({
     queryKey: ['reports', 'maintenance', 'top-articles', params ?? {}],
     queryFn: () => api.get('/reports/maintenance/top-articles', { params }).then(r => r.data),
   })

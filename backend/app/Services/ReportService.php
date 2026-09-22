@@ -103,17 +103,20 @@ class ReportService
     /**
      * Piezas e insumos más usados en órdenes COMPLETADAS (por fecha de
      * completado). Agrega cantidad y costo por artículo; opcionalmente
-     * filtra por tipo de artículo (CONSUMIBLE|REPARACION).
+     * filtra por tipo de artículo (CONSUMIBLE|REPARACION). El desglose
+     * por origen usa el snapshot congelado en cada fila de articles_used.
      */
     public function getTopUsedArticles(?string $desde = null, ?string $hasta = null, ?string $tipoArticulo = null, int $limit = 20): array
     {
-        return ArticleUsed::query()
+        $base = ArticleUsed::query()
             ->join('articles', 'articles.id', '=', 'articles_used.articulo_id')
             ->join('maintenance_orders', 'maintenance_orders.id', '=', 'articles_used.orden_mantto_id')
             ->where('maintenance_orders.estado', MaintenanceStatus::COMPLETADA)
             ->when($desde, fn ($q) => $q->where('maintenance_orders.fecha_completado', '>=', $desde))
             ->when($hasta, fn ($q) => $q->where('maintenance_orders.fecha_completado', '<=', $hasta . ' 23:59:59'))
-            ->when($tipoArticulo, fn ($q) => $q->where('articles.tipo_articulo', $tipoArticulo))
+            ->when($tipoArticulo, fn ($q) => $q->where('articles.tipo_articulo', $tipoArticulo));
+
+        $top = (clone $base)
             ->select('articles_used.articulo_id')
             ->selectRaw('articles.nombre as nombre')
             ->selectRaw('articles.tipo_articulo as tipo_articulo')
@@ -131,6 +134,25 @@ class ReportService
                 'total_costo' => round((float) $row->total_costo, 2),
             ])
             ->toArray();
+
+        $porOrigen = (clone $base)
+            ->selectRaw('articles_used.origen_snapshot as origen')
+            ->selectRaw('SUM(articles_used.cantidad) as total_cantidad')
+            ->selectRaw('SUM(articles_used.subtotal) as total_costo')
+            ->groupBy('articles_used.origen_snapshot')
+            ->get()
+            ->mapWithKeys(fn ($row) => [
+                ($row->origen instanceof \App\Enums\ArticleOrigin ? $row->origen->value : ($row->origen ?? 'SIN_ESPECIFICAR')) => [
+                    'total_cantidad' => (int) $row->total_cantidad,
+                    'total_costo' => round((float) $row->total_costo, 2),
+                ],
+            ])
+            ->toArray();
+
+        return [
+            'top' => $top,
+            'por_origen' => $porOrigen,
+        ];
     }
 
     /**
