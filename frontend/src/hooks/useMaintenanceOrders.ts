@@ -99,17 +99,34 @@ export function useRemoveArticleFromMaintenance() {
   })
 }
 
+export interface MaintenanceStatsSocio {
+  socio_id: number
+  nombre: string
+  completadas: number
+  costo_manejado: number
+}
+
+export interface MaintenanceStatsProblema {
+  tipo_problema: string
+  total: number
+  costo_total: number
+}
+
 export interface MaintenanceStats {
   abiertas: number
   completadas_mes: number
   costo_mes: number
   pct_correctivas: number
+  por_socio: MaintenanceStatsSocio[]
+  por_tipo_problema: MaintenanceStatsProblema[]
+  por_tipo_mantto: { PREVENTIVO: number; CORRECTIVO: number }
+  mttr_dias: number
 }
 
-export function useMaintenanceStats() {
+export function useMaintenanceStats(params?: Record<string, string | number>) {
   return useQuery<MaintenanceStats>({
-    queryKey: ['maintenance-orders', 'stats'],
-    queryFn: () => api.get('/maintenance-orders/stats').then(r => r.data),
+    queryKey: ['maintenance-orders', 'stats', params ?? {}],
+    queryFn: () => api.get('/maintenance-orders/stats', { params }).then(r => r.data),
   })
 }
 

@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Search, DollarSign } from 'lucide-react'
+import { AlertTriangle, Search, DollarSign, Package, ChevronDown, ChevronRight } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
-import { useProblematicPrinters, usePrinterMaintenanceCost } from '@/hooks/useMaintenanceReports'
+import { useProblematicPrinters, usePrinterMaintenanceCost, useTopArticles, useFailures } from '@/hooks/useMaintenanceReports'
 import { usePrinters } from '@/hooks/usePrinters'
 import { useDebounce } from '@/hooks/useDebounce'
 import { formatCurrency } from '@/lib/formatters'
+import { problemTypeLabels } from '@/lib/maintenanceProblem'
 
 export default function MaintenanceReports() {
   const navigate = useNavigate()
@@ -28,6 +29,17 @@ export default function MaintenanceReports() {
 
   const selectedPrinter = printers.find((p: any) => p.id === selectedPrinterId)
 
+  // Rango compartido para las tablas analíticas (vacío = histórico completo).
+  const [rangoDesde, setRangoDesde] = useState('')
+  const [rangoHasta, setRangoHasta] = useState('')
+  const rangoParams: { fecha_desde?: string; fecha_hasta?: string } = {}
+  if (rangoDesde) rangoParams.fecha_desde = rangoDesde
+  if (rangoHasta) rangoParams.fecha_hasta = rangoHasta
+
+  const { data: topArticles, isLoading: topLoading } = useTopArticles(rangoParams)
+  const { data: failures, isLoading: failuresLoading } = useFailures(rangoParams)
+  const [expandedFalla, setExpandedFalla] = useState<string | null>(null)
+
   return (
     <PageLayout title="Inventario › Mantenimiento › Reportes">
       <div className="space-y-6">
@@ -35,12 +47,35 @@ export default function MaintenanceReports() {
           <div>
             <h2 className="text-2xl font-bold text-foreground">Reportes de Mantenimiento</h2>
             <p className="text-sm text-muted-foreground">
-              Impresoras problemáticas y costo acumulado por equipo
+              Impresoras problemáticas, costo acumulado, piezas más usadas y ranking de fallas
             </p>
           </div>
           <Button variant="outline" size="sm" onClick={() => navigate('/inventario/mantenimiento')}>
             Volver a órdenes
           </Button>
+        </div>
+
+        <div className="flex items-end gap-3 flex-wrap">
+          <div className="w-44">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Analítica desde</label>
+            <Input type="date" value={rangoDesde} onChange={(e) => setRangoDesde(e.target.value)} />
+          </div>
+          <div className="w-44">
+            <label className="block text-xs font-medium text-muted-foreground mb-1">Analítica hasta</label>
+            <Input type="date" value={rangoHasta} onChange={(e) => setRangoHasta(e.target.value)} />
+          </div>
+          {(rangoDesde || rangoHasta) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setRangoDesde('')
+                setRangoHasta('')
+              }}
+            >
+              Histórico completo
+            </Button>
+          )}
         </div>
 
         <Card>
@@ -206,6 +241,136 @@ export default function MaintenanceReports() {
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Package className="h-5 w-5 text-primary" />
+              <CardTitle>Piezas más usadas</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {topLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+              </div>
+            ) : !topArticles || topArticles.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  No hay piezas consumidas en órdenes completadas para este rango
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Artículo</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Tipo</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Cantidad</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Costo total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {topArticles.map((row) => (
+                      <tr key={row.articulo_id} className="border-b border-border">
+                        <td className="px-4 py-2 font-medium">{row.nombre}</td>
+                        <td className="px-4 py-2 text-muted-foreground">{row.tipo_articulo}</td>
+                        <td className="px-4 py-2 text-right">{row.total_cantidad}</td>
+                        <td className="px-4 py-2 text-right font-medium">{formatCurrency(row.total_costo)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              <CardTitle>Ranking de fallas</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            {failuresLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+              </div>
+            ) : !failures?.ranking || failures.ranking.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-sm text-muted-foreground">
+                  No hay fallas correctivas completadas para este rango
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground w-8"></th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Falla</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Modelo</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Total</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Costo total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failures.ranking.map((row, idx) => {
+                      const key = `${row.tipo_problema}-${row.modelo_id ?? 'null'}-${idx}`
+                      const expandida = expandedFalla === key
+                      const piezas = failures.piezas_asociadas?.[row.tipo_problema] ?? []
+                      return (
+                        <Fragment key={key}>
+                          <tr
+                            className="border-b border-border cursor-pointer hover:bg-muted/50"
+                            onClick={() => setExpandedFalla(expandida ? null : key)}
+                          >
+                            <td className="px-4 py-2">
+                              {piezas.length > 0 &&
+                                (expandida ? (
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                                ) : (
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                ))}
+                            </td>
+                            <td className="px-4 py-2 font-medium">
+                              {problemTypeLabels[row.tipo_problema] ?? row.tipo_problema}
+                            </td>
+                            <td className="px-4 py-2 text-muted-foreground">
+                              {row.marca} {row.modelo}
+                            </td>
+                            <td className="px-4 py-2 text-right">{row.total}</td>
+                            <td className="px-4 py-2 text-right font-medium">{formatCurrency(row.costo_total)}</td>
+                          </tr>
+                          {expandida && piezas.length > 0 && (
+                            <tr className="border-b border-border bg-muted/30">
+                              <td></td>
+                              <td colSpan={4} className="px-4 py-2">
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  Piezas asociadas a esta falla (todas las filas del grupo)
+                                </p>
+                                <div className="flex flex-wrap gap-x-6 gap-y-1">
+                                  {piezas.map((p) => (
+                                    <span key={p.articulo_id} className="text-sm">
+                                      {p.nombre} · {p.total_cantidad} u · {formatCurrency(p.total_costo)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </CardContent>

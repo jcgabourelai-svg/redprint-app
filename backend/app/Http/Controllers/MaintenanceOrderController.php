@@ -9,6 +9,7 @@ use App\Http\Requests\UpdateMaintenanceOrderRequest;
 use App\Http\Resources\MaintenanceOrderResource;
 use App\Models\MaintenanceOrder;
 use App\Services\MaintenanceService;
+use App\Services\ReportService;
 use App\Traits\Sortable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,31 +19,24 @@ class MaintenanceOrderController extends Controller
     use Sortable;
 
     public function __construct(
-        private MaintenanceService $maintenanceService
+        private MaintenanceService $maintenanceService,
+        private ReportService $reportService
     ) {}
 
     /**
-     * KPIs del módulo: abiertas, completadas del mes, costo del mes y
-     * porcentaje de correctivas sobre el total completado del mes.
+     * KPIs del módulo: abiertas, completadas del rango (default mes
+     * corriente), costo del rango y porcentaje de correctivas. Añade
+     * desgloses por socio/tipo y MTTR.
      */
-    public function stats(): JsonResponse
+    public function stats(Request $request): JsonResponse
     {
-        $inicioMes = now()->startOfMonth();
-
-        $completadasMes = MaintenanceOrder::where('estado', MaintenanceStatus::COMPLETADA)
-            ->where('fecha_completado', '>=', $inicioMes);
-
-        $totalMes = (clone $completadasMes)->count();
-        $correctivasMes = (clone $completadasMes)
-            ->where('tipo_mantto', MaintenanceType::CORRECTIVO)
-            ->count();
-
-        return response()->json([
-            'abiertas' => MaintenanceOrder::where('estado', MaintenanceStatus::PROGRAMADA)->count(),
-            'completadas_mes' => $totalMes,
-            'costo_mes' => (float) $completadasMes->sum('costo_total'),
-            'pct_correctivas' => $totalMes > 0 ? round($correctivasMes * 100 / $totalMes, 1) : 0,
+        $params = $request->validate([
+            'fecha_desde' => 'nullable|date',
+            'fecha_hasta' => 'nullable|date|after_or_equal:fecha_desde',
+            'socio_id' => 'nullable|integer|exists:users,id',
         ]);
+
+        return response()->json($this->reportService->getMaintenanceStats($params));
     }
 
     public function index(Request $request): JsonResponse

@@ -101,6 +101,8 @@ Route::prefix('v1')->group(function () {
             Route::get('printers/{printer}/compatible-articles', [PrinterController::class, 'compatibleArticles']);
             Route::get('reports/maintenance/problematic-printers', [MaintenanceReportController::class, 'problematicPrinters']);
             Route::get('reports/maintenance/printer/{printerId}/cost', [MaintenanceReportController::class, 'printerMaintenanceCost']);
+            Route::get('reports/maintenance/top-articles', [MaintenanceReportController::class, 'topArticles']);
+            Route::get('reports/maintenance/failures', [MaintenanceReportController::class, 'failures']);
         });
 
         Route::middleware('permission:inventario.almacenes')->group(function () {

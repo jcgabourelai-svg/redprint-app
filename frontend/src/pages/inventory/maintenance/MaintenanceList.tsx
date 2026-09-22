@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Wrench, ClipboardList, CheckCircle2, DollarSign, AlertTriangle, RotateCcw } from 'lucide-react'
+import { Plus, Wrench, ClipboardList, CheckCircle2, DollarSign, AlertTriangle, RotateCcw, Timer } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import EmptyState from '@/components/ui/EmptyState'
@@ -48,7 +49,19 @@ export default function MaintenanceList() {
     defaultSort: { column: 'fecha', dir: 'desc' },
   })
 
-  const { data: stats } = useMaintenanceStats()
+  const inicioMes = new Date()
+  inicioMes.setDate(1)
+  const mesCorriente = { desde: inicioMes.toISOString().slice(0, 10), hasta: new Date().toISOString().slice(0, 10) }
+
+  const [statsDesde, setStatsDesde] = useState(mesCorriente.desde)
+  const [statsHasta, setStatsHasta] = useState(mesCorriente.hasta)
+  const rangoCustom = statsDesde !== mesCorriente.desde || statsHasta !== mesCorriente.hasta
+
+  const statsParams: Record<string, string> = {}
+  if (statsDesde) statsParams.fecha_desde = statsDesde
+  if (statsHasta) statsParams.fecha_hasta = statsHasta
+
+  const { data: stats } = useMaintenanceStats(statsParams)
 
   const setFilter = (key: string, value: string) =>
     tableProps.onFilterChange({ ...tableProps.filterState, [key]: value })
@@ -177,7 +190,39 @@ export default function MaintenanceList() {
         </div>
 
         {stats && (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <>
+          <div className="flex items-end gap-3 flex-wrap">
+            <div className="w-40">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">KPIs desde</label>
+              <Input
+                type="date"
+                value={statsDesde}
+                onChange={(e) => setStatsDesde(e.target.value)}
+              />
+            </div>
+            <div className="w-40">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">KPIs hasta</label>
+              <Input
+                type="date"
+                value={statsHasta}
+                onChange={(e) => setStatsHasta(e.target.value)}
+              />
+            </div>
+            {rangoCustom && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setStatsDesde(mesCorriente.desde)
+                  setStatsHasta(mesCorriente.hasta)
+                }}
+              >
+                <RotateCcw className="mr-1 h-4 w-4" />
+                Mes corriente
+              </Button>
+            )}
+          </div>
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             <Card>
               <CardContent className="p-4">
                 <div className="flex items-center gap-3">
@@ -198,7 +243,7 @@ export default function MaintenanceList() {
                     <CheckCircle2 className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Completadas del mes</p>
+                    <p className="text-sm text-muted-foreground">{rangoCustom ? 'Completadas (rango)' : 'Completadas del mes'}</p>
                     <p className="text-lg font-bold">{stats.completadas_mes}</p>
                   </div>
                 </div>
@@ -211,7 +256,7 @@ export default function MaintenanceList() {
                     <DollarSign className="h-5 w-5 text-success" />
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground">Costo del mes</p>
+                    <p className="text-sm text-muted-foreground">{rangoCustom ? 'Costo (rango)' : 'Costo del mes'}</p>
                     <p className="text-lg font-bold">{formatCurrency(stats.costo_mes)}</p>
                   </div>
                 </div>
@@ -230,7 +275,21 @@ export default function MaintenanceList() {
                 </div>
               </CardContent>
             </Card>
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="rounded-lg bg-primary/10 p-2">
+                    <Timer className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">MTTR (días)</p>
+                    <p className="text-lg font-bold">{stats.mttr_dias}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
+          </>
         )}
 
         <div className="flex items-end gap-3 flex-wrap">
