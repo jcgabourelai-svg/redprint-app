@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\ContractStatus;
 use App\Enums\MaintenanceStatus;
 use App\Enums\MaintenanceType;
+use App\Enums\PrinterCondition;
 use App\Enums\PrinterStatus;
 use App\Enums\VisitStatus;
 use App\Enums\VisitType;
@@ -224,6 +225,20 @@ class ContractService
 
         if ($printer->estado !== PrinterStatus::EN_ALMACEN) {
             throw new BusinessRuleException('La impresora debe estar en almacen para asignarla');
+        }
+
+        // F2: la condición técnica NO_OPERATIVA/PIEZAS bloquea la entrega;
+        // REQUIERE_ATENCION y null (legacy) solo avisan en el wizard.
+        if ($printer->condicion === PrinterCondition::NO_OPERATIVA) {
+            throw new BusinessRuleException(
+                'La impresora está marcada como NO OPERATIVA. Corrige su condición técnica antes de asignarla a un contrato.'
+            );
+        }
+
+        if ($printer->condicion === PrinterCondition::PIEZAS) {
+            throw new BusinessRuleException(
+                'La impresora es donante de piezas (deshuese) y no puede asignarse a un contrato.'
+            );
         }
 
         // D24: bloqueo duro por orden abierta (PROGRAMADA). El equipo está en

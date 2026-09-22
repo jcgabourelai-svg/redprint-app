@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\MaintenanceStatus;
 use App\Enums\MaintenanceType;
+use App\Enums\PrinterCondition;
 use App\Enums\PrinterStatus;
 use App\Enums\ProblemSeverity;
 use App\Exceptions\BusinessRuleException;
@@ -19,7 +20,8 @@ use Illuminate\Support\Facades\DB;
 class MaintenanceService
 {
     public function __construct(
-        private InventoryService $inventoryService
+        private InventoryService $inventoryService,
+        private PrinterService $printerService
     ) {}
 
     /**
@@ -58,6 +60,30 @@ class MaintenanceService
                     'socio_id' => $creator->id,
                     'fecha' => now(),
                 ]);
+            }
+
+            // Condición técnica (F2): un correctivo abre paso a NO_OPERATIVA
+            // (severidad ALTA/CRITICA) o REQUIERE_ATENCION (BAJA/MEDIA/null).
+            // Las donantes de piezas nunca se tocan automáticamente.
+            if ($order->tipo_mantto === MaintenanceType::CORRECTIVO) {
+                $printer = $printer ?? $order->printer;
+
+                if ($printer->condicion !== PrinterCondition::PIEZAS) {
+                    $nueva = in_array($order->severidad, [ProblemSeverity::ALTA, ProblemSeverity::CRITICA], true)
+                        ? PrinterCondition::NO_OPERATIVA
+                        : PrinterCondition::REQUIERE_ATENCION;
+
+                    if ($printer->condicion !== $nueva) {
+                        $this->printerService->actualizarCondicion(
+                            $printer,
+                            $nueva,
+                            null,
+                            "Falla reportada en orden correctiva #{$order->id}",
+                            $creator,
+                            'ORDEN'
+                        );
+                    }
+                }
             }
 
             if ($order->severidad === ProblemSeverity::CRITICA) {
@@ -181,6 +207,41 @@ class MaintenanceService
                         ? "Fin mantenimiento preventivo - Orden #{$order->id}"
                         : "Mantenimiento correctivo completado - Orden #{$order->id}",
                     ['costo_total' => $costoTotal],
+                );
+            }
+
+            // Condición técnica (F2): DESPUÉS de restorePrinterState, cuando
+            // el estado comercial final ya es conocido. El deshuese exige
+            // almacén; cualquier otra completada devuelve OPERATIVA. Las
+            // donantes de piezas (PIEZAS) nunca cambian automáticamente.
+            $printer = $order->printer->fresh() ?? $order->printer;
+
+            if (!empty($data['queda_para_piezas'])) {
+                if ($printer->estado !== PrinterStatus::EN_ALMACEN) {
+                    throw new BusinessRuleException(
+                        'No se puede marcar "queda para piezas": el deshuese solo procede con la impresora en almacén (quedó como ' . $printer->estado->value . ').'
+                    );
+                }
+
+                if ($printer->condicion !== PrinterCondition::PIEZAS) {
+                    $this->printerService->actualizarCondicion(
+                        $printer,
+                        PrinterCondition::PIEZAS,
+                        $order->trabajo_realizado,
+                        "Deshuese al completar orden #{$order->id}",
+                        $user,
+                        'ORDEN'
+                    );
+                }
+            } elseif ($printer->condicion !== PrinterCondition::PIEZAS
+                && $printer->condicion !== PrinterCondition::OPERATIVA) {
+                $this->printerService->actualizarCondicion(
+                    $printer,
+                    PrinterCondition::OPERATIVA,
+                    null,
+                    "Servicio completado (orden #{$order->id})",
+                    $user,
+                    'ORDEN'
                 );
             }
 

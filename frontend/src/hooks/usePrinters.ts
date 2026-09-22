@@ -69,3 +69,28 @@ export function useDeletePrinter() {
     },
   })
 }
+
+export function useUpdatePrinterCondition() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number; condicion: string; condicion_nota?: string; motivo: string }) =>
+      api.patch(`/printers/${id}/condicion`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['printers'] })
+      qc.invalidateQueries({ queryKey: ['printers', id] })
+    },
+  })
+}
+
+export function useExtractPrinterPart() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, ...data }: { id: number } & Record<string, unknown>) =>
+      api.post(`/printers/${id}/extract-part`, data).then(r => r.data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: ['printers'] })
+      qc.invalidateQueries({ queryKey: ['printers', id] })
+      qc.invalidateQueries({ queryKey: ['articles'] })
+    },
+  })
+}

@@ -8,6 +8,7 @@ export type TipoVisita =
   | 'ENTREGA_INSUMOS'
 export type VisitEstado = 'PENDIENTE' | 'COMPLETADA' | 'REPROGRAMADA' | 'CANCELADA' | 'OMITIDA'
 export type PrinterEstado = 'EN_ALMACEN' | 'RENTADA' | 'EN_MANTENIMIENTO' | 'DADA_DE_BAJA'
+export type PrinterCondicion = 'OPERATIVA' | 'REQUIERE_ATENCION' | 'NO_OPERATIVA' | 'PIEZAS'
 
 export interface AuthUser {
   id: number
@@ -196,6 +197,8 @@ export interface Printer {
   num_inventario: string | null
   codigo_negocio: string | null
   estado: PrinterEstado | null
+  /** Condición técnica (F2): OPERATIVA | REQUIERE_ATENCION | NO_OPERATIVA | PIEZAS | null (legacy). */
+  condicion?: PrinterCondicion | null
   contador_actual: number
   warehouse?: WarehouseRef | null
   /** Orden de servicio PROGRAMADA abierta (chip "en taller/servicio", D24). */

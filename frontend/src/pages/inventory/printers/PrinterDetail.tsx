@@ -9,6 +9,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import Tabs from '@/components/ui/Tabs'
 import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import PrinterForm from '@/components/printer/PrinterForm'
+import PrinterConditionCard from '@/components/printer/PrinterConditionCard'
 import TonerEstimadoCard from '@/components/printer/TonerEstimadoCard'
 import type { PrinterFormData } from '@/components/printer/PrinterForm'
 import { usePrinter, useUpdatePrinter, useDeactivatePrinter, useDeletePrinter } from '@/hooks/usePrinters'
@@ -320,6 +321,8 @@ export default function PrinterDetail() {
           </div>
 
           <div className="space-y-6">
+            <PrinterConditionCard printer={printerData} canEdit={isAdmin} />
+
             <TonerEstimadoCard printerId={printerId} />
 
             <Card>

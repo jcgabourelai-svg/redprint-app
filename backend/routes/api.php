@@ -61,6 +61,9 @@ Route::prefix('v1')->group(function () {
             Route::delete('printers/{printer}/force', [PrinterController::class, 'forceDelete']);
             Route::get('printers/{printer}/history', [PrinterController::class, 'history']);
             Route::get('printers/{printer}/toner', [TonerController::class, 'printer']);
+            // F2: condición técnica de impresoras (cambio manual y deshuese).
+            Route::patch('printers/{printer}/condicion', [PrinterController::class, 'updateCondition']);
+            Route::post('printers/{printer}/extract-part', [PrinterController::class, 'extractPart']);
             Route::get('printer-expenses', [ExpenseController::class, 'index']);
             Route::get('printer-expenses/{printerExpense}', [ExpenseController::class, 'show']);
             Route::post('printer-expenses', [ExpenseController::class, 'store']);

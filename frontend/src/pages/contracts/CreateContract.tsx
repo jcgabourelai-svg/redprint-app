@@ -214,6 +214,10 @@ export default function CreateContract() {
       return
     }
     const printer = printers.find((p) => p.id === id)
+    // F2: condición técnica bloqueante (el backend es la red de seguridad).
+    if (printer?.condicion === 'NO_OPERATIVA' || printer?.condicion === 'PIEZAS') {
+      return
+    }
     setSelectedPrinters([...selectedPrinters, id])
     setLecturasIniciales((prev) => ({
       ...prev,
@@ -456,15 +460,28 @@ export default function CreateContract() {
                         lectura inicial indicada. Si el equipo se instala después, deja esta sección
                         vacía.
                       </p>
-                      {printers.map((printer) => {
+                      {printers.map((printer: any) => {
                         const isSelected = selectedPrinters.includes(printer.id)
+                        const bloqueadaCondicion =
+                          printer.condicion === 'NO_OPERATIVA' || printer.condicion === 'PIEZAS'
                         return (
                           <div
                             key={printer.id}
-                            className={`border rounded-lg p-4 cursor-pointer transition-colors ${
-                              isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-input'
+                            className={`border rounded-lg p-4 transition-colors ${
+                              bloqueadaCondicion
+                                ? 'border-border opacity-50 cursor-not-allowed'
+                                : isSelected
+                                  ? 'border-primary bg-primary/10 cursor-pointer'
+                                  : 'border-border hover:border-input cursor-pointer'
                             }`}
-                            onClick={() => togglePrinter(printer.id)}
+                            onClick={() => !bloqueadaCondicion && togglePrinter(printer.id)}
+                            title={
+                              bloqueadaCondicion
+                                ? printer.condicion === 'NO_OPERATIVA'
+                                  ? 'Impresora no operativa: no puede asignarse'
+                                  : 'Donante de piezas: no puede asignarse'
+                                : undefined
+                            }
                           >
                             <div className="flex items-start gap-3">
                               <div
@@ -475,9 +492,16 @@ export default function CreateContract() {
                                 {isSelected && <Check className="h-3 w-3 text-white" />}
                               </div>
                               <div className="flex-1">
-                                <p className="font-medium text-foreground">
-                                  {printer.id} - {printer.marca} {printer.modelo}
-                                </p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="font-medium text-foreground">
+                                    {printer.id} - {printer.marca} {printer.modelo}
+                                  </p>
+                                  {printer.condicion === 'REQUIERE_ATENCION' && (
+                                    <span className="inline-flex items-center rounded-md border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning">
+                                      Requiere atención
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-xs text-muted-foreground">SERIE: {printer.num_serie}</p>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-2 text-xs">
                                   <div>
@@ -514,6 +538,12 @@ export default function CreateContract() {
                           </span>
                         )}
                       </p>
+                      {selectedPrinterDetails.some((p: any) => p.condicion === 'REQUIERE_ATENCION') && (
+                        <div className="bg-warning/10 border border-warning/30 text-warning px-4 py-2 rounded text-sm">
+                          Hay series marcadas como <strong>requiere atención</strong>: se rentarán y se
+                          atenderán en la primera visita. Confirma que es una decisión consciente.
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

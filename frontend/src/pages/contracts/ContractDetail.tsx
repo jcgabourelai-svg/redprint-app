@@ -249,6 +249,10 @@ export default function ContractDetail() {
     })
   }
 
+  const asignacionSeleccionada = availablePrinters.find(
+    (p) => String(p.id) === assignForm.impresora_id,
+  )
+
   const handleAssignSave = () => {
     setAssignError('')
     if (!assignForm.impresora_id) {
@@ -260,6 +264,15 @@ export default function ContractDetail() {
       // D24: el backend la rechaza con 422; se anticipa el mismo mensaje.
       setAssignError(
         `La impresora tiene una orden de mantenimiento abierta (#${elegida.open_maintenance_order.id}). Complétala o cancélala antes de asignarla.`
+      )
+      return
+    }
+    // F2: condición técnica bloqueante (el backend es la red de seguridad).
+    if (elegida?.condicion === 'NO_OPERATIVA' || elegida?.condicion === 'PIEZAS') {
+      setAssignError(
+        elegida.condicion === 'NO_OPERATIVA'
+          ? 'La impresora está marcada como NO OPERATIVA. Corrige su condición técnica antes de asignarla a un contrato.'
+          : 'La impresora es donante de piezas (deshuese) y no puede asignarse a un contrato.'
       )
       return
     }
@@ -1172,10 +1185,21 @@ export default function ContractDetail() {
                   value: String(p.id),
                   label: `${p.marca} ${p.modelo} — ${p.num_serie}${
                     p.open_maintenance_order ? ` (orden #${p.open_maintenance_order.id} abierta)` : ''
+                  }${
+                    p.condicion === 'NO_OPERATIVA'
+                      ? ' (no operativa)'
+                      : p.condicion === 'PIEZAS'
+                        ? ' (donante de piezas)'
+                        : p.condicion === 'REQUIERE_ATENCION'
+                          ? ' (requiere atención)'
+                          : ''
                   }`,
-                  // D24: visible pero no seleccionable mientras tenga una
-                  // orden de servicio abierta.
-                  disabled: !!p.open_maintenance_order,
+                  // D24/F2: visible pero no seleccionable con orden abierta o
+                  // condición técnica bloqueante.
+                  disabled:
+                    !!p.open_maintenance_order ||
+                    p.condicion === 'NO_OPERATIVA' ||
+                    p.condicion === 'PIEZAS',
                 }))}
                 value={assignForm.impresora_id}
                 onChange={handleAssignPrinterSelect}
@@ -1183,6 +1207,12 @@ export default function ContractDetail() {
               />
             )}
           </div>
+          {asignacionSeleccionada?.condicion === 'REQUIERE_ATENCION' && (
+            <div className="bg-warning/10 border border-warning/30 text-warning px-4 py-2 rounded text-sm">
+              La impresora está marcada como <strong>requiere atención</strong>. Se rentará y se
+              atenderá en la primera visita: confirma que es una decisión consciente.
+            </div>
+          )}
           {asignacionesLiberadas.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1">

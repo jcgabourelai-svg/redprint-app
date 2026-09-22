@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { useCreatePrinter } from '@/hooks/usePrinters'
 import { useServerTable } from '@/hooks/useServerTable'
 import { formatCurrency, formatDate, getPrinterStatusColor } from '@/lib/formatters'
+import { ConditionChip } from '@/lib/printerCondition'
 import { useIsAdmin } from '@/contexts/AuthContext'
 import { PrinterStatus } from '@/types/enums'
 import { printerStatusColors } from '@/types/colors'
@@ -27,6 +28,16 @@ const PRINTER_FILTERS: FilterConfig[] = [
       { label: 'Rentada', value: 'RENTADA' },
       { label: 'En mantenimiento', value: 'EN_MANTENIMIENTO' },
       { label: 'Dada de baja', value: 'DADA_DE_BAJA' },
+    ],
+  },
+  {
+    key: 'condicion',
+    label: 'Condición',
+    options: [
+      { label: 'Operativa', value: 'OPERATIVA' },
+      { label: 'Requiere atención', value: 'REQUIERE_ATENCION' },
+      { label: 'No operativa', value: 'NO_OPERATIVA' },
+      { label: 'Donante de piezas', value: 'PIEZAS' },
     ],
   },
 ]
@@ -101,6 +112,7 @@ export default function PrinterList() {
           <Badge variant="printer_status" color={value}>
             {(value || '').replace(/_/g, ' ').toUpperCase()}
           </Badge>
+          <ConditionChip condicion={row.condicion} compact />
           {row.open_maintenance_order && (
             <span
               className="inline-flex items-center gap-1 rounded-md border border-warning/40 bg-warning/10 px-1.5 py-0.5 text-[11px] font-medium text-warning"

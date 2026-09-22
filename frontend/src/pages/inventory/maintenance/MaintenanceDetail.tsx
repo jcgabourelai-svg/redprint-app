@@ -72,6 +72,7 @@ export default function MaintenanceDetail() {
   const [completeTrabajo, setCompleteTrabajo] = useState('')
   const [completeCosto, setCompleteCosto] = useState('')
   const [completeContador, setCompleteContador] = useState('')
+  const [completeQuedaPiezas, setCompleteQuedaPiezas] = useState(false)
 
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [deleteError, setDeleteError] = useState('')
@@ -169,6 +170,7 @@ export default function MaintenanceDetail() {
     setCompleteTrabajo(orderData.trabajo_realizado || '')
     setCompleteCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
     setCompleteContador('')
+    setCompleteQuedaPiezas(false)
     setShowCompleteModal(true)
   }
 
@@ -185,6 +187,7 @@ export default function MaintenanceDetail() {
         trabajo_realizado: completeTrabajo || undefined,
         costo_mano_obra: completeCosto === '' ? undefined : parseFloat(completeCosto),
         contador_impresora: contador,
+        queda_para_piezas: completeQuedaPiezas || undefined,
       })
       setShowCompleteModal(false)
     } catch (err) {
@@ -710,6 +713,22 @@ export default function MaintenanceDetail() {
               facturan al cliente en el re-ingreso. No puede ser menor al registrado.
             </p>
           </div>
+          <label className="flex items-start gap-3 rounded-md border border-border p-3 cursor-pointer hover:bg-muted/50">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-primary"
+              checked={completeQuedaPiezas}
+              onChange={(e) => setCompleteQuedaPiezas(e.target.checked)}
+              disabled={completeMutation.isPending}
+            />
+            <span>
+              <span className="block text-sm font-medium text-foreground">La impresora queda para piezas</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">
+                Marca el equipo como donante de deshuese (condición PIEZAS). Solo procede si el
+                equipo queda en almacén; luego podrás extraer piezas al inventario desde su ficha.
+              </span>
+            </span>
+          </label>
           {completeError && (
             <div className="p-3 text-sm text-destructive bg-destructive/10 rounded-md">
               {completeError}

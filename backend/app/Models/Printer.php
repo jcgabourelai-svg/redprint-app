@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MaintenanceStatus;
+use App\Enums\PrinterCondition;
 use App\Enums\PrinterStatus;
 use App\Traits\Searchable;
 use Illuminate\Database\Eloquent\Model;
@@ -31,11 +32,14 @@ class Printer extends Model
         'estado',
         'almacen_id',
         'contador_actual',
+        'condicion',
+        'condicion_nota',
+        'condicion_actualizada_en',
         'creado_por',
         'fecha_creacion',
     ];
 
-    protected $appends = ['garantia_status', 'vida_util_restante'];
+    protected $appends = ['garantia_status', 'vida_util_restante', 'disponible_para_renta'];
 
     protected function casts(): array
     {
@@ -44,7 +48,9 @@ class Printer extends Model
             'costo_adquisicion' => 'decimal:2',
             'garantia_hasta' => 'date',
             'estado' => PrinterStatus::class,
+            'condicion' => PrinterCondition::class,
             'contador_actual' => 'integer',
+            'condicion_actualizada_en' => 'datetime',
             'fecha_creacion' => 'datetime',
         ];
     }
@@ -176,5 +182,34 @@ class Printer extends Model
     public function getVidaUtilRestanteAttribute(): int
     {
         return $this->calculateRemainingLife();
+    }
+
+    /**
+     * La impresora se puede entregar a un contrato nuevo: está en almacén,
+     * su condición técnica lo permite (sin condición = legacy, no bloquea) y
+     * no tiene orden de mantenimiento abierta (D24).
+     *
+     * Ortogonal al estado comercial: un equipo rentado nunca está
+     * "disponible para renta" aunque su condición sea OPERATIVA.
+     */
+    public function getDisponibleParaRentaAttribute(): bool
+    {
+        if ($this->estado !== PrinterStatus::EN_ALMACEN) {
+            return false;
+        }
+
+        if ($this->condicion !== null && $this->condicion !== PrinterCondition::OPERATIVA) {
+            return false;
+        }
+
+        if ($this->relationLoaded('openMaintenanceOrder')) {
+            return $this->openMaintenanceOrder === null;
+        }
+
+        if ($this->attributes !== null && array_key_exists('ordenes_abiertas_count', $this->attributes)) {
+            return (int) $this->attributes['ordenes_abiertas_count'] === 0;
+        }
+
+        return !$this->openMaintenanceOrder()->exists();
     }
 }

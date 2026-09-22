@@ -1,5 +1,7 @@
 import type { PrinterStatus } from './enums'
 
+export type PrinterCondition = 'OPERATIVA' | 'REQUIERE_ATENCION' | 'NO_OPERATIVA' | 'PIEZAS'
+
 export interface Printer {
   id: string
   marca: string
@@ -11,6 +13,10 @@ export interface Printer {
   costo_adquisicion: number
   vida_util_estimada: number
   estado: PrinterStatus
+  condicion?: PrinterCondition | null
+  condicion_nota?: string | null
+  condicion_actualizada_en?: string | null
+  disponible_para_renta?: boolean
   ubicacion: string
   warehouse?: { id: number; nombre: string; direccion?: string | null } | null
   cliente?: { id: number; nombre: string; contrato_id?: number; contrato_codigo?: string } | null

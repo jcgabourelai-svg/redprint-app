@@ -108,6 +108,7 @@ class MaintenanceOrderController extends Controller
                 'trabajo_realizado' => 'nullable|string',
                 'costo_mano_obra' => 'nullable|numeric|min:0',
                 'contador_impresora' => 'nullable|integer|min:0',
+                'queda_para_piezas' => 'nullable|boolean',
             ]),
             $request->user()
         );

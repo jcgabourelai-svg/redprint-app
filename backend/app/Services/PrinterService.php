@@ -2,8 +2,11 @@
 
 namespace App\Services;
 
+use App\Enums\ArticleType;
+use App\Enums\PrinterCondition;
 use App\Enums\PrinterStatus;
 use App\Exceptions\BusinessRuleException;
+use App\Models\Article;
 use App\Models\Printer;
 use App\Models\PrinterHistory;
 use App\Models\PrinterModel;
@@ -13,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 class PrinterService
 {
     public function __construct(
-        private CodeGeneratorService $codeGenerator
+        private CodeGeneratorService $codeGenerator,
+        private InventoryService $inventoryService
     ) {}
 
     public function create(array $data, User $creator): Printer
@@ -97,6 +101,128 @@ class PrinterService
         }
 
         return $this->changeStatus($printer, PrinterStatus::DADA_DE_BAJA, $user, $reason);
+    }
+
+    /**
+     * Actualiza la condición técnica (ortogonal al estado comercial) dejando
+     * rastro en el historial: condición previa, nueva, motivo y origen.
+     * El origen distingue cambios manuales ('MANUAL') de las transiciones
+     * automáticas disparadas por órdenes de mantenimiento ('ORDEN') o por el
+     * deshuese ('DESHUESE').
+     *
+     * No-op cuando la condición no cambia (evita ruido en el historial);
+     * la nota y la fecha sí se refrescan en ese caso.
+     */
+    public function actualizarCondicion(
+        Printer $printer,
+        PrinterCondition $nueva,
+        ?string $nota,
+        string $motivo,
+        User $user,
+        string $origen = 'MANUAL',
+    ): Printer {
+        $previa = $printer->condicion;
+
+        if ($previa === $nueva) {
+            $printer->update([
+                'condicion_nota' => $nota,
+                'condicion_actualizada_en' => now(),
+            ]);
+
+            return $printer->fresh();
+        }
+
+        return DB::transaction(function () use ($printer, $nueva, $nota, $motivo, $user, $origen, $previa) {
+            $printer->update([
+                'condicion' => $nueva,
+                'condicion_nota' => $nota,
+                'condicion_actualizada_en' => now(),
+            ]);
+
+            PrinterHistory::create([
+                'impresora_id' => $printer->id,
+                'tipo_evento' => 'CONDICION_ACTUALIZADA',
+                'descripcion' => "Condición técnica cambiada de " . ($previa?->value ?? 'SIN_CONDICION') . " a {$nueva->value}",
+                'datos_adicionales' => [
+                    'condicion_previa' => $previa?->value,
+                    'condicion_nueva' => $nueva->value,
+                    'motivo' => $motivo,
+                    'origen' => $origen,
+                ],
+                'socio_id' => $user->id,
+                'fecha' => now(),
+            ]);
+
+            return $printer->fresh();
+        });
+    }
+
+    /**
+     * Extracción de pieza de una donante (condición PIEZAS). La pieza entra
+     * al inventario por el kardex estándar (InventoryService::registerEntry,
+     * lock + movimiento + alerta) con referencia DESHUESE hacia la impresora.
+     *
+     * $data: articulo_id (existente) o nombre_nuevo+tipo_articulo, cantidad,
+     * costo_unitario (default 0) y num_parte opcionales.
+     */
+    public function extraerPieza(Printer $printer, array $data, User $user): Article
+    {
+        if ($printer->condicion !== PrinterCondition::PIEZAS) {
+            throw new BusinessRuleException(
+                'Solo se pueden extraer piezas de impresoras marcadas como donantes (condición PIEZAS)'
+            );
+        }
+
+        return DB::transaction(function () use ($printer, $data, $user) {
+            $cantidad = (int) $data['cantidad'];
+            $costoUnitario = isset($data['costo_unitario']) ? (float) $data['costo_unitario'] : 0.0;
+
+            if (!empty($data['articulo_id'])) {
+                $article = Article::findOrFail($data['articulo_id']);
+            } else {
+                $article = Article::create([
+                    'tipo_articulo' => ArticleType::from($data['tipo_articulo']),
+                    'subtipo' => 'Pieza de deshuese',
+                    'nombre' => $data['nombre_nuevo'],
+                    'modelo_sku' => $data['num_parte'] ?? null,
+                    'stock_actual' => 0,
+                    'umbral_reposicion' => 0,
+                    'costo_unitario' => $costoUnitario,
+                    'activo' => true,
+                    'fecha_creacion' => now(),
+                ]);
+            }
+
+            $this->inventoryService->registerEntry(
+                $article,
+                $cantidad,
+                $user,
+                'DESHUESE',
+                $printer->id,
+                "Pieza extraída de impresora #{$printer->id}"
+            );
+
+            $articulo = "{$article->nombre} x{$cantidad}";
+            $printer->update([
+                'condicion_nota' => trim(($printer->condicion_nota ? $printer->condicion_nota . "\n" : '') . "[PIEZA EXTRAÍDA] {$articulo}"),
+                'condicion_actualizada_en' => now(),
+            ]);
+
+            PrinterHistory::create([
+                'impresora_id' => $printer->id,
+                'tipo_evento' => 'PIEZA_EXTRAIDA',
+                'descripcion' => "Pieza extraída para inventario: {$articulo}",
+                'datos_adicionales' => [
+                    'articulo_id' => $article->id,
+                    'cantidad' => $cantidad,
+                    'costo_unitario' => $costoUnitario,
+                ],
+                'socio_id' => $user->id,
+                'fecha' => now(),
+            ]);
+
+            return $article->fresh();
+        });
     }
 
     public function forceDelete(Printer $printer): void

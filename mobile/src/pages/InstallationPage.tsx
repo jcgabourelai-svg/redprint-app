@@ -464,7 +464,12 @@ export default function InstallationPage() {
               // seleccionable (defensivo: hoy el filtro EN_ALMACEN ya excluye
               // a las retiradas con orden; cubre la preventiva sobre equipo
               // en almacén creada desde la web).
-              const bloqueada = !!p.open_maintenance_order
+              // F2: NO_OPERATIVA/PIEZAS tampoco se pueden instalar (el
+              // backend las rechaza; aquí se anticipa).
+              const bloqueada =
+                !!p.open_maintenance_order ||
+                p.condicion === 'NO_OPERATIVA' ||
+                p.condicion === 'PIEZAS'
               return (
                 <Card
                   key={p.id}
@@ -486,9 +491,24 @@ export default function InstallationPage() {
                             EN PLAN
                           </span>
                         )}
-                        {bloqueada && (
+                        {p.condicion === 'REQUIERE_ATENCION' && (
+                          <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                            Requiere atención
+                          </span>
+                        )}
+                        {p.condicion === 'NO_OPERATIVA' && (
+                          <span className="ml-2 rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-semibold text-red-700">
+                            No operativa
+                          </span>
+                        )}
+                        {p.condicion === 'PIEZAS' && (
+                          <span className="ml-2 rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-semibold text-gray-600">
+                            Donante de piezas
+                          </span>
+                        )}
+                        {bloqueada && p.open_maintenance_order && (
                           <span className="ml-2 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700">
-                            🔧 Orden #{p.open_maintenance_order!.id} abierta
+                            🔧 Orden #{p.open_maintenance_order.id} abierta
                           </span>
                         )}
                       </p>

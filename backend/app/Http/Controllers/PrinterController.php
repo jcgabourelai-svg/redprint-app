@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Enums\MaintenanceStatus;
+use App\Http\Requests\ExtractPrinterPartRequest;
 use App\Http\Requests\StorePrinterRequest;
+use App\Http\Requests\UpdatePrinterConditionRequest;
 use App\Http\Requests\UpdatePrinterRequest;
 use App\Http\Resources\PrinterDetailResource;
 use App\Http\Resources\PrinterResource;
@@ -36,12 +38,13 @@ class PrinterController extends Controller
                     ->where('estado', MaintenanceStatus::PROGRAMADA),
             ])
             ->when($request->estado, fn($q, $e) => $q->where('estado', $e))
+            ->when($request->condicion, fn($q, $c) => $q->where('condicion', $c))
             ->when($request->marca, fn($q, $m) => $q->where('marca', 'ilike', "%{$m}%"))
             ->when($request->modelo, fn($q, $m) => $q->where('modelo', 'ilike', "%{$m}%"))
             ->search($request->search, ['codigo_negocio', 'num_serie', 'num_inventario', 'marca', 'modelo']);
 
         $this->applySorting($query, $request, [
-            'id', 'codigo_negocio', 'num_serie', 'num_inventario', 'marca', 'modelo', 'estado', 'created_at',
+            'id', 'codigo_negocio', 'num_serie', 'num_inventario', 'marca', 'modelo', 'estado', 'condicion', 'created_at',
         ], 'created_at', 'desc');
 
         $printers = $query->paginate($request->per_page ?? 15);
@@ -113,5 +116,33 @@ class PrinterController extends Controller
             ->get(['id', 'nombre', 'marca', 'modelo_sku', 'stock_actual', 'costo_unitario']);
 
         return response()->json($articles ?? collect());
+    }
+
+    /**
+     * F2: cambio manual de condición técnica con motivo obligatorio. Deja
+     * rastro en PrinterHistory (previa/nueva/motivo/origen MANUAL).
+     */
+    public function updateCondition(UpdatePrinterConditionRequest $request, Printer $printer): PrinterResource
+    {
+        $printer = $this->printerService->actualizarCondicion(
+            $printer,
+            \App\Enums\PrinterCondition::from($request->validated('condicion')),
+            $request->validated('condicion_nota'),
+            $request->validated('motivo'),
+            $request->user()
+        );
+
+        return new PrinterResource($printer);
+    }
+
+    /**
+     * F2: extracción de pieza de una donante (condición PIEZAS). Ingresa al
+     * inventario vía kardex estándar con referencia DESHUESE.
+     */
+    public function extractPart(ExtractPrinterPartRequest $request, Printer $printer): JsonResponse
+    {
+        $article = $this->printerService->extraerPieza($printer, $request->validated(), $request->user());
+
+        return response()->json($article, 201);
     }
 }
