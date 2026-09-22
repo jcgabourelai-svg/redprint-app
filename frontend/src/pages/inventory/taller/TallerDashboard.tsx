@@ -10,12 +10,14 @@ import {
   CheckCircle2,
   DollarSign,
   Plus,
+  CalendarClock,
 } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import { useTallerDashboard } from '@/hooks/useTaller'
+import { useUpcomingPlans } from '@/hooks/useMaintenancePlans'
 import { formatCurrency } from '@/lib/formatters'
 import { severityLabels, severityBadgeVariant } from '@/lib/maintenanceProblem'
 import { printerConditionLabels } from '@/lib/printerCondition'
@@ -31,6 +33,7 @@ const condicionColumnas = ['OPERATIVA', 'REQUIERE_ATENCION', 'NO_OPERATIVA', 'PI
 export default function TallerDashboard() {
   const navigate = useNavigate()
   const { data, isLoading } = useTallerDashboard()
+  const { data: preventivos } = useUpcomingPlans()
 
   if (isLoading || !data) {
     return (
@@ -262,6 +265,61 @@ export default function TallerDashboard() {
                     <p className="text-lg font-bold">{formatCurrency(productividad.costo_mes)}</p>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CalendarClock className="h-5 w-5 text-primary" />
+                    <CardTitle>Preventivos</CardTitle>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate('/inventario/mantenimiento/planes')}
+                  >
+                    Ver bandeja
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {preventivos === undefined ? (
+                  <p className="text-sm text-muted-foreground">Cargando...</p>
+                ) : preventivos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">Sin preventivos vencidos ni próximos</p>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex gap-4 text-sm">
+                      <span className="text-destructive font-medium">
+                        {preventivos.filter((p) => p.estado === 'VENCIDO').length} vencidos
+                      </span>
+                      <span className="text-warning font-medium">
+                        {preventivos.filter((p) => p.estado === 'PROXIMO').length} próximos
+                      </span>
+                    </div>
+                    <div className="space-y-1">
+                      {preventivos.slice(0, 5).map((p) => (
+                        <button
+                          key={`${p.plan_id}-${p.impresora_id}`}
+                          type="button"
+                          onClick={() => navigate(`/inventario/impresoras/${p.impresora_id}`)}
+                          className="block w-full text-left text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          {p.impresora.marca} {p.impresora.modelo} —{' '}
+                          {p.estado === 'VENCIDO'
+                            ? p.dias_restantes !== null
+                              ? `vencido hace ${Math.abs(p.dias_restantes)} días`
+                              : 'vencido'
+                            : p.dias_restantes !== null
+                              ? `en ${p.dias_restantes} días`
+                              : 'próximo'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
 

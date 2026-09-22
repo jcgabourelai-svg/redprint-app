@@ -31,6 +31,7 @@ class MaintenanceOrder extends Model
         'costo_total',
         'socio_id',
         'visita_id',
+        'maintenance_plan_id',
         'estado',
         'estado_anterior_impresora',
         'fecha_creacion',
@@ -65,6 +66,11 @@ class MaintenanceOrder extends Model
     public function socio(): BelongsTo
     {
         return $this->belongsTo(User::class, 'socio_id');
+    }
+
+    public function plan(): BelongsTo
+    {
+        return $this->belongsTo(MaintenancePlan::class, 'maintenance_plan_id');
     }
 
     public function articlesUsed(): HasMany

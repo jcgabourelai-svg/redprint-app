@@ -14,6 +14,7 @@ use App\Http\Controllers\FinanceReportController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\InventoryMovementController;
 use App\Http\Controllers\MaintenanceOrderController;
+use App\Http\Controllers\MaintenancePlanController;
 use App\Http\Controllers\MaintenanceReportController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PaymentController;
@@ -109,6 +110,14 @@ Route::prefix('v1')->group(function () {
             Route::get('reports/maintenance/failures', [MaintenanceReportController::class, 'failures']);
             // F3: dashboard operativo del taller.
             Route::get('taller/dashboard', [TallerController::class, 'dashboard']);
+
+            // F5: planes preventivos y bandeja de sugerencias. Las rutas
+            // fijas van ANTES del apiResource para no colisionar con
+            // {maintenance_plan}.
+            Route::get('maintenance-plans/upcoming', [MaintenancePlanController::class, 'upcoming']);
+            Route::post('maintenance-plans/create-orders-batch', [MaintenancePlanController::class, 'createOrdersBatch']);
+            Route::apiResource('maintenance-plans', MaintenancePlanController::class);
+            Route::post('maintenance-plans/{maintenancePlan}/create-order', [MaintenancePlanController::class, 'createOrder']);
         });
 
         Route::middleware('permission:inventario.almacenes')->group(function () {

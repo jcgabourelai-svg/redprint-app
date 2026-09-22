@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Wrench, ClipboardList, CheckCircle2, DollarSign, AlertTriangle, RotateCcw, Timer } from 'lucide-react'
+import { Plus, Wrench, ClipboardList, CheckCircle2, DollarSign, AlertTriangle, RotateCcw, Timer, CalendarClock } from 'lucide-react'
 import PageLayout from '@/components/layout/PageLayout'
 import Table from '@/components/ui/Table'
 import EmptyState from '@/components/ui/EmptyState'
@@ -182,10 +182,16 @@ export default function MaintenanceList() {
             <p className="text-sm text-muted-foreground">Gestión de servicios de mantenimiento</p>
           </div>
           {isAdmin && (
-            <Button onClick={() => navigate('/inventario/mantenimiento/crear')}>
-              <Plus className="mr-2 h-4 w-4" />
-              Nueva Orden
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => navigate('/inventario/mantenimiento/planes')}>
+                <CalendarClock className="mr-2 h-4 w-4" />
+                Planes preventivos
+              </Button>
+              <Button onClick={() => navigate('/inventario/mantenimiento/crear')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Nueva Orden
+              </Button>
+            </div>
           )}
         </div>
 

@@ -22,7 +22,8 @@ class MaintenanceService
 {
     public function __construct(
         private InventoryService $inventoryService,
-        private PrinterService $printerService
+        private PrinterService $printerService,
+        private MaintenancePlanService $maintenancePlanService
     ) {}
 
     /**
@@ -252,6 +253,10 @@ class MaintenanceService
                     'ORDEN'
                 );
             }
+
+            // F5: recálculo del plan preventivo en la misma transacción
+            // (actualiza ultimo_*/proximo_* del plan efectivo).
+            $this->maintenancePlanService->recalcularTrasCompletar($order);
 
             return $order->fresh(['printer', 'articlesUsed.article']);
         });
