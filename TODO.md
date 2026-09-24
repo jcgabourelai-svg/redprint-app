@@ -1,49 +1,39 @@
 # TODO — RedPrint
 
-> Última actualización: 2026-09-21. Fuente: estado de git (`origin/main`
-> incluye toner F1–F3 que el `main` local aún no tiene), `ideas/*.md` y
-> PROJECT.md §10.
+> Última actualización: 2026-09-23. Fuente: estado de git (`main` local y
+> `origin/main` sincronizados), `ideas/*.md` y PROJECT.md §10.
+>
+> Cambios desde la versión anterior: `tecnico-mantenimiento.md` F1–F5 quedó
+> implementada por completo (2026-09-22) y sale del backlog;
+> `despliegue-vps.md` F0–F2 ya está terminada y operando (confirmada contra
+> código); el pull de toner/auditoría ya está aplicado.
 
-## Inmediato — sincronización del entorno local
+## Verificar entorno local (post-pull del 2026-09-22)
 
-- [ ] `git pull` — el `main` local está 3 commits atrás de `origin/main`
-      (fast-forward limpio): toner F1+F3 (`267cad8`), toner F2 (`d5c2a2d`),
-      auditoría de calidad (`55d2a88`).
-- [ ] Tras el pull: `docker compose exec app php artisan migrate`
-      (migraciones nuevas: `niveles_toner` en `readings`/`field_records`,
-      `es_color` en `printer_models`).
-- [ ] Tras el pull: recompilar dists (`frontend` y `mobile`) y recargar
+- [ ] `docker compose exec app php artisan migrate:status` — confirmar que la
+      BD local tiene las migraciones nuevas: `condicion` en printers,
+      `origen` en articles, `origen_snapshot` en articles_used,
+      `maintenance_plans` y `plan_id` en maintenance_orders.
+- [ ] Recompilar dists si hay cambios sin compilar: `docker compose run --rm
+      --no-deps frontend sh -c "npm run build"` (ídem `mobile`) y recargar
       `http://localhost:8080` con Ctrl+F5.
-- [ ] Leer `docs/audits/auditoria-calidad-2026-09-13.md` (llega con el pull)
-      y decidir qué hallazgos entran al backlog.
-
-## VPS — operación manual, sin código (despliegue-vps.md)
-
-- [ ] Migrar el VPS de tarball a git preservando los volúmenes nombrados
-      (DEPLOY.md §4.2).
-- [ ] Instalar el cron del host: update cada 1 min + backup diario
-      (DEPLOY.md §4.3).
-- [ ] Ajustar `.env` del VPS: `RUN_MIGRATIONS=0` (que migre el orquestador).
-- [ ] Probar la primera actualización real con una migración trivial de
-      prueba y verificar datos intactos.
+- [ ] Leer `docs/audits/auditoria-calidad-2026-09-13.md` y decidir qué
+      hallazgos entran al backlog.
 
 ## Backlog priorizado (ideas vigentes)
 
-1. [ ] `tecnico-mantenimiento.md` **F1** — analítica técnica: stats con rango
-       y desgloses, reportes de fallas y de piezas más usadas. Solo lectura,
-       sin migraciones.
-2. [ ] `monitoreo-red.md` **F0** — calibración SNMP de 3–5 D1620 del almacén:
-       OID contador vs panel, decisión Total 1/Total 2, perfil YAML. Una
-       tarde, $0, sin código.
-3. [ ] `niveltoner.md` **F4** — costo por página real con insumo →
-       `ProfitabilityService` (responde §11.3.1 de PROJECT.md; solo
-       estimativo, no tocar facturación).
-4. [ ] `tecnico-mantenimiento.md` **F2/F3** — condición técnica de impresora
-       (migración + guards) y dashboard "Taller".
-5. [ ] `monitoreo-red.md` **F1+** — poller/sonda (repo aparte, requiere
-       sesión de diseño dedicada).
-6. [ ] `ubicacion.md` **F1/F2** — coords de clientes (aprendizaje desde GPS
-       de lecturas) + orden por cercanía en el móvil.
+1. [ ] `monitoreo-red.md` **F0** — calibración SNMP de 3–5 D1620 del almacén:
+       OID contador vs panel, decisión Total 1/Total 2, perfil YAML del modelo.
+       Una tarde, $0, sin código.
+2. [ ] `niveltoner.md` **F4** — costo por página real con insumo →
+       `ProfitabilityService` (responde §11.3.1 de PROJECT.md; solo estimativo,
+       no tocar facturación).
+3. [ ] `ubicacion.md` **F1/F2** — coords de clientes (aprendizaje desde GPS de
+       lecturas) + orden por cercanía en el móvil.
+4. [ ] `monitoreo-red.md` **F1+** — poller/sonda (repo aparte, requiere sesión
+       de diseño dedicada).
+5. [ ] `despliegue-vps.md` **F3** (opcional) — badge "desactualizado" contra
+       GitHub API y/o disparo del update por GitHub Action.
 
 ## Deuda conocida (resumen PROJECT.md §10)
 

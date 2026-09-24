@@ -1,6 +1,13 @@
 # Ideas — Perfil del técnico: condición de flota, taller, analítica y preventivos
 
-> **Estado:** propuesta para discusión / implementación futura.
+> **Estado:** ✅ **Terminada** (2026-09-22). Las cinco fases implementadas con
+> tests: F1 analítica con rango de fechas y reportes de piezas/fallas
+> (`765b3b2`), F2 condición técnica con transiciones automáticas, guardas de
+> asignación y deshuese (`5762e02`), F3 dashboard Taller (`6745a5d`), F4 origen
+> de piezas con snapshot congelado en órdenes (`bde3534`), F5 planes preventivos
+> por meses/páginas con bandeja de sugerencias y `maintenance:sync-plans` diario
+> (`fb25c84`). El perfil del técnico se documenta en
+> `docs/manual-usuario/04-tecnico-mantenimiento.md`.
 > **Origen:** sesión 2026-09-10. Analiza el código real (enums, servicios,
 > controladores, migraciones, frontend) antes de redactarse.
 > Idea original: el sistema sirve bien al operador y al dueño, pero ¿sirve al
