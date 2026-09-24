@@ -47,6 +47,11 @@ function getEstadoIcon(estado: string) {
   }
 }
 
+function hoyLocal(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function MaintenanceDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -68,6 +73,7 @@ export default function MaintenanceDetail() {
 
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [completeError, setCompleteError] = useState('')
+  const [completeFecha, setCompleteFecha] = useState('')
   const [completeTrabajo, setCompleteTrabajo] = useState('')
   const [completeCosto, setCompleteCosto] = useState('')
   const [completeContador, setCompleteContador] = useState('')
@@ -164,6 +170,7 @@ export default function MaintenanceDetail() {
 
   const openCompleteModal = () => {
     setCompleteError('')
+    setCompleteFecha(hoyLocal())
     setCompleteTrabajo(orderData.trabajo_realizado || '')
     setCompleteCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
     setCompleteContador('')
@@ -173,6 +180,20 @@ export default function MaintenanceDetail() {
 
   const handleCompleteSubmit = async () => {
     setCompleteError('')
+    const fecha = completeFecha.trim()
+    if (fecha === '') {
+      setCompleteError('Indica la fecha en que se realizó el servicio')
+      return
+    }
+    if (fecha > hoyLocal()) {
+      setCompleteError('La fecha del servicio no puede ser futura')
+      return
+    }
+    const fechaCreacion = orderData.fecha_creacion ? String(orderData.fecha_creacion).slice(0, 10) : ''
+    if (fechaCreacion !== '' && fecha < fechaCreacion) {
+      setCompleteError('La fecha del servicio no puede ser anterior a la creación de la orden')
+      return
+    }
     const contador = completeContador.trim() === '' ? null : parseInt(completeContador)
     if (contador !== null && (!Number.isFinite(contador) || contador < 0)) {
       setCompleteError('El contador al terminar debe ser un número entero no negativo')
@@ -181,6 +202,7 @@ export default function MaintenanceDetail() {
     try {
       await completeMutation.mutateAsync({
         id: orderId,
+        fecha_servicio: fecha,
         trabajo_realizado: completeTrabajo || undefined,
         costo_mano_obra: completeCosto === '' ? undefined : parseFloat(completeCosto),
         contador_impresora: contador,
@@ -225,6 +247,17 @@ export default function MaintenanceDetail() {
 
   const orderData = order as any
   const refacciones = orderData.articles_used || []
+
+  // fecha_completado llega como timestamp ISO. Cuando la orden se completó
+  // con captura de fecha de servicio (solo fecha), la hora viene en 00:00:00
+  // y se muestra sin hora para evitar el corrimiento de zona horaria.
+  const fechaCompletadaIso: string | null | undefined = orderData.fecha_completado
+  const fechaServicioYmd: string | null = fechaCompletadaIso ? fechaCompletadaIso.slice(0, 10) : null
+  const textoFechaServicio = !fechaCompletadaIso
+    ? null
+    : fechaCompletadaIso.includes('T00:00:00')
+      ? formatDate(fechaCompletadaIso.slice(0, 10))
+      : formatDateTime(fechaCompletadaIso)
 
   // Total autoritativo del servidor (congelado al completar); la suma de
   // subtotales es solo desglose visual de las filas.
@@ -353,6 +386,20 @@ export default function MaintenanceDetail() {
                       </p>
                     )}
                   </div>
+                  {textoFechaServicio && (
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">Fecha de servicio</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-foreground">{textoFechaServicio}</p>
+                        {orderData.estado === 'COMPLETADA'
+                          && orderData.fecha
+                          && fechaServicioYmd !== null
+                          && fechaServicioYmd > orderData.fecha && (
+                            <Badge variant="warning">Fuera de objetivo</Badge>
+                          )}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Socio Responsable</p>
                     <p className="text-foreground">{orderData.socio?.nombre ?? '-'}</p>
@@ -600,9 +647,9 @@ export default function MaintenanceDetail() {
                 <div className="text-center">
                   <p className="text-lg font-bold text-foreground">{formatDate(orderData.fecha)}</p>
                   <p className="text-sm text-muted-foreground mt-1">fecha objetivo</p>
-                  {orderData.fecha_completado && (
+                  {textoFechaServicio && (
                     <p className="text-sm text-muted-foreground mt-2">
-                      Completada el {formatDateTime(orderData.fecha_completado)}
+                      Completada el {textoFechaServicio}
                     </p>
                   )}
                 </div>
@@ -702,6 +749,20 @@ export default function MaintenanceDetail() {
         size="lg"
       >
         <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1">
+              Fecha del servicio
+            </label>
+            <Input
+              type="date"
+              value={completeFecha}
+              onChange={(e) => setCompleteFecha(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Fecha en que se realizó el servicio (por defecto, hoy). Alimenta el historial, los
+              reportes y la reprogramación del plan preventivo.
+            </p>
+          </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">
               Trabajo Realizado

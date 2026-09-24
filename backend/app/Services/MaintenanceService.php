@@ -15,6 +15,7 @@ use App\Models\MaintenanceOrder;
 use App\Models\Notification;
 use App\Models\PrinterHistory;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -153,7 +154,22 @@ class MaintenanceService
             throw new BusinessRuleException('Solo se pueden completar ordenes programadas');
         }
 
-        $order = DB::transaction(function () use ($order, $data, $user) {
+        // La fecha real del servicio puede diferir del momento administrativo
+        // en que se registra la completitud (plan/recalculo y reportes usan
+        // fecha_completado como fecha efectiva). Sin captura, se asume hoy.
+        $fechaCompletado = !empty($data['fecha_servicio'])
+            ? Carbon::parse($data['fecha_servicio'])->startOfDay()
+            : now();
+
+        if ($fechaCompletado->lt($order->fecha_creacion->startOfDay())) {
+            throw new BusinessRuleException(sprintf(
+                'La fecha de servicio (%s) no puede ser anterior a la creacion de la orden (%s)',
+                $fechaCompletado->format('d/m/Y'),
+                $order->fecha_creacion->format('d/m/Y')
+            ));
+        }
+
+        $order = DB::transaction(function () use ($order, $data, $user, $fechaCompletado) {
             $articlesUsed = $order->articlesUsed()->with('article')->get();
             $articlesCost = $articlesUsed->sum('subtotal');
 
@@ -165,7 +181,7 @@ class MaintenanceService
                 'trabajo_realizado' => $data['trabajo_realizado'] ?? $order->trabajo_realizado,
                 'costo_mano_obra' => $costoManoObra,
                 'costo_total' => $costoTotal,
-                'fecha_completado' => now(),
+                'fecha_completado' => $fechaCompletado,
             ]);
 
             foreach ($articlesUsed as $articleUsed) {
