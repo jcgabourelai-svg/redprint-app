@@ -87,7 +87,7 @@ export default function MaintenanceList() {
     },
     {
       key: 'fecha',
-      label: 'Fecha',
+      label: 'Fecha objetivo',
       sortable: true,
       render: (value: string) => formatDate(value),
     },

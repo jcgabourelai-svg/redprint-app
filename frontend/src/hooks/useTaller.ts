@@ -17,6 +17,13 @@ export interface TallerColaItem {
   desc_problema: string | null
   dias_desde_creacion: number
   fecha_creacion: string | null
+  fecha?: string | null
+  ubicacion?: {
+    lugar: 'PISO' | 'TALLER'
+    cliente?: string | null
+    contrato?: string | null
+    almacen?: string | null
+  } | null
   impresora: { id: number; marca: string | null; modelo: string | null; codigo: string | null } | null
 }
 

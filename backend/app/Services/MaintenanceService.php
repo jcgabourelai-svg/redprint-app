@@ -466,6 +466,8 @@ class MaintenanceService
         $order->costo_total = $this->calculateTotalCost($order);
         $order->save();
 
+        Cache::forget('taller.dashboard');
+
         return $order->fresh(['printer', 'articlesUsed.article']);
     }
 

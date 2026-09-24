@@ -7,8 +7,12 @@ export interface MaintenanceOrder {
     id: number
     marca: string
     modelo: string
+    estado?: string | null
+    cliente?: { id: number; nombre: string; contrato_id?: number; contrato_codigo?: string } | null
+    warehouse?: { id: number; nombre: string } | null
   }
   fecha: string | null
+  proxima_visita?: { id: number; fecha_programada: string; tipo_visita?: string | null } | null
   tipo_mantto: MaintenanceType
   desc_problema: string | null
   tipo_problema: string | null

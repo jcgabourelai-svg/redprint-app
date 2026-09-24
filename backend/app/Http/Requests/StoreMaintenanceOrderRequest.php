@@ -11,6 +11,17 @@ class StoreMaintenanceOrderRequest extends FormRequest
         return true;
     }
 
+    /**
+     * La orden nace con fecha de reporte: si el cliente no envía `fecha`
+     * (form web), se estampa hoy. El móvil la sigue enviando explícita.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (!$this->has('fecha')) {
+            $this->merge(['fecha' => today()->toDateString()]);
+        }
+    }
+
     public function rules(): array
     {
         return [

@@ -8,6 +8,8 @@ use App\Http\Requests\StoreMaintenanceOrderRequest;
 use App\Http\Requests\UpdateMaintenanceOrderRequest;
 use App\Http\Resources\MaintenanceOrderResource;
 use App\Models\MaintenanceOrder;
+use App\Models\Visit;
+use App\Enums\VisitStatus;
 use App\Services\MaintenanceService;
 use App\Services\ReportService;
 use App\Traits\Sortable;
@@ -78,8 +80,38 @@ class MaintenanceOrderController extends Controller
 
     public function show(MaintenanceOrder $maintenanceOrder): JsonResponse
     {
-        return response()->json(new MaintenanceOrderResource(
-            $maintenanceOrder->load(['printer', 'socio', 'visit', 'articlesUsed.article', 'expenses'])
+        $order = $maintenanceOrder->load([
+            'printer',
+            'printer.warehouse',
+            'printer.currentAssignment.contract.client',
+            'socio',
+            'visit',
+            'articlesUsed.article',
+            'expenses',
+        ]);
+
+        // Contexto de programación: próxima visita pendiente del contrato
+        // activo de la impresora (si está rentada).
+        $contrato = $order->printer?->currentAssignment?->contract;
+
+        $proximaVisita = $contrato === null ? null : Visit::where('contrato_id', $contrato->id)
+            ->whereIn('estado', [VisitStatus::PENDIENTE, VisitStatus::REPROGRAMADA])
+            ->where('fecha_programada', '>=', today())
+            ->orderBy('fecha_programada')
+            ->first();
+
+        // `additional()` solo mergea vía toResponse() (que envolvería en
+        // "data" y rompería el shape raíz que consume el frontend), así que
+        // se mergea a mano sobre el resource resuelto.
+        return response()->json(array_merge(
+            (new MaintenanceOrderResource($order))->resolve(request()),
+            [
+                'proxima_visita' => $proximaVisita === null ? null : [
+                    'id' => $proximaVisita->id,
+                    'fecha_programada' => $proximaVisita->fecha_programada->toDateString(),
+                    'tipo_visita' => $proximaVisita->tipo_visita?->value,
+                ],
+            ]
         ));
     }
 

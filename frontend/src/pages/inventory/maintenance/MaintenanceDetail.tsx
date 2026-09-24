@@ -65,7 +65,6 @@ export default function MaintenanceDetail() {
   const [editFecha, setEditFecha] = useState('')
   const [editDescripcion, setEditDescripcion] = useState('')
   const [editTrabajo, setEditTrabajo] = useState('')
-  const [editCosto, setEditCosto] = useState('')
 
   const [showCompleteModal, setShowCompleteModal] = useState(false)
   const [completeError, setCompleteError] = useState('')
@@ -104,7 +103,6 @@ export default function MaintenanceDetail() {
     setEditFecha(orderData.fecha || '')
     setEditDescripcion(orderData.desc_problema || '')
     setEditTrabajo(orderData.trabajo_realizado || '')
-    setEditCosto(orderData.costo_mano_obra != null ? String(orderData.costo_mano_obra) : '')
     setShowEditModal(true)
   }
 
@@ -152,7 +150,6 @@ export default function MaintenanceDetail() {
         fecha: editFecha || undefined,
         desc_problema: editDescripcion || undefined,
         trabajo_realizado: editTrabajo || undefined,
-        costo_mano_obra: editCosto === '' ? undefined : parseFloat(editCosto),
       })
       setShowEditModal(false)
     } catch (err) {
@@ -284,6 +281,25 @@ export default function MaintenanceDetail() {
                     <div>
                       <CardTitle className="text-xl">{orderData.id}</CardTitle>
                       <p className="text-sm text-muted-foreground">{orderData.printer?.marca} {orderData.printer?.modelo}</p>
+                      {orderData.printer?.cliente ? (
+                        <div className="mt-1">
+                          <Badge variant="warning">
+                            En piso — {orderData.printer.cliente.nombre}
+                            {orderData.printer.cliente.contrato_codigo ? ` (${orderData.printer.cliente.contrato_codigo})` : ''}
+                          </Badge>
+                          {orderData.printer.estado === 'EN_MANTENIMIENTO' && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Equipo aún en piso del cliente (pendiente de recolectar)
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="mt-1">
+                          <Badge variant="neutral">
+                            En taller — {orderData.printer?.warehouse?.nombre ?? 'almacén no asignado'}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -322,8 +338,20 @@ export default function MaintenanceDetail() {
                     </div>
                   )}
                   <div>
-                    <p className="text-sm font-medium text-muted-foreground">Fecha</p>
-                    <p className="text-foreground">{formatDate(orderData.fecha)}</p>
+                    <p className="text-sm font-medium text-muted-foreground">Fecha objetivo</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-foreground">{formatDate(orderData.fecha)}</p>
+                      {orderData.estado === 'PROGRAMADA'
+                        && orderData.fecha
+                        && orderData.fecha < new Date().toISOString().split('T')[0] && (
+                          <Badge variant="warning">Objetivo vencido</Badge>
+                        )}
+                    </div>
+                    {orderData.proxima_visita && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Próxima visita programada del contrato: {formatDate(orderData.proxima_visita.fecha_programada)}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">Socio Responsable</p>
@@ -571,7 +599,7 @@ export default function MaintenanceDetail() {
               <CardContent>
                 <div className="text-center">
                   <p className="text-lg font-bold text-foreground">{formatDate(orderData.fecha)}</p>
-                  <p className="text-sm text-muted-foreground mt-1">fecha programada</p>
+                  <p className="text-sm text-muted-foreground mt-1">fecha objetivo</p>
                   {orderData.fecha_completado && (
                     <p className="text-sm text-muted-foreground mt-2">
                       Completada el {formatDateTime(orderData.fecha_completado)}
@@ -613,13 +641,17 @@ export default function MaintenanceDetail() {
           )}
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">
-              Fecha Programada
+              Fecha objetivo
             </label>
             <Input
               type="date"
               value={editFecha}
               onChange={(e) => setEditFecha(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground mt-1">
+              La orden nace con la fecha de reporte; el área técnica define la fecha objetivo al
+              programar el servicio.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1">
@@ -643,18 +675,6 @@ export default function MaintenanceDetail() {
               rows={3}
               className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
               placeholder="Describe el trabajo realizado..."
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-muted-foreground mb-1">
-              Costo de Mano de Obra ($)
-            </label>
-            <Input
-              type="number"
-              step="0.01"
-              value={editCosto}
-              onChange={(e) => setEditCosto(e.target.value)}
-              placeholder="0.00"
             />
           </div>
           <div className="flex justify-end gap-2 pt-4 border-t">

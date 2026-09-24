@@ -108,24 +108,46 @@ export default function TallerDashboard() {
                         <tr className="border-b border-border">
                           <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Orden</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Impresora</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Ubicación</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Tipo</th>
                           <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">Severidad</th>
                           <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">Antigüedad</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {cola.map((item) => (
+                        {cola.map((item) => {
+                          const hoy = new Date().toISOString().split('T')[0]
+                          const vencida = !!item.fecha && item.fecha < hoy
+                          return (
                           <tr
                             key={item.orden_id}
                             className="border-b border-border cursor-pointer hover:bg-muted/50"
                             onClick={() => navigate(`/inventario/mantenimiento/${item.orden_id}`)}
                           >
-                            <td className="px-4 py-2 font-medium">#{item.orden_id}</td>
+                            <td className="px-4 py-2 font-medium">
+                              #{item.orden_id}
+                              {vencida && (
+                                <span className="block text-destructive text-xs font-normal">objetivo vencido</span>
+                              )}
+                            </td>
                             <td className="px-4 py-2">
                               <p>
                                 {item.impresora?.marca} {item.impresora?.modelo}
                               </p>
                               <p className="text-xs text-muted-foreground">{item.impresora?.codigo ?? '-'}</p>
+                            </td>
+                            <td className="px-4 py-2">
+                              {item.ubicacion?.lugar === 'PISO' ? (
+                                <Badge variant="warning" className="max-w-[12rem]">
+                                  <span className="truncate">En piso · {item.ubicacion.cliente ?? 's/cliente'}</span>
+                                </Badge>
+                              ) : item.ubicacion?.lugar === 'TALLER' ? (
+                                <Badge variant="neutral" className="max-w-[12rem]">
+                                  <span className="truncate">En taller · {item.ubicacion.almacen ?? 's/almacén'}</span>
+                                </Badge>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
                             </td>
                             <td className="px-4 py-2">
                               <Badge variant={item.tipo_mantto === 'PREVENTIVO' ? 'primary' : 'warning'}>
@@ -145,7 +167,8 @@ export default function TallerDashboard() {
                               </span>
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>

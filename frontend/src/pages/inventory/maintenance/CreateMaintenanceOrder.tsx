@@ -14,6 +14,8 @@ import { problemTypeLabels, severityLabels } from '@/lib/maintenanceProblem'
 import { compressImage } from '@/lib/photo'
 import { parseApiError } from '@/lib/api-errors'
 
+const DESC_PREVENTIVO_DEFAULT = 'Servicio preventivo programado — limpieza y revisión general'
+
 export default function CreateMaintenanceOrder() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
@@ -61,16 +63,16 @@ export default function CreateMaintenanceOrder() {
 
   const [printerId, setPrinterId] = useState<number | null>(preselectedPrinterId)
   const [tipo, setTipo] = useState<'preventivo' | 'correctivo'>(preselectedPrinterId !== null ? 'correctivo' : 'preventivo')
-  const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0])
-  const [descripcion, setDescripcion] = useState('')
-  const [costoManoObra, setCostoManoObra] = useState('')
+  const [descripcion, setDescripcion] = useState(
+    preselectedPrinterId === null ? DESC_PREVENTIVO_DEFAULT : '',
+  )
   const [tipoProblema, setTipoProblema] = useState('')
   const [severidad, setSeveridad] = useState('')
   const [foto, setFoto] = useState<string | null>(null)
 
   const selectedPrinter = printers.find((p: any) => p.id === printerId)
 
-  const canSubmit = printerId != null && !!fecha && !!descripcion
+  const canSubmit = printerId != null && !!descripcion
 
   const handlePhotoChange = async (file: File | undefined) => {
     setPhotoError('')
@@ -109,10 +111,8 @@ export default function CreateMaintenanceOrder() {
     createMutation.mutateAsync({
       impresora_id: printerId as number,
       tipo_mantto: tipo.toUpperCase(),
-      fecha,
       desc_problema: descripcion,
-      costo_mano_obra: costoManoObra ? parseFloat(costoManoObra) : 0,
-      tipo_problema: tipoProblema || undefined,
+      tipo_problema: tipo === 'correctivo' && tipoProblema ? tipoProblema : undefined,
       severidad: tipo === 'correctivo' && severidad ? severidad : undefined,
       foto_evidencia: foto || undefined,
     })
@@ -227,24 +227,30 @@ export default function CreateMaintenanceOrder() {
                   value={tipo}
                   onChange={(v) => {
                     setTipo(v as 'preventivo' | 'correctivo')
-                    if (v !== 'correctivo') setSeveridad('')
+                    if (v !== 'correctivo') {
+                      setSeveridad('')
+                      setTipoProblema('')
+                    }
+                    if (v === 'preventivo' && (descripcion === '' || descripcion === DESC_PREVENTIVO_DEFAULT)) {
+                      setDescripcion(DESC_PREVENTIVO_DEFAULT)
+                    }
                   }}
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-muted-foreground mb-1">
-                    Tipo de problema
-                  </label>
-                  <Select
-                    options={tipoProblemaOptions}
-                    value={tipoProblema}
-                    onChange={setTipoProblema}
-                    placeholder="Sin especificar"
-                  />
-                </div>
-                {tipo === 'correctivo' && (
+              {tipo === 'correctivo' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-muted-foreground mb-1">
+                      Tipo de problema
+                    </label>
+                    <Select
+                      options={tipoProblemaOptions}
+                      value={tipoProblema}
+                      onChange={setTipoProblema}
+                      placeholder="Sin especificar"
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-muted-foreground mb-1">
                       Severidad
@@ -256,43 +262,23 @@ export default function CreateMaintenanceOrder() {
                       placeholder="Sin especificar"
                     />
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Fecha Programada *
-                </label>
-                <Input
-                  type="date"
-                  value={fecha}
-                  onChange={(e) => setFecha(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Descripción del Servicio *
+                  {tipo === 'correctivo' ? 'Descripción del problema *' : 'Motivo del servicio *'}
                 </label>
                 <textarea
                   value={descripcion}
                   onChange={(e) => setDescripcion(e.target.value)}
                   rows={3}
                   className="w-full rounded-md border border-input py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                  placeholder="Describe el servicio de mantenimiento..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  Costo de Mano de Obra ($)
-                </label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={costoManoObra}
-                  onChange={(e) => setCostoManoObra(e.target.value)}
-                  placeholder="0.00"
+                  placeholder={
+                    tipo === 'correctivo'
+                      ? 'Describe la falla reportada...'
+                      : 'Describe el motivo y alcance del servicio...'
+                  }
                 />
               </div>
 
@@ -371,6 +357,7 @@ export default function CreateMaintenanceOrder() {
           </div>
           <div className="bg-warning/10 rounded p-3 text-xs text-warning space-y-1">
             <p>• Creará la orden en estado PROGRAMADA</p>
+            <p>• La fecha objetivo inicia como la fecha de reporte (hoy)</p>
             {tipo === 'correctivo' && (
               <p>• La impresora cambiará a estado EN MANTENIMIENTO</p>
             )}

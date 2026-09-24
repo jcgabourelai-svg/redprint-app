@@ -64,8 +64,13 @@ class TallerController extends Controller
         // Cola del taller: severidad descendente (CRITICA→BAJA, null al
         // final), luego antigüedad; el trabajo más urgente y viejo arriba.
         $cola = MaintenanceOrder::programada()
-            ->with('printer:id,marca,modelo,codigo_negocio')
-            ->select('id', 'impresora_id', 'severidad', 'tipo_mantto', 'desc_problema', 'fecha_creacion')
+            ->with([
+                'printer:id,marca,modelo,codigo_negocio,almacen_id',
+                'printer.warehouse:id,nombre',
+                'printer.currentAssignment.contract:id,client_id,codigo_negocio',
+                'printer.currentAssignment.contract.client:id,razon_social',
+            ])
+            ->select('id', 'impresora_id', 'severidad', 'tipo_mantto', 'desc_problema', 'fecha', 'fecha_creacion')
             ->orderByRaw("CASE severidad WHEN 'CRITICA' THEN 1 WHEN 'ALTA' THEN 2 WHEN 'MEDIA' THEN 3 WHEN 'BAJA' THEN 4 ELSE 5 END")
             ->orderBy('fecha_creacion')
             ->orderBy('id')
@@ -78,12 +83,14 @@ class TallerController extends Controller
                 'desc_problema' => $order->desc_problema,
                 'dias_desde_creacion' => (int) $order->fecha_creacion->diffInDays(now()),
                 'fecha_creacion' => $order->fecha_creacion?->toIso8601String(),
+                'fecha' => $order->fecha?->toDateString(),
                 'impresora' => $order->printer === null ? null : [
                     'id' => $order->printer->id,
                     'marca' => $order->printer->marca,
                     'modelo' => $order->printer->modelo,
                     'codigo' => $order->printer->codigo_negocio,
                 ],
+                'ubicacion' => $this->ubicacionDeImpresora($order->printer),
             ])
             ->values()
             ->toArray();
@@ -163,6 +170,32 @@ class TallerController extends Controller
             'matriz_estado_condicion' => array_values($matriz),
             'piezas_bajo_umbral' => $piezasBajoUmbral,
             'productividad_mes' => $this->reportService->getMaintenanceStats([]),
+        ];
+    }
+
+    /**
+     * Ubicación física derivada de la impresora: asignación activa ⇒ piso
+     * del cliente; sin asignación ⇒ taller/almacén.
+     */
+    private function ubicacionDeImpresora(?Printer $printer): ?array
+    {
+        if ($printer === null) {
+            return null;
+        }
+
+        $contrato = $printer->currentAssignment?->contract;
+
+        if ($contrato !== null) {
+            return [
+                'lugar' => 'PISO',
+                'cliente' => $contrato->client?->razon_social,
+                'contrato' => $contrato->codigo_negocio,
+            ];
+        }
+
+        return [
+            'lugar' => 'TALLER',
+            'almacen' => $printer->warehouse?->nombre,
         ];
     }
 }
