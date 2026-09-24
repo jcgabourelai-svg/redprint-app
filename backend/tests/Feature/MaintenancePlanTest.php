@@ -196,6 +196,7 @@ class MaintenancePlanTest extends TestCase
     {
         $admin = $this->adminUser();
         $printer = $this->createPrinter($admin);
+        $printer->update(['estado' => PrinterStatus::RENTADA]);
 
         // Meses lejanos (12), páginas ya rebasadas: vence por PÁGINAS.
         $plan = $this->crearPlan([
@@ -222,6 +223,7 @@ class MaintenancePlanTest extends TestCase
 
         // Caso espejo: fecha vencida con páginas lejanas => vence por FECHA.
         $printer2 = $this->createPrinter($admin);
+        $printer2->update(['estado' => PrinterStatus::RENTADA]);
         $plan2 = $this->crearPlan([
             'printer_id' => $printer2->id,
             'periodicidad_meses' => 1,
@@ -238,6 +240,34 @@ class MaintenancePlanTest extends TestCase
         $this->assertSame('VENCIDO', $fila2['estado']);
         $this->assertNotNull($fila2['dias_restantes']);
         $this->assertTrue($fila2['dias_restantes'] < 0);
+    }
+
+    public function test_upcoming_solo_incluye_impresoras_rentadas(): void
+    {
+        $admin = $this->adminUser();
+
+        $rentada = $this->createPrinter($admin);
+        $rentada->update(['estado' => PrinterStatus::RENTADA]);
+
+        $enAlmacen = $this->createPrinter($admin);
+        $enAlmacen->update(['printer_model_id' => $rentada->printer_model_id]);
+
+        // Plan por modelo vencido para ambas.
+        $plan = $this->crearPlan([
+            'printer_model_id' => $rentada->printer_model_id,
+            'periodicidad_meses' => 1,
+            'ultimo_servicio_fecha' => today()->subMonths(2)->toDateString(),
+        ]);
+
+        $service = app(\App\Services\MaintenancePlanService::class);
+        $service->recalcularProximo($plan->fresh());
+
+        $upcoming = $service->upcoming();
+
+        // La rentada (en piso) aparece como vencida...
+        $this->assertTrue($upcoming->contains(fn ($f) => $f['impresora_id'] === $rentada->id));
+        // ...la de almacén no genera sugerencia aunque comparta plan.
+        $this->assertFalse($upcoming->contains(fn ($f) => $f['impresora_id'] === $enAlmacen->id));
     }
 
     public function test_sync_plans_es_idempotente(): void

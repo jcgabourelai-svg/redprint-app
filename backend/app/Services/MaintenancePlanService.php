@@ -111,8 +111,13 @@ class MaintenancePlanService
     }
 
     /**
-     * Bandeja de vencidos/próximos: para cada impresora activa con plan
-     * efectivo calcula el estado SIN crear nada.
+     * Bandeja de vencidos/próximos: para cada impresora RENTADA (instalada
+     * en un cliente) con plan efectivo calcula el estado SIN crear nada.
+     *
+     * Las impresoras en almacén/taller no generan sugerencias: nadie les
+     * dará servicio en piso. El plan sigue aplicando (y su calendario sigue
+     * corriendo via sync-plans), de modo que un equipo guardado mucho
+     * tiempo llega a piso ya con vencimientos acumulados visibles.
      *
      * Estados: VENCIDO (fecha <= hoy o contador ya rebasado),
      * PROXIMO (dentro de la ventana de aviso en días o páginas restantes
@@ -120,7 +125,7 @@ class MaintenancePlanService
      */
     public function upcoming(): Collection
     {
-        $printers = Printer::active()
+        $printers = Printer::rentada()
             ->with('latestReading')
             ->get();
 

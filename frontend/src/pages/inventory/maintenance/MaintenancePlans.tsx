@@ -185,7 +185,7 @@ export default function MaintenancePlans() {
             <h2 className="text-2xl font-bold text-foreground">Planes preventivos</h2>
             <p className="text-sm text-muted-foreground">
               Cadencia por meses y/o páginas (el que ocurra primero). Las órdenes nacen de la bandeja,
-              nunca automáticamente.
+              nunca automáticamente. La bandeja considera solo impresoras rentadas (en piso).
             </p>
           </div>
           <div className="flex gap-2">
@@ -205,6 +205,7 @@ export default function MaintenancePlans() {
               <div className="flex items-center gap-2">
                 <CalendarClock className="h-5 w-5 text-warning" />
                 <CardTitle>Vencidos y próximos</CardTitle>
+                <span className="text-xs text-muted-foreground">solo impresoras rentadas</span>
               </div>
               {upcoming.length > 0 && (
                 <Button variant="outline" size="sm" onClick={handleCreateAll} loading={createBatch.isPending}>
@@ -221,7 +222,9 @@ export default function MaintenancePlans() {
               </div>
             ) : upcoming.length === 0 ? (
               <div className="text-center py-8">
-                <p className="text-sm text-muted-foreground">No hay preventivos vencidos ni próximos</p>
+                <p className="text-sm text-muted-foreground">
+                  No hay preventivos vencidos ni próximos entre las impresoras rentadas
+                </p>
               </div>
             ) : (
               <div className="overflow-x-auto">

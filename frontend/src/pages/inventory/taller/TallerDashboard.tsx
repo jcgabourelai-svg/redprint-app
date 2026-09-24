@@ -297,6 +297,7 @@ export default function TallerDashboard() {
                   <div className="flex items-center gap-2">
                     <CalendarClock className="h-5 w-5 text-primary" />
                     <CardTitle>Preventivos</CardTitle>
+                    <span className="text-xs text-muted-foreground">impresoras rentadas</span>
                   </div>
                   <Button
                     variant="outline"
@@ -311,7 +312,7 @@ export default function TallerDashboard() {
                 {preventivos === undefined ? (
                   <p className="text-sm text-muted-foreground">Cargando...</p>
                 ) : preventivos.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">Sin preventivos vencidos ni próximos</p>
+                  <p className="text-sm text-muted-foreground">Sin preventivos vencidos ni próximos (impresoras rentadas)</p>
                 ) : (
                   <div className="space-y-2">
                     <div className="flex gap-4 text-sm">

@@ -203,6 +203,10 @@ Después de completada, la orden queda como evidencia permanente y sus costos al
 **Bandeja de sugerencias (nada se crea solo):**
 
 - El sistema calcula diariamente (a las 02:00) qué planes están **próximos o vencidos**.
+- La bandeja considera **solo impresoras rentadas** (instaladas en clientes). Las impresoras
+  en almacén no generan sugerencias, pero su plan sigue corriendo: al instalarse llega con
+  el histórico acumulado (se verá cuánto tiempo sin servicio, incluidos equipos en clientes
+  lejanos o fuera de cobertura).
 - La bandeja los lista con su fecha/contador de vencimiento; tú decides:
   **crear la orden** preventiva individualmente o **crear todas** en lote.
 - Las órdenes nacen PROGRAMADA con la fecha de vencimiento; al completarlas, el plan
