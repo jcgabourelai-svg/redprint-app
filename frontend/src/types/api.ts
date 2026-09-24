@@ -170,6 +170,8 @@ export interface TonerEstimados {
   color_critico: TonerColor | null
   nivel_critico: number | null
   rendimiento_real_modelo: number | null
+  costo_toner_promedio: number | null
+  costo_toner_por_pagina: number | null
   cambios?: TonerCambioDetectado[]
 }
 

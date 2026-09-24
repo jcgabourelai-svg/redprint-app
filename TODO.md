@@ -3,10 +3,10 @@
 > Última actualización: 2026-09-23. Fuente: estado de git (`main` local y
 > `origin/main` sincronizados), `ideas/*.md` y PROJECT.md §10.
 >
-> Cambios desde la versión anterior: `tecnico-mantenimiento.md` F1–F5 quedó
-> implementada por completo (2026-09-22) y sale del backlog;
-> `despliegue-vps.md` F0–F2 ya está terminada y operando (confirmada contra
-> código); el pull de toner/auditoría ya está aplicado.
+> Cambios desde la versión anterior: `niveltoner.md` F4 (costo de tóner en
+> rentabilidad + costo por página estimado) quedó implementada (2026-09-23)
+> y sale del backlog; `tecnico-mantenimiento.md` F1–F5 y
+> `despliegue-vps.md` F0–F2 ya estaban terminadas en versiones previas.
 
 ## Verificar entorno local (post-pull del 2026-09-22)
 
@@ -25,14 +25,11 @@
 1. [ ] `monitoreo-red.md` **F0** — calibración SNMP de 3–5 D1620 del almacén:
        OID contador vs panel, decisión Total 1/Total 2, perfil YAML del modelo.
        Una tarde, $0, sin código.
-2. [ ] `niveltoner.md` **F4** — costo por página real con insumo →
-       `ProfitabilityService` (responde §11.3.1 de PROJECT.md; solo estimativo,
-       no tocar facturación).
-3. [ ] `ubicacion.md` **F1/F2** — coords de clientes (aprendizaje desde GPS de
+2. [ ] `ubicacion.md` **F1/F2** — coords de clientes (aprendizaje desde GPS de
        lecturas) + orden por cercanía en el móvil.
-4. [ ] `monitoreo-red.md` **F1+** — poller/sonda (repo aparte, requiere sesión
+3. [ ] `monitoreo-red.md` **F1+** — poller/sonda (repo aparte, requiere sesión
        de diseño dedicada).
-5. [ ] `despliegue-vps.md` **F3** (opcional) — badge "desactualizado" contra
+4. [ ] `despliegue-vps.md` **F3** (opcional) — badge "desactualizado" contra
        GitHub API y/o disparo del update por GitHub Action.
 
 ## Deuda conocida (resumen PROJECT.md §10)

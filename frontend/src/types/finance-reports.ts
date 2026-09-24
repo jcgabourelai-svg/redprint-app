@@ -1,19 +1,25 @@
 export interface ProfitabilityData {
-  impresora_id: string
-  impresora_nombre: string
+  impresora_id: number
+  codigo_negocio: string | null
+  marca: string
+  modelo: string
   ingresos: number
+  gastos: number
+  mantenimiento: number
+  insumos_toner: number
   costos: number
-  rentabilidad: number
-  roi: number
+  margen: number
+  roi: number | null
+  paginas_periodo: number
+  costo_toner_por_pagina: number | null
 }
 
 export interface ClientProfitability {
-  cliente_id: string
-  cliente_nombre: string
-  contratos: number
+  cliente_id: number
+  razon_social: string
   ingresos: number
   costos: number
-  rentabilidad: number
+  insumos_toner: number
   margen: number
 }
 

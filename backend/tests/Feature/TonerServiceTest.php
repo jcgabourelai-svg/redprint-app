@@ -133,6 +133,48 @@ class TonerServiceTest extends TestCase
         ]);
     }
 
+    private function toner(): Article
+    {
+        return Article::create([
+            'tipo_articulo' => 'CONSUMIBLE',
+            'subtipo' => 'TONER',
+            'nombre' => 'Toner HP 26A Negro',
+            'marca' => 'HP',
+            'modelo_sku' => 'CF226A-' . uniqid(),
+            'stock_actual' => 10,
+            'umbral_reposicion' => 3,
+            'costo_unitario' => 1850,
+            'activo' => true,
+            'fecha_creacion' => now(),
+        ]);
+    }
+
+    private function entrega(User $socio, Contract $contract, Article $articulo, int $cantidad, float $costoUnitario): ArticleDelivery
+    {
+        $visita = Visit::create([
+            'cliente_id' => $contract->cliente_id,
+            'contrato_id' => $contract->id,
+            'tipo_visita' => 'ENTREGA_INSUMOS',
+            'fecha_programada' => today()->toDateString(),
+            'socio_id' => $socio->id,
+            'estado' => VisitStatus::COMPLETADA,
+            'creado_por' => $socio->id,
+            'fecha_creacion' => now(),
+        ]);
+
+        return ArticleDelivery::create([
+            'articulo_id' => $articulo->id,
+            'visita_id' => $visita->id,
+            'contrato_id' => $contract->id,
+            'cliente_id' => $contract->cliente_id,
+            'cantidad' => $cantidad,
+            'costo_unitario' => $costoUnitario,
+            'subtotal' => $cantidad * $costoUnitario,
+            'socio_id' => $socio->id,
+            'fecha_creacion' => today()->setTime(12, 0),
+        ]);
+    }
+
     public function test_paginas_restantes_null_con_menos_de_dos_lecturas_con_nivel(): void
     {
         $admin = $this->adminUser();
@@ -370,5 +412,117 @@ class TonerServiceTest extends TestCase
         $brand = PrinterBrand::firstOrCreate(['slug' => 'hp'], ['nombre' => 'HP']);
         $modelVacio = PrinterModel::firstOrCreate(['brand_id' => $brand->id, 'nombre' => 'Modelo Vacio ' . uniqid()]);
         $this->assertNull($this->service->rendimientoReal($modelVacio->id));
+    }
+
+    public function test_costo_toner_por_pagina_promedio_ponderado_y_rendimiento(): void
+    {
+        $admin = $this->adminUser();
+        [$contract, $printer] = $this->setupContractWithPrinter($admin, 10000);
+
+        // Promedio ponderado por cantidad: (1×100 + 3×200) ÷ 4 = 175.
+        $toner = $this->toner();
+        $this->entrega($admin, $contract, $toner, 1, 100.0);
+        $this->entrega($admin, $contract, $toner, 3, 200.0);
+
+        // Tramos entre resets: 2.900 y 3.000 ⇒ mediana 2.950.
+        $this->lectura($admin, $contract, $printer, today()->subDays(40)->toDateString(), 10000, ['k' => 80]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(20)->toDateString(), 12900, ['k' => 10]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(19)->toDateString(), 13000, ['k' => 100]);
+        $this->lectura($admin, $contract, $printer, today()->toDateString(), 16000, ['k' => 15]);
+
+        $resultado = $this->service->costoTonerPorPaginaPorImpresora([$printer->id]);
+
+        $this->assertEquals(175.0, $resultado[(string) $printer->id]['costo_toner_promedio']);
+        $this->assertEqualsWithDelta(175 / 2950, $resultado[(string) $printer->id]['costo_toner_por_pagina'], 0.000001);
+    }
+
+    public function test_costo_toner_por_pagina_null_sin_entregas_o_sin_rendimiento(): void
+    {
+        $admin = $this->adminUser();
+
+        // Con niveles capturados pero sin entregas ⇒ ambos null.
+        [$contractA, $printerA] = $this->setupContractWithPrinter($admin, 10000);
+        $this->lectura($admin, $contractA, $printerA, today()->subDays(20)->toDateString(), 10000, ['k' => 80]);
+        $this->lectura($admin, $contractA, $printerA, today()->toDateString(), 13000, ['k' => 100]);
+
+        $sinEntregas = $this->service->costoTonerPorPaginaPorImpresora([$printerA->id])[(string) $printerA->id];
+        $this->assertNull($sinEntregas['costo_toner_promedio']);
+        $this->assertNull($sinEntregas['costo_toner_por_pagina']);
+
+        // Con entregas pero sin niveles capturados ⇒ promedio sí, por página
+        // no (sin rendimientoReal no se inventa).
+        [$contractB, $printerB] = $this->setupContractWithPrinter($admin, 10000);
+        $this->entrega($admin, $contractB, $this->toner(), 2, 150.0);
+
+        $sinRendimiento = $this->service->costoTonerPorPaginaPorImpresora([$printerB->id])[(string) $printerB->id];
+        $this->assertEquals(150.0, $sinRendimiento['costo_toner_promedio']);
+        $this->assertNull($sinRendimiento['costo_toner_por_pagina']);
+    }
+
+    public function test_costo_toner_por_pagina_comparte_rendimiento_entre_impresoras_del_modelo(): void
+    {
+        $admin = $this->adminUser();
+        [$contract, $printer] = $this->setupContractWithPrinter($admin, 10000);
+
+        // Hermana del mismo modelo: el rendimiento (mediana por modelo) se
+        // calcula una vez para las dos del lote.
+        $hermana = Printer::create([
+            'marca' => 'HP',
+            'modelo' => 'LaserJet Pro M404',
+            'printer_model_id' => $printer->printer_model_id,
+            'num_serie' => 'SN-' . uniqid(),
+            'fecha_adquisicion' => today(),
+            'codigo_negocio' => 'EQ-' . uniqid(),
+            'estado' => PrinterStatus::RENTADA,
+            'creado_por' => $admin->id,
+            'fecha_creacion' => now(),
+        ]);
+
+        $contract->printers()->attach($hermana->id, [
+            'fecha_asignacion' => today()->subDays(30),
+            'lectura_inicial' => 0,
+            'activa' => true,
+        ]);
+
+        // Solo la primera hermana tiene lecturas ⇒ rendimiento del modelo.
+        $this->lectura($admin, $contract, $printer, today()->subDays(40)->toDateString(), 10000, ['k' => 80]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(20)->toDateString(), 12900, ['k' => 10]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(19)->toDateString(), 13000, ['k' => 100]);
+        $this->lectura($admin, $contract, $printer, today()->toDateString(), 16000, ['k' => 15]);
+
+        $toner = $this->toner();
+        $this->entrega($admin, $contract, $toner, 2, 295.0);
+        $this->entrega($admin, $contract, $toner, 2, 295.0);
+
+        $resultado = $this->service->costoTonerPorPaginaPorImpresora([$printer->id, $hermana->id]);
+
+        // Ambas: promedio 295 ÷ mediana 2.950 = 0,1 exacto por página.
+        $this->assertEqualsWithDelta(0.1, $resultado[(string) $printer->id]['costo_toner_por_pagina'], 0.000001);
+        $this->assertEqualsWithDelta(0.1, $resultado[(string) $hermana->id]['costo_toner_por_pagina'], 0.000001);
+    }
+
+    public function test_estimados_expone_costo_toner_promedio_y_por_pagina(): void
+    {
+        $admin = $this->adminUser();
+        [$contract, $printer] = $this->setupContractWithPrinter($admin, 10000);
+
+        // 295 ÷ 2.950 = 0,1 exacto.
+        $this->entrega($admin, $contract, $this->toner(), 1, 295.0);
+        $this->lectura($admin, $contract, $printer, today()->subDays(40)->toDateString(), 10000, ['k' => 80]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(20)->toDateString(), 12900, ['k' => 10]);
+        $this->lectura($admin, $contract, $printer, today()->subDays(19)->toDateString(), 13000, ['k' => 100]);
+        $this->lectura($admin, $contract, $printer, today()->toDateString(), 16000, ['k' => 15]);
+
+        $estimados = $this->service->estimados($printer);
+
+        $this->assertEquals(295.0, $estimados['costo_toner_promedio']);
+        $this->assertEqualsWithDelta(0.1, $estimados['costo_toner_por_pagina'], 0.000001);
+
+        // Sin entregas ni niveles ⇒ nulls (aditivo, nunca inventa).
+        [$contract2, $printer2] = $this->setupContractWithPrinter($admin, 10000);
+        $estimados2 = $this->service->estimados($printer2);
+
+        $this->assertNull($estimados2['costo_toner_promedio']);
+        $this->assertNull($estimados2['costo_toner_por_pagina']);
     }
 }

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\VisitStatus;
 use App\Models\ArticleDelivery;
+use App\Models\ContractPrinter;
 use App\Models\Printer;
 use App\Models\Reading;
 use App\Models\Visit;
@@ -234,6 +235,9 @@ class TonerService
             ];
         }
 
+        $costoToner = $this->costoTonerPorPaginaPorImpresora([$printer->id])[(string) $printer->id]
+            ?? ['costo_toner_promedio' => null, 'costo_toner_por_pagina' => null];
+
         return [
             'niveles_actuales' => $niveles,
             'fecha_ultimo_nivel' => $lecturas->last()?->fecha?->toDateString(),
@@ -243,7 +247,101 @@ class TonerService
             'rendimiento_real_modelo' => $printer->printer_model_id !== null
                 ? $this->rendimientoReal($printer->printer_model_id)
                 : null,
+            'costo_toner_promedio' => $costoToner['costo_toner_promedio'],
+            'costo_toner_por_pagina' => $costoToner['costo_toner_por_pagina'],
         ];
+    }
+
+    /**
+     * Costo promedio del tóner entregado y costo por página estimado, en
+     * lote por impresora (reportes). Estimación de largo plazo: agrega TODAS
+     * las entregas TONER de TODOS los contratos históricos de cada impresora
+     * (mismo alcance que entregasToner), sin filtro de fechas.
+     *
+     * - costo_toner_promedio = Σ(cantidad×costo_unitario) ÷ Σ cantidad de
+     *   sus contratos (promedio ponderado; entregas sin costo no pesan).
+     * - costo_toner_por_pagina = costo_toner_promedio ÷ rendimientoReal del
+     *   modelo (mediana de tramos entre resets; memoizado por modelo dentro
+     *   de la llamada para no recargar lecturas por impresora).
+     * - Sin entregas o sin rendimiento ⇒ null (nunca inventar). Estimativo,
+     *   jamás alimenta facturación (D1).
+     *
+     * @param  array<int, int>  $impresoraIds
+     * @return array<string, array{costo_toner_promedio: float|null, costo_toner_por_pagina: float|null}>
+     */
+    public function costoTonerPorPaginaPorImpresora(array $impresoraIds): array
+    {
+        $resultado = [];
+        foreach ($impresoraIds as $id) {
+            $resultado[(string) $id] = ['costo_toner_promedio' => null, 'costo_toner_por_pagina' => null];
+        }
+
+        if ($impresoraIds === []) {
+            return $resultado;
+        }
+
+        $contratosPorImpresora = ContractPrinter::whereIn('impresora_id', $impresoraIds)
+            ->get(['impresora_id', 'contrato_id'])
+            ->groupBy('impresora_id');
+
+        $contratoIds = $contratosPorImpresora->flatten(1)->pluck('contrato_id')->unique()->values();
+
+        // Agregado por contrato: Σ cantidad y Σ(cantidad×costo). Las filas
+        // sin costo_unitario se ignoran (snapshot faltante, no estimable).
+        $entregasPorContrato = ArticleDelivery::query()
+            ->whereIn('contrato_id', $contratoIds)
+            ->whereHas('article', fn ($q) => $q->where('subtipo', 'TONER'))
+            ->whereNotNull('costo_unitario')
+            ->groupBy('contrato_id')
+            ->selectRaw('contrato_id, SUM(cantidad) AS total_cantidad, SUM(cantidad * costo_unitario) AS total_costo')
+            ->get()
+            ->keyBy('contrato_id');
+
+        $impresoras = Printer::whereIn('id', $impresoraIds)
+            ->get(['id', 'printer_model_id'])
+            ->keyBy('id');
+
+        $rendimientoMemoizado = [];
+
+        foreach ($impresoras as $impresora) {
+            $key = (string) $impresora->id;
+            $sumaCantidad = 0;
+            $sumaCosto = 0.0;
+
+            foreach ($contratosPorImpresora->get($impresora->id) ?? [] as $pivot) {
+                $agregado = $entregasPorContrato->get($pivot->contrato_id);
+
+                if ($agregado === null) {
+                    continue;
+                }
+
+                $sumaCantidad += (int) $agregado->total_cantidad;
+                $sumaCosto += (float) $agregado->total_costo;
+            }
+
+            if ($sumaCantidad <= 0) {
+                continue;
+            }
+
+            $costoPromedio = $sumaCosto / $sumaCantidad;
+            $resultado[$key]['costo_toner_promedio'] = (float) $costoPromedio;
+
+            if ($impresora->printer_model_id === null) {
+                continue;
+            }
+
+            if (!array_key_exists($impresora->printer_model_id, $rendimientoMemoizado)) {
+                $rendimientoMemoizado[$impresora->printer_model_id] = $this->rendimientoReal($impresora->printer_model_id);
+            }
+
+            $rendimiento = $rendimientoMemoizado[$impresora->printer_model_id];
+
+            if ($rendimiento !== null && $rendimiento > 0) {
+                $resultado[$key]['costo_toner_por_pagina'] = (float) ($costoPromedio / $rendimiento);
+            }
+        }
+
+        return $resultado;
     }
 
     /**

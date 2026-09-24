@@ -63,6 +63,7 @@ class FinanceReportController extends Controller
                     'razon_social' => $client->razon_social,
                     'ingresos' => 0.0,
                     'costos' => 0.0,
+                    'insumos_toner' => 0.0,
                     'margen' => 0.0,
                 ];
                 continue;
@@ -81,10 +82,21 @@ class FinanceReportController extends Controller
                 ->where('activa', true)
                 ->pluck('impresora_id');
 
-            $costos = $printerIds->isNotEmpty()
-                ? $this->profitabilityService->totalCostForPrinters($printerIds->all(), $periodoInicio, $periodoFin)
-                : 0.0;
+            // Mismo desglose que perPrinter (fuente única: costByPrinter):
+            // gastos + mantenimiento + insumos de tóner de las impresoras
+            // activas. A nivel cliente los insumos son exactos: la entrega
+            // vive a nivel contrato, el reparto por impresora no distorsiona.
+            $insumosToner = 0.0;
+            $otrosCostos = 0.0;
 
+            if ($printerIds->isNotEmpty()) {
+                foreach ($this->profitabilityService->costByPrinter($printerIds->all(), $periodoInicio, $periodoFin) as $costo) {
+                    $otrosCostos += $costo['gastos'] + $costo['mantenimiento'];
+                    $insumosToner += $costo['insumos_toner'];
+                }
+            }
+
+            $costos = $otrosCostos + $insumosToner;
             $margen = $ingresos - $costos;
 
             $results[] = [
@@ -92,6 +104,7 @@ class FinanceReportController extends Controller
                 'razon_social' => $client->razon_social,
                 'ingresos' => (float) $ingresos,
                 'costos' => (float) $costos,
+                'insumos_toner' => (float) $insumosToner,
                 'margen' => (float) $margen,
             ];
         }

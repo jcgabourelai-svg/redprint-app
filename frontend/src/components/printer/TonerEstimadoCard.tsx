@@ -2,7 +2,7 @@ import { Droplet } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card'
 import TonerLevelsChips from '@/components/ui/TonerLevelsChips'
 import { usePrinterToner } from '@/hooks/useToner'
-import { formatDate } from '@/lib/formatters'
+import { formatDate, formatCurrency } from '@/lib/formatters'
 import type { TonerColor } from '@/types/api'
 
 const NOMBRE_COLOR: Record<string, string> = {
@@ -38,65 +38,88 @@ export default function TonerEstimadoCard({ printerId }: { printerId: number }) 
       <CardContent className="space-y-4">
         {isLoading ? (
           <p className="text-sm text-muted-foreground">Calculando estimados…</p>
-        ) : !hayDatos ? (
-          <p className="text-sm text-muted-foreground">
-            Capturá niveles en las próximas lecturas para ver estimados.
-          </p>
         ) : (
           <>
-            {niveles && Object.keys(niveles).length > 0 && (
-              <div className="space-y-1.5">
-                <TonerLevelsChips levels={niveles} />
-                {data?.fecha_ultimo_nivel && (
-                  <p className="text-xs text-muted-foreground">
-                    Último nivel capturado: {formatDate(data.fecha_ultimo_nivel)}
+            {!hayDatos ? (
+              <p className="text-sm text-muted-foreground">
+                Capturá niveles en las próximas lecturas para ver estimados.
+              </p>
+            ) : (
+              <>
+                {niveles && Object.keys(niveles).length > 0 && (
+                  <div className="space-y-1.5">
+                    <TonerLevelsChips levels={niveles} />
+                    {data?.fecha_ultimo_nivel && (
+                      <p className="text-xs text-muted-foreground">
+                        Último nivel capturado: {formatDate(data.fecha_ultimo_nivel)}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {colores.length > 0 && (
+                  <div className="space-y-1.5">
+                    {colores.map((color) => {
+                      const est = porColor[color]
+                      if (!est) return null
+                      return (
+                        <div key={color} className="flex items-center justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            {NOMBRE_COLOR[color] ?? color.toUpperCase()}
+                          </span>
+                          <span className="tabular-nums text-foreground">
+                            {est.paginas_restantes != null
+                              ? `~${est.paginas_restantes.toLocaleString('es-MX')} págs${
+                                  est.dias != null ? ` / ~${est.dias} días` : ''
+                                }`
+                              : 'Sin datos suficientes'}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {cambio && (
+                  <p className="border-t border-border pt-3 text-xs text-muted-foreground">
+                    Último cambio detectado: {formatDate(cambio.fecha)} (
+                    {(cambio.color || '?').toUpperCase()} {cambio.nivel_antes}% →{' '}
+                    {cambio.nivel_despues}%).{' '}
+                    {cambio.con_entrega
+                      ? `Coincide con la entrega de ${cambio.entrega_articulo ?? 'tóner'}${
+                          cambio.entrega_fecha ? ` (${formatDate(cambio.entrega_fecha)})` : ''
+                        }.`
+                      : 'Sin entrega de tóner registrada cerca (posible cambio por cuenta propia).'}
+                  </p>
+                )}
+              </>
+            )}
+
+            {(data?.rendimiento_real_modelo != null
+              || data?.costo_toner_promedio != null
+              || data?.costo_toner_por_pagina != null) && (
+              <div className="border-t border-border pt-3 space-y-1 text-xs text-muted-foreground">
+                {data?.rendimiento_real_modelo != null && (
+                  <p>
+                    Rendimiento real del modelo: ~
+                    {data.rendimiento_real_modelo.toLocaleString('es-MX')} páginas por
+                    tóner (mediana estimada)
+                  </p>
+                )}
+                {data?.costo_toner_promedio != null && (
+                  <p>
+                    Costo tóner promedio: {formatCurrency(data.costo_toner_promedio)}
+                    (ponderado por entregas)
+                  </p>
+                )}
+                {data?.costo_toner_por_pagina != null && (
+                  <p>
+                    Costo por página (estimado):{' '}
+                    {formatCurrency(data.costo_toner_por_pagina)} (costo promedio ÷
+                    rendimiento real)
                   </p>
                 )}
               </div>
-            )}
-
-            {colores.length > 0 && (
-              <div className="space-y-1.5">
-                {colores.map((color) => {
-                  const est = porColor[color]
-                  if (!est) return null
-                  return (
-                    <div key={color} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {NOMBRE_COLOR[color] ?? color.toUpperCase()}
-                      </span>
-                      <span className="tabular-nums text-foreground">
-                        {est.paginas_restantes != null
-                          ? `~${est.paginas_restantes.toLocaleString('es-MX')} págs${
-                              est.dias != null ? ` / ~${est.dias} días` : ''
-                            }`
-                          : 'Sin datos suficientes'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-
-            {data?.rendimiento_real_modelo != null && (
-              <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-                Rendimiento real del modelo: ~
-                {data.rendimiento_real_modelo.toLocaleString('es-MX')} páginas por
-                tóner (mediana estimada)
-              </p>
-            )}
-
-            {cambio && (
-              <p className="border-t border-border pt-3 text-xs text-muted-foreground">
-                Último cambio detectado: {formatDate(cambio.fecha)} (
-                {(cambio.color || '?').toUpperCase()} {cambio.nivel_antes}% →{' '}
-                {cambio.nivel_despues}%).{' '}
-                {cambio.con_entrega
-                  ? `Coincide con la entrega de ${cambio.entrega_articulo ?? 'tóner'}${
-                      cambio.entrega_fecha ? ` (${formatDate(cambio.entrega_fecha)})` : ''
-                    }.`
-                  : 'Sin entrega de tóner registrada cerca (posible cambio por cuenta propia).'}
-              </p>
             )}
           </>
         )}

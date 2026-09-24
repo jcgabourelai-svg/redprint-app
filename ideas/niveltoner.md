@@ -1,12 +1,13 @@
 # Ideas — Captura de nivel de tóner en lecturas
 
-> **Estado:** Fases 1–3 **implementadas**: captura + `es_color` + alerta
+> **Estado:** Fases 1–4 **implementadas**: captura + `es_color` + alerta
 > TONER_LOW (2026-09-12, plan
 > `.kilo/plans/1789172943934-nivel-toner-captura-alerta.md`) y
 > `TonerService` (estimados) + widget "tóner bajo" del dashboard
 > (2026-09-13, plan
-> `.kilo/plans/1789332081904-toner-fase2-estimados-widget.md`; ver §8).
-> Fase 4 (costo por página real) sigue pendiente.
+> `.kilo/plans/1789332081904-toner-fase2-estimados-widget.md`; ver §8) y
+> costo de tóner en rentabilidad + costo por página estimado (2026-09-23,
+> plan `.kilo/plans/1790218580312-niveltoner-f4-costo-insumo.md`).
 > **Origen:** sesión 2026-09-04. Analiza el código real (lecturas, entregas,
 > FieldRecord, cola offline móvil) antes de redactarse.
 > **Regla de oro de este documento:** el nivel de tóner es un dato **informativo
@@ -165,13 +166,14 @@ Reglas del servicio:
   siguen sin scheduler), esta alerta nace **disparada por evento** (la captura
   de la lectura), no requiere scheduler.
 
-### Fase 4 — (opcional, el oro) Costo por página real
+### Fase 4 — (el oro) Costo por página real
 
 - `rendimientoReal` + `costo_unitario` del tóner entregado ⇒ costo por página
   con insumo.
 - Alimentar `ProfitabilityService` como costo adicional de la impresora
-  (insumo entregado ya existe como costo; falta dividirlo entre páginas para
-  el costo unitario real).
+  (hallazgo de la implementación: las `article_deliveries` **no** entraban en
+  ningún costo antes — el parenthetical original "insumo entregado ya existe
+  como costo" era falso; F4 lo agregó como componente `insumos_toner`).
 - Responde §11.3.1 de PROJECT.md y da el número para tarifar excedentes con
   margen conocido. **Solo estimativo/reportístico**; no cambiar la fórmula de
   facturación sin una discusión propia.
@@ -320,6 +322,50 @@ Reglas del servicio:
       tocada, verificado con `git diff --stat`)
 - [x] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c "npm
       run build"` (móvil sin cambios, no se recompila)
+
+### Fase 4 (costo de tóner en rentabilidad + costo por página) — COMPLETADO 2026-09-23
+
+Plan: `.kilo/plans/1790218580312-niveltoner-f4-costo-insumo.md`. Corrige el
+hallazgo de que las `article_deliveries` no entraban en ningún costo.
+
+- [x] `TonerService::costoTonerPorPaginaPorImpresora(printerIds)` (batch):
+      promedio ponderado `Σ(cantidad×costo) ÷ Σ cantidad` de las entregas
+      TONER de todos los contratos históricos (sin rango: estimación de
+      largo plazo), ÷ `rendimientoReal` del modelo memoizado por llamada;
+      nulls cuando falta algo (nunca inventar)
+- [x] `estimados(Printer)` expone `costo_toner_promedio` y
+      `costo_toner_por_pagina` (aditivo; `TonerController::printer` sin
+      cambios)
+- [x] `ProfitabilityService::costByPrinter` gana `insumos_toner`:
+      `Σ subtotal` de entregas TONER del rango por contrato (snapshot D3,
+      `DATE(fecha_creacion)` para no perder el último día), repartido parejo
+      entre pivots activas — fuente única de costos, ahora tres claves
+- [x] `perPrinter`: `costos = gastos + mantenimiento + insumos_toner`
+      (margen/roi derivados), filas ganan `gastos`, `mantenimiento`,
+      `insumos_toner`, `paginas_periodo` (Σ `readings.paginas_periodo` del
+      rango) y `costo_toner_por_pagina` (?float)
+- [x] `clientProfitability` usa `costByPrinter` y expone `insumos_toner`
+      (exacto a nivel cliente: la entrega vive a nivel contrato);
+      `totalCostForPrinters` suma las tres claves
+- [x] Web: `ProfitabilityReport` realineado al API real (`codigo_negocio`,
+      `margen`, `razon_social`; inputs `periodo_inicio/periodo_fin` que sí
+      viajan al hook) + columnas "Insumos tóner", "Páginas" y
+      "Costo/pág tóner (estimado)"; `TonerEstimadoCard` agrega costo promedio
+      y costo por página estimado; tipos `ProfitabilityData`,
+      `ClientProfitability`, `TonerEstimados` corregidos
+- [x] Tests: `ProfitabilityServiceTest` (entrega completa, reparto parejo
+      con Σ exacto a nivel cliente, no-TONER, fuera de rango, páginas,
+      costo/página null-sin-niveles y valor-con-mediana, sin pivotes activas)
+      y `TonerServiceTest` (ponderado, nulls, rendimiento compartido por
+      modelo, `estimados` aditivo)
+- [x] Deuda documentada: ingresos siguen con convención D19
+      (completo-por-activa) vs insumos repartidos parejo ⇒ margen por
+      renglón mixto en multi-impresora; `mockTrend`/badges/totales de la
+      página siguen siendo deuda de UI preexistente
+- [x] D1 intacto: `InvoiceCalculationService` y facturación sin tocar,
+      suite completa verde (`docker compose exec app` + phpunit)
+- [x] Rebuild dist: `docker compose run --rm --no-deps frontend sh -c
+      "npm run build"`
 
 ## 9. Mapa de archivos tocados (referencia rápida)
 
