@@ -43,7 +43,12 @@ class MaintenanceOrderController extends Controller
 
     public function index(Request $request): JsonResponse
     {
-        $query = MaintenanceOrder::with(['printer', 'socio', 'visit']);
+        $query = MaintenanceOrder::with([
+            'printer.warehouse',
+            'printer.currentAssignment.contract.client',
+            'socio',
+            'visit',
+        ]);
 
         if ($request->has('estado')) {
             $query->where('estado', $request->estado);

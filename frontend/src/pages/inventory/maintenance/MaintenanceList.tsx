@@ -86,6 +86,27 @@ export default function MaintenanceList() {
       ),
     },
     {
+      key: 'ubicacion',
+      label: 'Ubicación',
+      render: (_value: string, row: any) => {
+        if (row.printer?.cliente) {
+          return (
+            <Badge variant="warning" className="max-w-[12rem]">
+              <span className="truncate">En piso · {row.printer.cliente.nombre}</span>
+            </Badge>
+          )
+        }
+        if (row.printer?.warehouse) {
+          return (
+            <Badge variant="neutral" className="max-w-[12rem]">
+              <span className="truncate">En taller · {row.printer.warehouse.nombre}</span>
+            </Badge>
+          )
+        }
+        return <span className="text-muted-foreground">-</span>
+      },
+    },
+    {
       key: 'fecha',
       label: 'Fecha objetivo',
       sortable: true,
